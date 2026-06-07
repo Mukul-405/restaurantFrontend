@@ -42,7 +42,7 @@ export default function LoginPage() {
     <div className="flex items-center justify-center h-screen w-screen bg-background relative overflow-hidden">
       <div className="absolute w-[600px] h-[600px] bg-[radial-gradient(circle,var(--color-primary-light)_0%,transparent_60%)] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none" />
       <motion.div
-        className="w-full max-w-[420px] p-10 z-10 text-center bg-surface/60 backdrop-blur-xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)] rounded-2xl"
+        className="w-[90%] sm:w-full max-w-[420px] p-6 sm:p-10 z-10 text-center bg-surface/60 backdrop-blur-xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)] rounded-2xl"
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
