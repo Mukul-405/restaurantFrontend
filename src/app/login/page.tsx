@@ -30,7 +30,7 @@ export default function LoginPage() {
     try {
       setLoading(true);
       const data = await fetcher.login({ phoneNumber, password });
-      login(data.accessToken, data.refreshToken, data.user);
+      login(data.accessToken, data.user);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Invalid credentials or account is inactive');
     } finally {

@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, X, AlertCircle, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Plus, Trash2, ShieldAlert, ShieldCheck, Key } from 'lucide-react';
 import { fetcher } from '../../../lib/fetcher';
 import { User } from '../../../context/AuthContext';
+import AddMemberModal from '../../../components/modals/AddMemberModal';
+import DeleteMemberModal from '../../../components/modals/DeleteMemberModal';
+import BlockMemberModal from '../../../components/modals/BlockMemberModal';
+import ResetPasswordModal from '../../../components/modals/ResetPasswordModal';
 
 export default function MembersPage() {
   const [members, setMembers] = useState<User[]>([]);
@@ -15,11 +18,10 @@ export default function MembersPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<User | null>(null);
-
-  // Form state
-  const [formData, setFormData] = useState({ name: '', phoneNumber: '', role: 'WAITER', password: '' });
-  const [formError, setFormError] = useState('');
-  const [formLoading, setFormLoading] = useState(false);
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [memberToBlock, setMemberToBlock] = useState<User | null>(null);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [memberToReset, setMemberToReset] = useState<User | null>(null);
 
   const fetchMembers = async () => {
     try {
@@ -36,56 +38,6 @@ export default function MembersPage() {
   useEffect(() => {
     fetchMembers();
   }, []);
-
-  const handleAddSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-    if (!formData.name || !formData.phoneNumber || !formData.role) {
-      setFormError('Name, Phone Number, and Role are required.');
-      return;
-    }
-    try {
-      setFormLoading(true);
-      const payload: any = { ...formData };
-      if (!payload.password) delete payload.password;
-      await fetcher.createUser(payload);
-      setIsAddModalOpen(false);
-      setFormData({ name: '', phoneNumber: '', role: 'WAITER', password: '' });
-      fetchMembers();
-    } catch (err: any) {
-      setFormError(err.response?.data?.error || 'Failed to create member');
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const toggleBlockStatus = async (user: User) => {
-    try {
-      if (user.isActive) {
-        await fetcher.blockUser(user.id);
-      } else {
-        await fetcher.unblockUser(user.id);
-      }
-      fetchMembers();
-    } catch (err: any) {
-      alert('Failed to update block status');
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!memberToDelete) return;
-    try {
-      setFormLoading(true);
-      await fetcher.deleteUser(memberToDelete.id);
-      setIsDeleteModalOpen(false);
-      setMemberToDelete(null);
-      fetchMembers();
-    } catch (err: any) {
-      alert('Failed to delete member');
-    } finally {
-      setFormLoading(false);
-    }
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -149,7 +101,20 @@ export default function MembersPage() {
                     <div className="flex gap-2">
                       <button 
                         className="bg-transparent border-none text-slate-400 cursor-pointer p-1.5 rounded transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
-                        onClick={() => toggleBlockStatus(member)}
+                        onClick={() => {
+                          setMemberToReset(member);
+                          setIsResetModalOpen(true);
+                        }}
+                        title="Reset Password"
+                      >
+                        <Key size={18} />
+                      </button>
+                      <button 
+                        className="bg-transparent border-none text-slate-400 cursor-pointer p-1.5 rounded transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
+                        onClick={() => {
+                          setMemberToBlock(member);
+                          setIsBlockModalOpen(true);
+                        }}
                         title={member.isActive ? "Block User" : "Unblock User"}
                       >
                         {member.isActive ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
@@ -206,7 +171,20 @@ export default function MembersPage() {
                 <div className="flex gap-1">
                   <button 
                     className="bg-transparent border-none text-slate-400 cursor-pointer p-2 rounded-lg transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
-                    onClick={() => toggleBlockStatus(member)}
+                    onClick={() => {
+                      setMemberToReset(member);
+                      setIsResetModalOpen(true);
+                    }}
+                    title="Reset Password"
+                  >
+                    <Key size={18} />
+                  </button>
+                  <button 
+                    className="bg-transparent border-none text-slate-400 cursor-pointer p-2 rounded-lg transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
+                    onClick={() => {
+                      setMemberToBlock(member);
+                      setIsBlockModalOpen(true);
+                    }}
                     title={member.isActive ? "Block User" : "Unblock User"}
                   >
                     {member.isActive ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
@@ -229,122 +207,35 @@ export default function MembersPage() {
       </div>
 
       {/* Add Member Modal */}
-      <AnimatePresence>
-        {isAddModalOpen && (
-          <motion.div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className="w-full max-w-[500px] p-8 bg-surface border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.3)]"
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">Add New Member</h2>
-                <button className="bg-transparent border-none text-slate-400 hover:text-slate-200 cursor-pointer p-1" onClick={() => setIsAddModalOpen(false)}>
-                  <X size={24} />
-                </button>
-              </div>
-              <form onSubmit={handleAddSubmit}>
-                <div className="mb-4 flex flex-col">
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Name</label>
-                  <input 
-                    type="text" 
-                    className="w-full bg-black/20 border border-white/10 text-slate-200 px-4 py-3 rounded-lg font-sans text-base transition-all duration-300 outline-none focus:border-primary focus:shadow-[0_0_0_2px_var(--color-primary-light)]" 
-                    value={formData.name} 
-                    onChange={e => setFormData({...formData, name: e.target.value})} 
-                  />
-                </div>
-                <div className="mb-4 flex flex-col">
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Phone Number</label>
-                  <input 
-                    type="text" 
-                    className="w-full bg-black/20 border border-white/10 text-slate-200 px-4 py-3 rounded-lg font-sans text-base transition-all duration-300 outline-none focus:border-primary focus:shadow-[0_0_0_2px_var(--color-primary-light)]" 
-                    value={formData.phoneNumber} 
-                    onChange={e => setFormData({...formData, phoneNumber: e.target.value})} 
-                  />
-                </div>
-                <div className="mb-4 flex flex-col">
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Role</label>
-                  <select 
-                    className="w-full bg-black/20 border border-white/10 text-slate-200 px-4 py-3 rounded-lg font-sans text-base outline-none appearance-none [&>option]:bg-surface [&>option]:text-slate-200"
-                    value={formData.role}
-                    onChange={e => setFormData({...formData, role: e.target.value})}
-                  >
-                    <option value="ADMIN">ADMIN</option>
-                    <option value="MANAGER">MANAGER</option>
-                    <option value="WAITER">WAITER</option>
-                    <option value="CASHIER">CASHIER</option>
-                    <option value="KITCHEN_STAFF">KITCHEN_STAFF</option>
-                    <option value="RECEPTIONIST">RECEPTIONIST</option>
-                  </select>
-                </div>
-                <div className="mb-4 flex flex-col">
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Password (Optional)</label>
-                  <input 
-                    type="password" 
-                    className="w-full bg-black/20 border border-white/10 text-slate-200 px-4 py-3 rounded-lg font-sans text-base transition-all duration-300 outline-none focus:border-primary focus:shadow-[0_0_0_2px_var(--color-primary-light)]" 
-                    placeholder="Auto-generated if empty"
-                    value={formData.password} 
-                    onChange={e => setFormData({...formData, password: e.target.value})} 
-                  />
-                </div>
-                
-                {formError && <div className="text-danger text-sm mt-4 text-center">{formError}</div>}
-
-                <div className="flex justify-end gap-3 mt-8">
-                  <button type="button" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm cursor-pointer transition-all duration-200 border-none outline-none disabled:opacity-50 bg-transparent border border-white/10 text-slate-200 hover:bg-white/5" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
-                  <button type="submit" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm cursor-pointer transition-all duration-200 border-none outline-none disabled:opacity-50 bg-primary text-white shadow-[0_4px_14px_0_var(--color-primary-light)] hover:bg-primary-hover hover:-translate-y-[1px]" disabled={formLoading}>
-                    {formLoading ? 'Saving...' : 'Save Member'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AddMemberModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)} 
+        onSuccess={fetchMembers} 
+      />
 
       {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {isDeleteModalOpen && (
-          <motion.div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className="w-full max-w-[500px] p-8 bg-surface border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.3)]"
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">Confirm Deletion</h2>
-                <button className="bg-transparent border-none text-slate-400 hover:text-slate-200 cursor-pointer p-1" onClick={() => setIsDeleteModalOpen(false)}>
-                  <X size={24} />
-                </button>
-              </div>
-              <div className="flex gap-4 items-start text-slate-400">
-                <AlertCircle size={24} className="text-danger shrink-0" />
-                <p>
-                  Are you sure you want to delete <strong className="text-slate-200">{memberToDelete?.name}</strong>? This action cannot be undone.
-                </p>
-              </div>
-              <div className="flex justify-end gap-3 mt-8">
-                <button type="button" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm cursor-pointer transition-all duration-200 border-none outline-none disabled:opacity-50 bg-transparent border border-white/10 text-slate-200 hover:bg-white/5" onClick={() => setIsDeleteModalOpen(false)}>Cancel</button>
-                <button type="button" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm cursor-pointer transition-all duration-200 border-none outline-none disabled:opacity-50 bg-danger text-white hover:bg-danger-hover" onClick={handleDeleteConfirm} disabled={formLoading}>
-                  {formLoading ? 'Deleting...' : 'Yes, Delete'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <DeleteMemberModal 
+        isOpen={isDeleteModalOpen} 
+        onClose={() => setIsDeleteModalOpen(false)} 
+        onSuccess={fetchMembers} 
+        member={memberToDelete} 
+      />
+
+      {/* Block Confirmation Modal */}
+      <BlockMemberModal 
+        isOpen={isBlockModalOpen} 
+        onClose={() => setIsBlockModalOpen(false)} 
+        onSuccess={fetchMembers} 
+        member={memberToBlock} 
+      />
+
+      {/* Reset Password Modal */}
+      <ResetPasswordModal 
+        isOpen={isResetModalOpen} 
+        onClose={() => setIsResetModalOpen(false)} 
+        onSuccess={fetchMembers} 
+        member={memberToReset} 
+      />
     </div>
   );
 }

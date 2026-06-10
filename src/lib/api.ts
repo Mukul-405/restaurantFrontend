@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from './token';
+import { getAccessToken, setAccessToken } from './token';
 
 if (!process.env.NEXT_PUBLIC_API_URL) {
   throw new Error('NEXT_PUBLIC_API_URL is not defined in the environment variables.');
@@ -12,6 +12,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
@@ -45,7 +46,12 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 && 
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('/auth/refresh-token') &&
+      !originalRequest.url?.includes('/auth/logout')
+    ) {
       if (isRefreshing) {
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
@@ -62,25 +68,14 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) {
-        isRefreshing = false;
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('auth:logout'));
-        }
-        return Promise.reject(error);
-      }
-
       try {
-        const { data } = await axios.post(`${API_URL}/auth/refresh-token`, {
-          token: refreshToken,
+        const { data } = await axios.post(`${API_URL}/auth/refresh-token`, undefined, {
+          withCredentials: true,
         });
 
         const newAccessToken = data.accessToken;
-        const newRefreshToken = data.refreshToken;
 
         setAccessToken(newAccessToken);
-        setRefreshToken(newRefreshToken);
 
         api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
@@ -90,7 +85,6 @@ api.interceptors.response.use(
       } catch (err) {
         processQueue(err, null);
         setAccessToken(null);
-        setRefreshToken(null);
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('auth:logout'));
         }

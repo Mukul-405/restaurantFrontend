@@ -6,8 +6,8 @@ export const fetcher = {
     const { data } = await api.post('/auth/login', credentials);
     return data;
   },
-  logout: async (token: string) => {
-    const { data } = await api.post('/auth/logout', { token });
+  logout: async () => {
+    const { data } = await api.post('/auth/logout');
     return data;
   },
   getCurrentUser: async () => {
@@ -34,6 +34,10 @@ export const fetcher = {
   },
   unblockUser: async (userId: string) => {
     const { data } = await api.patch(`/users/${userId}/unblock`);
+    return data;
+  },
+  resetPassword: async (userId: string, password: string) => {
+    const { data } = await api.patch(`/users/${userId}/reset-password`, { password });
     return data;
   }
 };

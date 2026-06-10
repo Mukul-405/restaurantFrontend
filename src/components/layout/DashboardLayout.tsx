@@ -23,8 +23,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex h-screen w-screen overflow-hidden bg-background text-slate-200">
         {/* Mobile menu backdrop */}
         {isMobileMenuOpen && (
-          <div 
-            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm" 
+          <div
+            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}
@@ -38,11 +38,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <nav className="flex-1 p-4 flex flex-col gap-2">
             {user?.role === 'ADMIN' && (
-              <Link 
-                href="/dashboard/members" 
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${
-                  pathname === '/dashboard/members' ? 'bg-primary-light text-primary' : 'text-slate-400'
-                }`}
+              <Link
+                href="/dashboard/members"
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/members' ? 'bg-primary-light text-primary' : 'text-slate-400'
+                  }`}
               >
                 <Users size={20} />
                 <span>Members</span>
