@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Users, LogOut, Menu, X } from 'lucide-react';
+import { Users, LogOut, Menu, X, Coffee } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ProtectedRoute from '../ProtectedRoute';
 
@@ -38,14 +38,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <nav className="flex-1 p-4 flex flex-col gap-2">
             {user?.role === 'ADMIN' && (
-              <Link
-                href="/dashboard/members"
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/members' ? 'bg-primary-light text-primary' : 'text-slate-400'
-                  }`}
-              >
-                <Users size={20} />
-                <span>Members</span>
-              </Link>
+              <>
+                <Link
+                  href="/dashboard/members"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/members' ? 'bg-primary-light text-primary' : 'text-slate-400'
+                    }`}
+                >
+                  <Users size={20} />
+                  <span>Members</span>
+                </Link>
+                <Link
+                  href="/dashboard/menu"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/menu' ? 'bg-primary-light text-primary' : 'text-slate-400'
+                    }`}
+                >
+                  <Coffee size={20} />
+                  <span>Menu</span>
+                </Link>
+              </>
             )}
           </nav>
         </aside>
