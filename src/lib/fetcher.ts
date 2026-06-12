@@ -61,5 +61,23 @@ export const fetcher = {
   bulkCreateCategories: async (categories: string[]) => {
     const { data } = await api.post('/menu/categories/bulk', { categories });
     return data;
+  },
+
+  // Order endpoints
+  getOrders: async (params?: Record<string, any>) => {
+    const { data } = await api.get('/orders', { params });
+    return data;
+  },
+  getOrderById: async (id: number | string) => {
+    const { data } = await api.get(`/orders/${id}`);
+    return data;
+  },
+  createOrder: async (orderData: any) => {
+    const { data } = await api.post('/orders', orderData);
+    return data;
+  },
+  updateOrder: async (id: number | string, orderData: any) => {
+    const { data } = await api.put(`/orders/${id}`, orderData);
+    return data;
   }
 };
