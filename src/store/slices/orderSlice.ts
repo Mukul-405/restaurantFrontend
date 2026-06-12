@@ -23,6 +23,7 @@ export interface Order {
   finalDiscountedAmount: number;
   status: OrderStatus;
   cancellationReason: string | null;
+  tableNumber: number | null;
   items: OrderItem[];
   user?: {
     id: string;

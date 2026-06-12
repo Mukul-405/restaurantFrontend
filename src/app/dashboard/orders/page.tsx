@@ -286,6 +286,10 @@ export default function OrdersPage() {
                       <span className="text-slate-200">{order.phoneNumber}</span>
                     </div>
                     <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Table:</span>
+                      <span className="text-slate-200 font-bold">{order.tableNumber || '-'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
                       <span className="text-slate-400">Waiter:</span>
                       <span className="text-slate-200">{order.user?.name || '-'}</span>
                     </div>
@@ -378,6 +382,7 @@ export default function OrdersPage() {
                       <div className="bg-surface/50 border border-white/5 rounded-xl p-4">
                         <div className="space-y-2 text-sm mb-4">
                           <div className="text-slate-400">CUSTOMER: <span className="text-slate-200">{order.phoneNumber}</span></div>
+                          <div className="text-slate-400">TABLE: <span className="text-slate-200 font-bold">{order.tableNumber || '-'}</span></div>
                           <div className="text-slate-400">WAITER: <span className="text-slate-200">{order.user?.name || '-'}</span></div>
                           <div className="text-slate-400">DATE & TIME: <span className="text-slate-200">{new Date(order.createdAt).toLocaleString()}</span></div>
                         </div>

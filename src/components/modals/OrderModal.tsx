@@ -17,7 +17,8 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
   const { items: menuItems, categories, status: menuStatus } = useAppSelector(state => state.menu);
 
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [selectedItems, setSelectedItems] = useState<{ menuItemId: number, quantity: number, name: string, price: number }[]>([]);
+  const [tableNumber, setTableNumber] = useState('');
+  const [selectedItems, setSelectedItems] = useState<Array<{menuItemId: number, quantity: number, name: string, price: number}>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +48,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
     if (isOpen) {
       if (orderToEdit) {
         setPhoneNumber(orderToEdit.phoneNumber);
+        setTableNumber(orderToEdit.tableNumber ? orderToEdit.tableNumber.toString() : '');
         setSelectedItems(orderToEdit.items.map(i => ({
           menuItemId: i.menuItemId,
           quantity: i.quantity,
@@ -55,6 +57,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
         })));
       } else {
         setPhoneNumber('');
+        setTableNumber('');
         setSelectedItems([]);
       }
       setError(null);
@@ -131,7 +134,8 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
             baseAmount,
             gstAmount,
             discountAmount,
-            finalDiscountedAmount
+            finalDiscountedAmount,
+            tableNumber: tableNumber ? parseInt(tableNumber, 10) : undefined
           }
         })).unwrap();
       } else {
@@ -141,7 +145,8 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
           baseAmount,
           gstAmount,
           discountAmount,
-          finalDiscountedAmount
+          finalDiscountedAmount,
+          tableNumber: tableNumber ? parseInt(tableNumber, 10) : undefined
         })).unwrap();
       }
       
@@ -186,7 +191,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
               {/* Customer Details */}
               <div>
                 <h3 className="text-lg font-bold text-slate-200 mb-3">Customer Details</h3>
-                <div className="bg-black/20 border border-white/5 rounded-2xl p-4">
+                <div className="bg-black/20 border border-white/5 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input
                     type="tel"
                     value={phoneNumber}
@@ -194,6 +199,14 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                     className="w-full bg-transparent border border-white/10 text-slate-200 px-4 py-3 rounded-xl font-sans text-sm transition-all duration-300 outline-none focus:border-primary placeholder-slate-500"
                     placeholder="Phone Number *"
                     required
+                  />
+                  <input
+                    type="number"
+                    value={tableNumber}
+                    onChange={(e) => setTableNumber(e.target.value)}
+                    className="w-full bg-transparent border border-white/10 text-slate-200 px-4 py-3 rounded-xl font-sans text-sm transition-all duration-300 outline-none focus:border-primary placeholder-slate-500"
+                    placeholder="Table Number (Optional)"
+                    min="1"
                   />
                 </div>
               </div>

@@ -1,9 +1,10 @@
 import React, { useEffect,useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Phone, Calendar, IndianRupee, User } from 'lucide-react';
+import { X, Loader2, Phone, Calendar, IndianRupee, User, Hash, Printer } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchOrderById, updateOrder } from '../../store/slices/orderSlice';
 import CancelOrderModal from './CancelOrderModal';
+import { printReceipt } from '../../utils/printReceipt';
 
 interface OrderDetailsModalProps {
   isOpen: boolean;
@@ -40,12 +41,23 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
           >
             <div className="flex justify-between items-center p-4 md:p-6 border-b border-white/10 bg-surface/80 backdrop-blur-md sticky top-0 z-20">
               <h2 className="text-xl font-bold text-slate-100">Order Details #{orderId}</h2>
-              <button
-                onClick={onClose}
-                className="text-slate-400 hover:text-slate-200 transition-colors p-2 rounded-lg hover:bg-white/5"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedOrder && (
+                  <button
+                    onClick={() => printReceipt(selectedOrder)}
+                    className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors px-3 py-2 rounded-lg text-sm font-bold"
+                  >
+                    <Printer size={16} />
+                    <span className="hidden sm:inline">Print Bill</span>
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="text-slate-400 hover:text-slate-200 transition-colors p-2 rounded-lg hover:bg-white/5"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col relative">
@@ -57,12 +69,18 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
                 ) : (
                   <div className="space-y-6">
                     {/* Header Info Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="bg-black/20 p-4 rounded-xl border border-white/5">
                         <div className="flex items-center gap-2 text-slate-400 mb-1 text-sm font-medium">
                           <Phone size={14} /> Phone Number
                         </div>
                         <div className="text-slate-200 font-bold">{selectedOrder.phoneNumber}</div>
+                      </div>
+                      <div className="bg-black/20 p-4 rounded-xl border border-white/5">
+                        <div className="flex items-center gap-2 text-slate-400 mb-1 text-sm font-medium">
+                          <Hash size={14} /> Table
+                        </div>
+                        <div className="text-slate-200 font-bold">{selectedOrder.tableNumber || '-'}</div>
                       </div>
                       <div className="bg-black/20 p-4 rounded-xl border border-white/5">
                         <div className="flex items-center gap-2 text-slate-400 mb-1 text-sm font-medium">
@@ -72,7 +90,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
                           {new Date(selectedOrder.createdAt).toLocaleString()}
                         </div>
                       </div>
-                      <div className="bg-black/20 p-4 rounded-xl border border-white/5 sm:col-span-2 flex justify-between items-center">
+                      <div className="bg-black/20 p-4 rounded-xl border border-white/5 sm:col-span-3 flex justify-between items-center">
                         <div>
                           <div className="flex items-center gap-2 text-slate-400 mb-1 text-sm font-medium">
                             <User size={14} /> Waiter
