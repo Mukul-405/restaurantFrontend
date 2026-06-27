@@ -25,6 +25,11 @@ export interface Order {
   cancellationReason: string | null;
   tableNumber: number | null;
   items: OrderItem[];
+  kotHistory: {
+    menuItemId: number;
+    name: string;
+    qty: number;
+  }[];
   user?: {
     id: string;
     name: string;

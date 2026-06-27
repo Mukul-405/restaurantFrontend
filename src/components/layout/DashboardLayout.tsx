@@ -63,6 +63,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <BarChart size={20} />
                   <span>Analysis</span>
                 </Link>
+                <Link
+                  href="/dashboard/kots"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/kots' ? 'bg-primary-light text-primary' : 'text-slate-400'
+                    }`}
+                >
+                  <Coffee size={20} />
+                  <span>Print KOTs</span>
+                </Link>
               </>
             )}
             <Link

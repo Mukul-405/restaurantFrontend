@@ -125,6 +125,8 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
     setError(null);
 
     try {
+      let newKotHistory: any[] = [];
+      
       if (orderToEdit) {
         await dispatch(updateOrder({
           id: orderToEdit.id,
