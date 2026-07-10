@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Users, LogOut, Menu as MenuIcon, X, Coffee, ShoppingCart, BarChart } from 'lucide-react';
+import { Users, LogOut, Menu as MenuIcon, X, Coffee, ShoppingCart, BarChart, Bed } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ProtectedRoute from '../ProtectedRoute';
 
@@ -70,6 +70,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 >
                   <Coffee size={20} />
                   <span>Print KOTs</span>
+                </Link>
+                <Link
+                  href="/dashboard/room-manage"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/room-manage' ? 'bg-primary-light text-primary' : 'text-slate-400'
+                    }`}
+                >
+                  <Bed size={20} />
+                  <span>Rooms</span>
+                </Link>
+                <Link
+                  href="/dashboard/book-room"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/book-room' ? 'bg-primary-light text-primary' : 'text-slate-400'
+                    }`}
+                >
+                  <Bed size={20} />
+                  <span>Book Room</span>
                 </Link>
               </>
             )}
