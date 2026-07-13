@@ -10,9 +10,14 @@ interface RoomTypesState {
 
 const initialState: RoomTypesState = { roomTypes: [], status: 'idle', error: null };
 
-export const fetchRoomTypes = createAsyncThunk('roomTypes/fetchAll', async (params: { startDate?: string; endDate?: string } | void, { rejectWithValue }) => {
-  try { return await roomsApi.getRoomTypes(params?.startDate, params?.endDate); }  
+export const fetchRoomTypes = createAsyncThunk('roomTypes/fetchAll', async (_, { rejectWithValue }) => {
+  try { return await roomsApi.getRoomTypes(); }  
   catch (error: any) { return rejectWithValue(error.response?.data?.message || 'Failed to fetch room types'); }
+});
+
+export const fetchAvailability = createAsyncThunk('roomTypes/fetchAvailability', async (params: { startDate: string; endDate: string }, { rejectWithValue }) => {
+  try { return await roomsApi.getAvailability(params.startDate, params.endDate); }  
+  catch (error: any) { return rejectWithValue(error.response?.data?.message || 'Failed to fetch availability'); }
 });
 
 export const createRoomType = createAsyncThunk('roomTypes/create', async (data: Partial<RoomType>, { rejectWithValue }) => {
@@ -49,6 +54,12 @@ const roomTypesSlice = createSlice({
       .addCase(fetchRoomTypes.pending, (state) => { state.status = 'loading'; })
       .addCase(fetchRoomTypes.fulfilled, (state, action) => { state.status = 'succeeded'; state.roomTypes = action.payload; })
       .addCase(fetchRoomTypes.rejected, (state, action) => { state.status = 'failed'; state.error = action.payload as string; })
+      .addCase(fetchAvailability.fulfilled, (state, action) => {
+        state.roomTypes = state.roomTypes.map(rt => ({
+          ...rt,
+          availableRooms: action.payload[rt.roomCode] ?? rt.availableRooms
+        }));
+      })
       .addCase(createRoomType.fulfilled, (state, action) => { state.roomTypes.push(action.payload); })
       .addCase(updateRoomType.fulfilled, (state, action) => {
         const index = state.roomTypes.findIndex(rt => rt.id === action.payload.id);

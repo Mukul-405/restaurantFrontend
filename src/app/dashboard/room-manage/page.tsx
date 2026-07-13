@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchRoomTypes, createRoomType, updateRoomType, deleteRoomType, addRoomToType, deleteRoomFromType } from '../../../store/slices/roomTypesSlice';
+import { fetchRoomTypes, fetchAvailability, createRoomType, updateRoomType, deleteRoomType, addRoomToType, deleteRoomFromType } from '../../../store/slices/roomTypesSlice';
 import { Plus, Edit2, Trash2, IndianRupee, Users as UsersIcon, Home, Calendar as CalendarIcon, Clock, Wrench, Calculator } from 'lucide-react';
 import RoomTypeModal from '../../../components/modals/RoomTypeModal';
 import GenericDeleteModal from '../../../components/modals/GenericDeleteModal';
@@ -31,6 +31,8 @@ export default function RoomManagePage() {
   const [calcPriceModalOpen, setCalcPriceModalOpen] = useState(false);
   const [selectedRtForCalc, setSelectedRtForCalc] = useState<any>(null);
 
+  const todayStr = new Date().toLocaleDateString('en-CA');
+
   useEffect(() => {
     dispatch(fetchRoomTypes());
   }, [dispatch]);
@@ -40,7 +42,11 @@ export default function RoomManagePage() {
       alert('Please select both start date and end date.');
       return;
     }
-    dispatch(fetchRoomTypes({ startDate, endDate }));
+    if (new Date(startDate) > new Date(endDate)) {
+      alert('End date must be same or after start date.');
+      return;
+    }
+    dispatch(fetchAvailability({ startDate, endDate }));
   };
 
   const handleSaveRt = async (data: any) => {
@@ -115,6 +121,7 @@ export default function RoomManagePage() {
             <CalendarIcon size={18} className="text-slate-400" />
             <input
               type="date"
+              min={todayStr}
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               onClick={(e) => {
@@ -127,6 +134,7 @@ export default function RoomManagePage() {
             <span className="text-slate-500 font-semibold">to</span>
             <input
               type="date"
+              min={startDate || todayStr}
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               onClick={(e) => {

@@ -2,6 +2,8 @@ import api from './api';
 
 export interface BookingRoomPayload {
   roomCode: string;
+  rateplanCode: string;
+  roomNumber: string;
   adults: number;
   children: number;
 }

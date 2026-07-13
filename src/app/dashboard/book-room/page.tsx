@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Sparkles, Loader2 } from 'lucide-react';
-import { getRoomTypes, RoomType } from '../../../lib/roomsApi';
+import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { getRoomTypes, RoomType, getAvailability } from '../../../lib/roomsApi';
 import { createBooking, BookingPayload } from '../../../lib/roomBookApi';
 
 export default function BookRoomPage() {
@@ -17,18 +17,23 @@ export default function BookRoomPage() {
   });
 
   const [rooms, setRooms] = useState([
-    { id: 1, roomCode: '', adults: 1, children: 0 }
+    { id: 1, roomCode: '', rateplanCode: '', adults: 1, children: 0 }
   ]);
 
+  const [assignments, setAssignments] = useState<{ id: number; roomCode: string; roomNumber: string }[]>([]);
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkingAvail, setCheckingAvail] = useState(false);
+  const [availability, setAvailability] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState('');
 
   useEffect(() => {
     const fetchRoomTypes = async () => {
       try {
         const data = await getRoomTypes();
-        // Only display active room types
         setRoomTypes(data.filter(rt => rt.isActive));
       } catch (error) {
         console.error('Failed to fetch room types:', error);
@@ -39,7 +44,41 @@ export default function BookRoomPage() {
     fetchRoomTypes();
   }, []);
 
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      if (formData.checkIn && formData.checkOut) {
+        const checkInDate = new Date(formData.checkIn);
+        const checkOutDate = new Date(formData.checkOut);
+        
+        if (checkInDate > checkOutDate) {
+          return;
+        }
+
+        setCheckingAvail(true);
+        try {
+          const availData = await getAvailability(formData.checkIn, formData.checkOut);
+          setAvailability(availData);
+        } catch (error) {
+          console.error('Failed to fetch availability:', error);
+        } finally {
+          setCheckingAvail(false);
+        }
+      } else {
+        setAvailability({});
+      }
+    };
+    
+    // Add a slight debounce
+    const timeoutId = setTimeout(() => {
+      fetchAvailability();
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
+  }, [formData.checkIn, formData.checkOut]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormError('');
+    setFormSuccess('');
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -49,11 +88,14 @@ export default function BookRoomPage() {
   const handleRoomChange = (index: number, field: string, value: string | number) => {
     const newRooms = [...rooms];
     newRooms[index] = { ...newRooms[index], [field]: value };
+    if (field === 'roomCode') {
+      newRooms[index].rateplanCode = '';
+    }
     setRooms(newRooms);
   };
 
   const addRoom = () => {
-    setRooms([...rooms, { id: Date.now(), roomCode: '', adults: 1, children: 0 }]);
+    setRooms([...rooms, { id: Date.now(), roomCode: '', rateplanCode: '', adults: 1, children: 0 }]);
   };
 
   const removeRoom = (index: number) => {
@@ -64,10 +106,14 @@ export default function BookRoomPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAssignmentChange = (id: number, roomNumber: string) => {
+    setAssignments(assignments.map(a => a.id === id ? { ...a, roomNumber } : a));
+  };
+
+  const submitBooking = async (finalAssignments: any[]) => {
     setSubmitting(true);
-    
+    setFormError('');
+    setFormSuccess('');
     try {
       const totalAdults = rooms.reduce((sum, room) => sum + Number(room.adults), 0);
       const totalChildren = rooms.reduce((sum, room) => sum + Number(room.children), 0);
@@ -76,259 +122,442 @@ export default function BookRoomPage() {
         ...formData,
         totalAdults,
         totalChildren,
-        rooms: rooms.map(r => ({
-          roomCode: r.roomCode,
-          adults: Number(r.adults),
-          children: Number(r.children)
-        }))
+        rooms: rooms.map(r => {
+          const assignment = finalAssignments.find(a => a.id === r.id);
+          return {
+            roomCode: r.roomCode,
+            rateplanCode: r.rateplanCode,
+            adults: Number(r.adults),
+            children: Number(r.children),
+            roomNumber: assignment?.roomNumber || ''
+          };
+        })
       };
       
       await createBooking(payload);
-      alert('Booking submitted successfully!');
-      
-      // Reset form
-      setFormData({
-        guestName: '',
-        guestEmail: '',
-        guestPhone: '',
-        checkIn: '',
-        checkOut: '',
-        specialRequests: '',
-      });
-      setRooms([{ id: Date.now(), roomCode: '', adults: 1, children: 0 }]);
-    } catch (error) {
-      console.error('Booking submission failed:', error);
-      // Fallback message for now since backend might not have the route implemented yet
-      alert('Booking form is connected to roomBookApi. Backend integration needed to process /bookings endpoint.');
+      setFormSuccess('Booking Confirmed! The reservation has been successfully created.');
+      resetForm();
+    } catch (error: any) {
+      console.error('Booking failed:', error);
+      setFormError(error.response?.data?.message || 'Failed to create booking. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const inputClass = "w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-300 hover:border-white/20";
+  const handleContinue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.checkIn || !formData.checkOut) {
+      setFormError("Please select check-in and check-out dates.");
+      return;
+    }
+    
+    if (new Date(formData.checkIn) > new Date(formData.checkOut)) {
+      setFormError("Check-out date must be same or after check-in date.");
+      return;
+    }
+
+    // Validate if they booked more rooms of a type than available
+    for (const rt of roomTypes) {
+      const countRequested = rooms.filter(r => r.roomCode === rt.roomCode).length;
+      const avail = availability[rt.roomCode] || 0;
+      if (countRequested > avail) {
+        setFormError(`You requested ${countRequested} room(s) of type ${rt.name}, but only ${avail} are available for these dates.`);
+        return;
+      }
+    }
+    
+    const initialAssignments = rooms.map(r => ({
+      id: r.id,
+      roomCode: r.roomCode,
+      roomNumber: ''
+    }));
+    setAssignments(initialAssignments);
+
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    if (formData.checkIn > todayStr) {
+      submitBooking(initialAssignments);
+    } else {
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleConfirmBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (assignments.some(a => !a.roomNumber)) {
+      setFormError("Please assign a physical room number for all booked rooms.");
+      return;
+    }
+
+    submitBooking(assignments);
+  };
+
+  const resetForm = () => {
+    setFormData({ guestName: '', guestEmail: '', guestPhone: '', checkIn: '', checkOut: '', specialRequests: '' });
+    setRooms([{ id: Date.now(), roomCode: '', rateplanCode: '', adults: 1, children: 0 }]);
+    setAssignments([]);
+    setAvailability({});
+    setIsModalOpen(false);
+  };
+
+  const inputClass = "w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-300 hover:border-white/20 text-sm";
   const labelClass = "block text-xs font-semibold text-slate-400 mb-1.5 ml-1 uppercase tracking-wider";
 
+  const todayStr = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD' in local time
+
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-12">
+    <div className="w-full space-y-6 pb-8">
+      {/* Dashboard Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-3 border border-primary/20">
-            <Sparkles size={14} />
-            <span>New Reservation</span>
-          </motion.div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-            Book a Room
-          </h1>
-          <p className="text-slate-400 mt-2 text-lg">Create a new direct booking and allocate multiple rooms if needed.</p>
+          <h1 className="text-2xl font-bold text-white">Book Room</h1>
+          <p className="text-slate-400 mt-1 text-sm">Create a new direct reservation</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <AnimatePresence>
+        {formError && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl flex items-center gap-3">
+            <AlertCircle size={18} />
+            <p className="text-sm font-medium">{formError}</p>
+          </motion.div>
+        )}
+        {formSuccess && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-3 rounded-xl flex items-center gap-3">
+            <CheckCircle2 size={18} />
+            <p className="text-sm font-medium">{formSuccess}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <form onSubmit={handleContinue} className="space-y-6">
         
-        {/* Left Column: Guest & Stay Details */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Guest Information Card */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-surface/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-8 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            
-            <div className="flex items-center gap-3 mb-6 relative">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20 shadow-lg shadow-blue-500/10">
-                <User size={20} />
-              </div>
-              <h2 className="text-xl font-semibold text-white">Guest Information</h2>
-            </div>
+        {/* Card 1: Guest Information */}
+        <div className="bg-surface border border-white/10 rounded-2xl p-6">
+          <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+            <User size={18} className="text-blue-400" /> Guest Information
+          </h2>
 
-            <div className="space-y-5 relative">
-              <div>
-                <label className={labelClass}>Full Name</label>
-                <input type="text" name="guestName" required value={formData.guestName} onChange={handleChange} className={inputClass} placeholder="Enter guest's full name" />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className={labelClass}>Phone Number</label>
-                  <div className="relative">
-                    <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input type="tel" name="guestPhone" required value={formData.guestPhone} onChange={handleChange} className={`${inputClass} pl-11`} placeholder="+1 (555) 000-0000" />
-                  </div>
-                </div>
-                <div>
-                  <label className={labelClass}>Email Address</label>
-                  <div className="relative">
-                    <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input type="email" name="guestEmail" value={formData.guestEmail} onChange={handleChange} className={`${inputClass} pl-11`} placeholder="guest@example.com" />
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label className={labelClass}>Full Name</label>
+              <div className="relative group">
+                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                <input type="text" name="guestName" required value={formData.guestName} onChange={handleChange} className={`${inputClass} pl-10`} placeholder="Enter guest's full name" />
               </div>
             </div>
-          </motion.div>
-
-          {/* Stay Details Card */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-surface/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-8 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-            <div className="flex items-center gap-3 mb-6 relative">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/20 shadow-lg shadow-purple-500/10">
-                <Calendar size={20} />
-              </div>
-              <h2 className="text-xl font-semibold text-white">Stay Details</h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative">
-              <div>
-                <label className={labelClass}>Check-in Date</label>
-                <input type="date" name="checkIn" required value={formData.checkIn} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
-              </div>
-              <div>
-                <label className={labelClass}>Check-out Date</label>
-                <input type="date" name="checkOut" required value={formData.checkOut} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
+            <div>
+              <label className={labelClass}>Phone Number</label>
+              <div className="relative group">
+                <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                <input type="tel" name="guestPhone" required value={formData.guestPhone} onChange={handleChange} className={`${inputClass} pl-10`} placeholder="555-000-0000" />
               </div>
             </div>
-          </motion.div>
+            <div>
+              <label className={labelClass}>Email Address</label>
+              <div className="relative group">
+                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                <input type="email" name="guestEmail" value={formData.guestEmail} onChange={handleChange} className={`${inputClass} pl-10`} placeholder="guest@example.com" />
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Right Column: Rooms Configuration */}
-        <div className="lg:col-span-5 space-y-6">
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="bg-surface/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-8 relative flex flex-col h-full">
-            
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
-                  <Bed size={20} />
-                </div>
-                <h2 className="text-xl font-semibold text-white">Room Allocation</h2>
-              </div>
-              <span className="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/20">
-                {rooms.length} {rooms.length === 1 ? 'Room' : 'Rooms'}
+        {/* Card 2: Stay Details */}
+        <div className="bg-surface border border-white/10 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Calendar size={18} className="text-purple-400" /> Stay Details
+            </h2>
+            {checkingAvail && (
+              <span className="text-xs text-primary flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                <Loader2 size={12} className="animate-spin" /> Checking dates...
               </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className={labelClass}>Check-in Date</label>
+              <input type="date" name="checkIn" required min={todayStr} value={formData.checkIn} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
             </div>
+            <div>
+              <label className={labelClass}>Check-out Date</label>
+              <input type="date" name="checkOut" required min={formData.checkIn || todayStr} value={formData.checkOut} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
+            </div>
+          </div>
+        </div>
 
-            <div className="space-y-4 flex-1">
-              {loading ? (
-                <div className="flex flex-col items-center justify-center py-10 text-slate-400 space-y-3">
-                  <Loader2 className="animate-spin text-primary" size={32} />
-                  <p className="text-sm">Loading available room types...</p>
-                </div>
-              ) : (
-                <AnimatePresence>
-                  {rooms.map((room, index) => (
-                    <motion.div 
-                      key={room.id}
-                      initial={{ opacity: 0, height: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, height: 'auto', scale: 1 }}
-                      exit={{ opacity: 0, height: 0, scale: 0.95, margin: 0 }}
-                      transition={{ duration: 0.3, type: "spring", bounce: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="bg-black/20 border border-white/5 rounded-2xl p-5 relative group hover:border-white/10 transition-colors">
-                        {/* Remove Room Button */}
-                        {rooms.length > 1 && (
-                          <button 
-                            type="button" 
-                            onClick={() => removeRoom(index)}
-                            className="absolute top-4 right-4 text-slate-500 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg transition-colors z-10"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
+        {/* Card 3: Room Allocation */}
+        <div className="bg-surface border border-white/10 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Bed size={18} className="text-emerald-400" /> Room Allocation
+            </h2>
+            <span className="bg-emerald-500/10 text-emerald-400 text-xs font-bold px-3 py-1 rounded-lg border border-emerald-500/20">
+              {rooms.length} {rooms.length === 1 ? 'Room' : 'Rooms'}
+            </span>
+          </div>
 
-                        <div className="mb-4">
-                          <label className={labelClass}>Room {index + 1} Type</label>
-                          <select
-                            required
-                            value={room.roomCode}
-                            onChange={(e) => handleRoomChange(index, 'roomCode', e.target.value)}
-                            className={`${inputClass} appearance-none bg-black/40 ${rooms.length > 1 ? 'pr-10' : ''}`}
-                          >
-                            <option value="" disabled>Select a type...</option>
-                            {roomTypes.map((type) => (
-                              <option key={type.id} value={type.roomCode}>
-                                {type.name}
-                              </option>
-                            ))}
-                          </select>
+          <div className="space-y-4">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-10 text-slate-400 space-y-3 bg-black/10 rounded-xl border border-white/5">
+                <Loader2 className="animate-spin text-primary" size={24} />
+                <p className="text-sm">Loading available inventory...</p>
+              </div>
+            ) : (
+              <AnimatePresence>
+                {rooms.map((room, index) => {
+                  const selectedRoomType = roomTypes.find(rt => rt.roomCode === room.roomCode);
+                  const ratePlans = selectedRoomType?.rateplanCodes || [];
+                  const availCount = room.roomCode && typeof availability[room.roomCode] === 'number' ? availability[room.roomCode] : null;
+                  
+                  // Validation: are there enough rooms for this type?
+                  const requestedOfType = rooms.filter(r => r.roomCode === room.roomCode).length;
+                  const isOverbooked = availCount !== null && requestedOfType > availCount;
+
+                  return (
+                  <motion.div 
+                    key={room.id}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0, margin: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className={`bg-black/20 border rounded-xl p-5 relative group transition-colors ${isOverbooked ? 'border-red-500/50 bg-red-500/5' : 'border-white/5 hover:border-white/10'}`}>
+                      {rooms.length > 1 && (
+                        <button 
+                          type="button" 
+                          onClick={() => removeRoom(index)}
+                          className="absolute top-4 right-4 text-slate-500 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg transition-colors z-10"
+                          title="Remove Room"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+
+                      <div className="flex items-center gap-3 mb-4">
+                        <h3 className="text-white font-medium text-sm">
+                          Room {index + 1} Configuration
+                        </h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="md:col-span-2">
+                          <label className={labelClass}>Room Type</label>
+                          <div className="relative group">
+                            <Bed size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10" />
+                            <select
+                              required
+                              value={room.roomCode}
+                              onChange={(e) => handleRoomChange(index, 'roomCode', e.target.value)}
+                              className={`${inputClass} appearance-none pl-10 bg-black/40`}
+                            >
+                              <option value="" disabled>Select a type...</option>
+                              {roomTypes.map((type) => {
+                                const availForType = availability[type.roomCode];
+                                const availText = typeof availForType === 'number' ? ` - ${availForType} available` : '';
+                                return (
+                                  <option key={type.id} value={type.roomCode}>
+                                    {type.name}{availText}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className={labelClass}>Adults</label>
-                            <div className="relative">
-                              <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                              <input
-                                type="number"
-                                min="1"
-                                required
-                                value={room.adults}
-                                onChange={(e) => handleRoomChange(index, 'adults', parseInt(e.target.value) || 1)}
-                                className={`${inputClass} pl-10 bg-black/40`}
-                              />
-                            </div>
+                        <div className="md:col-span-2">
+                          <label className={labelClass}>Rate Plan</label>
+                          <div className="relative group">
+                            <Tag size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10" />
+                            <select
+                              required
+                              value={room.rateplanCode}
+                              onChange={(e) => handleRoomChange(index, 'rateplanCode', e.target.value)}
+                              className={`${inputClass} appearance-none pl-10 bg-black/40 disabled:opacity-50`}
+                              disabled={!room.roomCode || ratePlans.length === 0}
+                            >
+                              <option value="" disabled>Select rate plan...</option>
+                              {ratePlans.map((plan: any) => (
+                                <option key={plan.code} value={plan.code}>
+                                  {plan.code} - ₹{plan.price}
+                                </option>
+                              ))}
+                            </select>
                           </div>
-                          <div>
-                            <label className={labelClass}>Children</label>
-                            <div className="relative">
-                              <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                              <input
-                                type="number"
-                                min="0"
-                                required
-                                value={room.children}
-                                onChange={(e) => handleRoomChange(index, 'children', parseInt(e.target.value) || 0)}
-                                className={`${inputClass} pl-10 bg-black/40`}
-                              />
-                            </div>
+                        </div>
+
+                        <div className="md:col-span-2 lg:col-span-1">
+                          <label className={labelClass}>Adults</label>
+                          <div className="relative group">
+                            <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                            <input
+                              type="number"
+                              min="1"
+                              required
+                              value={room.adults}
+                              onChange={(e) => handleRoomChange(index, 'adults', parseInt(e.target.value) || 1)}
+                              className={`${inputClass} pl-10 bg-black/40`}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-2 lg:col-span-1">
+                          <label className={labelClass}>Children</label>
+                          <div className="relative group">
+                            <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                            <input
+                              type="number"
+                              min="0"
+                              required
+                              value={room.children}
+                              onChange={(e) => handleRoomChange(index, 'children', parseInt(e.target.value) || 0)}
+                              className={`${inputClass} pl-10 bg-black/40`}
+                            />
                           </div>
                         </div>
                       </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              )}
+                    </div>
+                  </motion.div>
+                )})}
+              </AnimatePresence>
+            )}
 
-              {!loading && (
-                <motion.button
-                  type="button"
-                  onClick={addRoom}
-                  whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.05)' }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full py-4 rounded-2xl border-2 border-dashed border-white/10 text-slate-400 hover:text-white hover:border-white/30 transition-all flex items-center justify-center gap-2 font-medium mt-4"
-                >
-                  <Plus size={18} />
-                  Add Another Room
-                </motion.button>
-              )}
-
-              <div className="pt-4">
-                <label className={labelClass}>Special Requests (Optional)</label>
-                <textarea
-                  name="specialRequests"
-                  value={formData.specialRequests}
-                  onChange={handleChange}
-                  rows={3}
-                  className={`${inputClass} resize-none`}
-                  placeholder="Any preferences or special requests..."
-                ></textarea>
-              </div>
-            </div>
-
-            <div className="pt-6 mt-6 border-t border-white/10">
+            {!loading && (
               <button
-                type="submit"
-                disabled={loading || submitting}
-                className={`w-full ${loading || submitting ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary hover:bg-primary-dark hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/40'} text-white px-8 py-4 rounded-xl font-bold transition-all duration-300 shadow-lg shadow-primary/20 transform flex items-center justify-center gap-2 text-lg`}
+                type="button"
+                onClick={addRoom}
+                className="w-full py-4 rounded-xl border border-dashed border-white/20 text-slate-400 hover:text-white hover:border-white/40 hover:bg-white/5 transition-all flex items-center justify-center gap-2 font-medium text-sm mt-2"
               >
-                {submitting ? (
-                  <Loader2 className="animate-spin" size={20} />
-                ) : (
-                  <CreditCard size={20} />
-                )}
-                {submitting ? 'Confirming...' : 'Confirm Reservation'}
+                <Plus size={16} className="text-emerald-400" />
+                Add Another Room
               </button>
+            )}
+          </div>
+          
+          <div className="mt-6 border-t border-white/10 pt-6">
+            <label className={labelClass}>Special Requests (Optional)</label>
+            <div className="relative group">
+              <AlignLeft size={16} className="absolute left-4 top-4 text-slate-500 group-focus-within:text-primary transition-colors" />
+              <textarea
+                name="specialRequests"
+                value={formData.specialRequests}
+                onChange={handleChange}
+                rows={3}
+                className={`${inputClass} pl-10 resize-none`}
+                placeholder="Any preferences or special requests..."
+              ></textarea>
             </div>
-            
-          </motion.div>
+          </div>
         </div>
 
+        {/* Action Footer */}
+        <div className="flex flex-col sm:flex-row justify-end gap-4 pt-2">
+          <button
+            type="button"
+            onClick={resetForm}
+            className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors text-sm flex items-center justify-center gap-2"
+          >
+            <RefreshCw size={16} /> Reset
+          </button>
+          <button
+            type="submit"
+            disabled={loading || checkingAvail}
+            className={`px-8 py-3 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all text-sm ${(loading || checkingAvail) ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20 hover:-translate-y-0.5'}`}
+          >
+            <CreditCard size={18} />
+            Continue to Assignment
+          </button>
+        </div>
       </form>
+
+      {/* Room Assignment Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="w-full max-w-[500px] p-6 bg-surface border border-white/10 rounded-2xl shadow-2xl relative"
+              initial={{ scale: 0.95, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 10 }}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                  <Key size={20} className="text-amber-400" /> Assign Physical Rooms
+                </h2>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleConfirmBooking} className="space-y-4">
+                <p className="text-slate-400 text-sm mb-2">Select physical room numbers for your booked types.</p>
+                
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                  {assignments.map((assignment, index) => {
+                    const roomType = roomTypes.find(rt => rt.roomCode === assignment.roomCode);
+                    const availableRooms = (roomType?.rooms as any[])?.filter((r: any) => r.status === 'no status') || [];
+
+                    return (
+                      <div key={assignment.id} className="bg-black/20 border border-white/10 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-white font-medium text-sm">Room {index + 1}</h3>
+                          <span className="text-slate-400 text-xs">{roomType?.name || assignment.roomCode}</span>
+                        </div>
+                        
+                        <div className="relative">
+                          <select
+                            required
+                            value={assignment.roomNumber}
+                            onChange={(e) => handleAssignmentChange(assignment.id, e.target.value)}
+                            className={`${inputClass} appearance-none bg-black/40 py-2.5 text-sm`}
+                          >
+                            <option value="" disabled>Select Room Number</option>
+                            {availableRooms.map((r: any) => (
+                              <option key={r.roomNumber} value={r.roomNumber}>
+                                Room {r.roomNumber}
+                              </option>
+                            ))}
+                          </select>
+                          {availableRooms.length === 0 && (
+                            <p className="text-red-400 text-xs mt-2 bg-red-500/10 p-2 rounded border border-red-500/20">
+                              No rooms available for this type.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-6 mt-4 border-t border-white/10 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className={`px-6 py-2.5 rounded-xl flex items-center gap-2 text-white font-bold transition-colors text-sm ${submitting ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20'}`}
+                  >
+                    {submitting ? <Loader2 className="animate-spin" size={16} /> : <Key size={16} />}
+                    {submitting ? 'Processing...' : 'Confirm'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

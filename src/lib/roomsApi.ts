@@ -18,10 +18,14 @@ export interface RoomType {
 
 
 
-export const getRoomTypes = async (startDate?: string, endDate?: string): Promise<RoomType[]> => {
-  const params = startDate && endDate ? { startDate, endDate } : {};
-  const { data } = await api.get('/room-types', { params });
-  return data;
+export const getRoomTypes = async (): Promise<RoomType[]> => {
+  const response = await api.get('/room-types');
+  return response.data;
+};
+
+export const getAvailability = async (startDate: string, endDate: string): Promise<Record<string, number>> => {
+  const response = await api.get('/room-types/availability', { params: { startDate, endDate } });
+  return response.data;
 };
 
 export const createRoomType = async (payload: Partial<RoomType>): Promise<RoomType> => {
