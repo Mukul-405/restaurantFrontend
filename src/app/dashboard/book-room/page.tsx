@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle } from 'lucide-react';
 import { getRoomTypes, RoomType, getAvailability } from '../../../lib/roomsApi';
-import { createBooking, BookingPayload } from '../../../lib/roomBookApi';
+import { createBooking, BookingPayload, getBookings, checkInBooking, checkOutBooking, editBookingRooms } from '../../../lib/roomBookApi';
 
 export default function BookRoomPage() {
   const [formData, setFormData] = useState({
@@ -29,6 +29,121 @@ export default function BookRoomPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
+
+  // Manage Bookings State
+  const [activeTab, setActiveTab] = useState<'book' | 'manage'>('book');
+  const [searchPhone, setSearchPhone] = useState('');
+  const [managedBookings, setManagedBookings] = useState<any[]>([]);
+  const [searchingBookings, setSearchingBookings] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'checkin' | 'edit'>('create');
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
+
+  const handleSearchBookings = async () => {
+    setSearchingBookings(true);
+    try {
+      const data = await getBookings(searchPhone);
+      setManagedBookings(data);
+    } catch (error) {
+      console.error('Failed to search bookings:', error);
+    } finally {
+      setSearchingBookings(false);
+    }
+  };
+
+  const handleOpenCheckIn = async (booking: any) => {
+    try {
+      // Fetch latest room types to ensure physical room statuses are up to date
+      const data = await getRoomTypes();
+      setRoomTypes(data.filter(rt => rt.isActive));
+    } catch (e) {
+      console.error('Failed to fetch latest room types:', e);
+      setFormError('Failed to fetch latest room availability.');
+      return;
+    }
+    
+    setModalMode('checkin');
+    setSelectedBookingId(booking.id);
+    const initialAssignments = (booking.rooms || []).map((r: any, i: number) => ({
+      id: i,
+      roomCode: r.roomCode,
+      roomNumber: r.roomNumber || ''
+    }));
+    setAssignments(initialAssignments);
+    setIsModalOpen(true);
+  };
+
+  const handleConfirmCheckIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (assignments.some(a => !a.roomNumber)) {
+      setFormError("Please assign a physical room number for all booked rooms.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await checkInBooking(selectedBookingId!, assignments);
+      setFormSuccess("Checked in successfully!");
+      setIsModalOpen(false);
+      handleSearchBookings(); // refresh
+    } catch (error: any) {
+      setFormError(error.response?.data?.message || 'Failed to check in. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOpenEditRooms = async (booking: any) => {
+    try {
+      const data = await getRoomTypes();
+      setRoomTypes(data.filter(rt => rt.isActive));
+    } catch (e) {
+      console.error('Failed to fetch latest room types:', e);
+      setFormError('Failed to fetch latest room availability.');
+      return;
+    }
+    
+    setModalMode('edit');
+    setSelectedBookingId(booking.id);
+    const initialAssignments = (booking.rooms || []).map((r: any, i: number) => ({
+      id: i,
+      roomCode: r.roomCode,
+      roomNumber: r.roomNumber || ''
+    }));
+    setAssignments(initialAssignments);
+    setIsModalOpen(true);
+  };
+
+  const handleConfirmEditRooms = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (assignments.some(a => !a.roomNumber)) {
+      setFormError("Please assign a physical room number for all booked rooms.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await editBookingRooms(selectedBookingId!, assignments);
+      setFormSuccess("Rooms updated successfully!");
+      setIsModalOpen(false);
+      handleSearchBookings(); // refresh
+    } catch (error: any) {
+      setFormError(error.response?.data?.message || 'Failed to update rooms. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCheckOut = async (booking: any) => {
+    setSearchingBookings(true);
+    try {
+      await checkOutBooking(booking.id);
+      setFormSuccess("Checked out successfully!");
+      handleSearchBookings();
+    } catch (error: any) {
+      setFormError(error.response?.data?.message || 'Failed to check out. Please try again.');
+      setSearchingBookings(false);
+    }
+  };
 
   useEffect(() => {
     const fetchRoomTypes = async () => {
@@ -179,6 +294,15 @@ export default function BookRoomPage() {
     if (formData.checkIn > todayStr) {
       submitBooking(initialAssignments);
     } else {
+      try {
+        const data = await getRoomTypes();
+        setRoomTypes(data.filter(rt => rt.isActive));
+      } catch (e) {
+        console.error('Failed to fetch latest room types:', e);
+        setFormError('Failed to fetch latest room availability.');
+        return;
+      }
+      setModalMode('create');
       setIsModalOpen(true);
     }
   };
@@ -213,7 +337,21 @@ export default function BookRoomPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Book Room</h1>
-          <p className="text-slate-400 mt-1 text-sm">Create a new direct reservation</p>
+          <p className="text-slate-400 mt-1 text-sm">Create a new direct reservation or manage existing</p>
+        </div>
+        <div className="flex bg-black/20 p-1 rounded-xl border border-white/10">
+          <button
+            onClick={() => setActiveTab('book')}
+            className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'book' ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+          >
+            Create Booking
+          </button>
+          <button
+            onClick={() => setActiveTab('manage')}
+            className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'manage' ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+          >
+            Manage Bookings
+          </button>
         </div>
       </div>
 
@@ -232,7 +370,9 @@ export default function BookRoomPage() {
         )}
       </AnimatePresence>
 
-      <form onSubmit={handleContinue} className="space-y-6">
+      <AnimatePresence mode="wait">
+        {activeTab === 'book' ? (
+          <motion.form key="book" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} onSubmit={handleContinue} className="space-y-6">
         
         {/* Card 1: Guest Information */}
         <div className="bg-surface border border-white/10 rounded-2xl p-6">
@@ -473,7 +613,69 @@ export default function BookRoomPage() {
             Continue to Assignment
           </button>
         </div>
-      </form>
+          </motion.form>
+        ) : (
+          <motion.div key="manage" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+            <div className="bg-surface border border-white/10 rounded-2xl p-6">
+              <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                <Search size={18} className="text-blue-400" /> Search Bookings
+              </h2>
+              <div className="flex gap-4 max-w-md">
+                <input type="tel" value={searchPhone} onChange={e => setSearchPhone(e.target.value)} placeholder="Search by Phone Number" className={inputClass} />
+                <button onClick={handleSearchBookings} disabled={searchingBookings} className="bg-primary hover:bg-primary-hover px-6 rounded-xl text-white font-bold transition-colors whitespace-nowrap flex items-center justify-center min-w-[120px]">
+                  {searchingBookings ? <Loader2 size={18} className="animate-spin" /> : 'Search'}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {managedBookings.map(b => (
+                <div key={b.id} className="bg-surface border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-1">{b.guestName} <span className="text-sm font-normal text-slate-400 ml-2">{b.guestPhone}</span></h3>
+                    <p className="text-slate-400 text-sm">
+                      Check-in: {new Date(b.checkIn).toLocaleDateString()} &bull; Check-out: {new Date(b.checkOut).toLocaleDateString()}
+                    </p>
+                    <p className="text-slate-400 text-sm mt-1">
+                      Rooms: {b.rooms?.length || 0}
+                    </p>
+                  </div>
+                  <div>
+                    {b.status === 'RESERVED' && (
+                      <button onClick={() => handleOpenCheckIn(b)} className="bg-emerald-500 hover:bg-emerald-600 px-6 py-2 rounded-xl text-white font-bold transition-colors">
+                        Check In
+                      </button>
+                    )}
+                    {b.status === 'CHECKED_IN' && (
+                      <div className="flex flex-col sm:flex-row items-center gap-3">
+                        <span className="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-2">
+                          <CheckCircle size={16} /> Checked In
+                        </span>
+                        <button onClick={() => handleOpenEditRooms(b)} disabled={searchingBookings} className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-xl text-white font-bold transition-colors whitespace-nowrap">
+                          Edit Room
+                        </button>
+                        <button onClick={() => handleCheckOut(b)} disabled={searchingBookings} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-xl text-white font-bold transition-colors whitespace-nowrap">
+                          Check Out
+                        </button>
+                      </div>
+                    )}
+                    {b.status !== 'RESERVED' && b.status !== 'CHECKED_IN' && (
+                      <span className="px-4 py-2 rounded-xl bg-slate-500/10 text-slate-400 font-bold border border-slate-500/20">
+                        {b.status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {managedBookings.length === 0 && !searchingBookings && (
+                <div className="text-center py-12 text-slate-400 bg-surface/50 border border-white/5 rounded-2xl">
+                  No bookings found. Enter a phone number and search.
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Room Assignment Modal */}
       <AnimatePresence>
@@ -495,13 +697,13 @@ export default function BookRoomPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleConfirmBooking} className="space-y-4">
+              <form onSubmit={modalMode === 'create' ? handleConfirmBooking : modalMode === 'checkin' ? handleConfirmCheckIn : handleConfirmEditRooms} className="space-y-4">
                 <p className="text-slate-400 text-sm mb-2">Select physical room numbers for your booked types.</p>
                 
                 <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                   {assignments.map((assignment, index) => {
                     const roomType = roomTypes.find(rt => rt.roomCode === assignment.roomCode);
-                    const availableRooms = (roomType?.rooms as any[])?.filter((r: any) => r.status === 'no status') || [];
+                    const availableRooms = (roomType?.rooms as any[])?.filter((r: any) => r.status === 'no status' || (modalMode === 'edit' && r.userRoomBookingId === selectedBookingId)) || [];
 
                     return (
                       <div key={assignment.id} className="bg-black/20 border border-white/10 rounded-xl p-4">
@@ -518,11 +720,14 @@ export default function BookRoomPage() {
                             className={`${inputClass} appearance-none bg-black/40 py-2.5 text-sm`}
                           >
                             <option value="" disabled>Select Room Number</option>
-                            {availableRooms.map((r: any) => (
-                              <option key={r.roomNumber} value={r.roomNumber}>
-                                Room {r.roomNumber}
-                              </option>
-                            ))}
+                            {availableRooms.map((r: any) => {
+                              const isSelectedElsewhere = assignments.some(a => a.id !== assignment.id && a.roomCode === assignment.roomCode && a.roomNumber === r.roomNumber);
+                              return (
+                                <option key={r.roomNumber} value={r.roomNumber} disabled={isSelectedElsewhere}>
+                                  Room {r.roomNumber} {isSelectedElsewhere ? '(Selected)' : ''}
+                                </option>
+                              );
+                            })}
                           </select>
                           {availableRooms.length === 0 && (
                             <p className="text-red-400 text-xs mt-2 bg-red-500/10 p-2 rounded border border-red-500/20">

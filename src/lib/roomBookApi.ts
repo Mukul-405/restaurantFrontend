@@ -25,12 +25,29 @@ export const createBooking = async (payload: BookingPayload) => {
   return data;
 };
 
-export const getBookings = async () => {
-  const { data } = await api.get('/bookings');
+export const getBookings = async (phone?: string) => {
+  const { data } = await api.get('/bookings', {
+    params: phone ? { phone } : undefined
+  });
   return data;
 };
 
 export const getBookingById = async (id: number) => {
   const { data } = await api.get(`/bookings/${id}`);
+  return data;
+};
+
+export const checkInBooking = async (id: number, rooms: { roomCode: string, roomNumber: string }[]) => {
+  const { data } = await api.patch(`/bookings/${id}/check-in`, { rooms });
+  return data;
+};
+
+export const checkOutBooking = async (id: number) => {
+  const { data } = await api.patch(`/bookings/${id}/check-out`);
+  return data;
+};
+
+export const editBookingRooms = async (id: number, rooms: { roomCode: string, roomNumber: string }[]) => {
+  const { data } = await api.patch(`/bookings/${id}/edit-rooms`, { rooms });
   return data;
 };
