@@ -37,17 +37,30 @@ export default function RoomManagePage() {
     dispatch(fetchRoomTypes());
   }, [dispatch]);
 
-  const handleFetch = () => {
+  const [fetchError, setFetchError] = useState('');
+  const [isFetching, setIsFetching] = useState(false);
+
+  const handleFetch = async () => {
+    setFetchError('');
     if (!startDate || !endDate) {
-      alert('Please select both start date and end date.');
+      setFetchError('Please select both start date and end date.');
       return;
     }
     if (new Date(startDate) > new Date(endDate)) {
-      alert('End date must be same or after start date.');
+      setFetchError('End date must be same or after start date.');
       return;
     }
-    dispatch(fetchAvailability({ startDate, endDate }));
+    setIsFetching(true);
+    try {
+      await dispatch(fetchAvailability({ startDate, endDate })).unwrap();
+    } catch (err) {
+      console.error(err);
+      setFetchError('Failed to fetch availability.');
+    } finally {
+      setIsFetching(false);
+    }
   };
+
 
   const handleSaveRt = async (data: any) => {
     if (editingRt) {
@@ -116,39 +129,57 @@ export default function RoomManagePage() {
       </div>
 
       {activeTab === 'types' && (
-        <div className="flex flex-col md:flex-row items-center gap-4 mb-8 bg-surface/40 backdrop-blur-xl p-4 rounded-2xl border border-white/5 shadow-2xl">
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <CalendarIcon size={18} className="text-slate-400" />
-            <input
-              type="date"
-              min={todayStr}
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              onClick={(e) => {
-                try { e.currentTarget.showPicker() } catch (err) { }
-              }}
-              className="bg-black/20 border border-white/10 px-4 py-2 rounded-xl text-slate-200 outline-none focus:border-primary text-sm font-medium w-full md:w-40 cursor-pointer"
-            />
+        <div className="flex flex-col gap-4 mb-8">
+          <div className="flex flex-col md:flex-row items-center gap-4 bg-surface/40 backdrop-blur-xl p-4 rounded-2xl border border-white/5 shadow-2xl">
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <CalendarIcon size={18} className="text-slate-400" />
+              <input
+                type="date"
+                min={todayStr}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                onClick={(e) => {
+                  try { e.currentTarget.showPicker() } catch (err) { }
+                }}
+                className="bg-black/20 border border-white/10 px-4 py-2 rounded-xl text-slate-200 outline-none focus:border-primary text-sm font-medium w-full md:w-40 cursor-pointer"
+              />
+            </div>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <span className="text-slate-500 font-semibold">to</span>
+              <input
+                type="date"
+                min={startDate || todayStr}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                onClick={(e) => {
+                  try { e.currentTarget.showPicker() } catch (err) { }
+                }}
+                className="bg-black/20 border border-white/10 px-4 py-2 rounded-xl text-slate-200 outline-none focus:border-primary text-sm font-medium w-full md:w-40 cursor-pointer"
+              />
+            </div>
+            <button
+              onClick={handleFetch}
+              disabled={isFetching}
+              className="w-full md:w-auto px-6 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isFetching ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-emerald-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Fetching...
+                </>
+              ) : (
+                'Fetch Availability'
+              )}
+            </button>
           </div>
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <span className="text-slate-500 font-semibold">to</span>
-            <input
-              type="date"
-              min={startDate || todayStr}
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              onClick={(e) => {
-                try { e.currentTarget.showPicker() } catch (err) { }
-              }}
-              className="bg-black/20 border border-white/10 px-4 py-2 rounded-xl text-slate-200 outline-none focus:border-primary text-sm font-medium w-full md:w-40 cursor-pointer"
-            />
-          </div>
-          <button
-            onClick={handleFetch}
-            className="w-full md:w-auto px-6 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors"
-          >
-            Fetch Availability
-          </button>
+          {fetchError && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl flex items-center gap-3 w-fit">
+              <p className="text-sm font-medium">{fetchError}</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -173,6 +204,7 @@ export default function RoomManagePage() {
           <UsersIcon size={16} />
           Room
         </button>
+
       </div>
 
       <div>
@@ -285,6 +317,8 @@ export default function RoomManagePage() {
             )}
           </div>
         )}
+
+
       </div>
 
       <RoomTypeModal isOpen={rtModalOpen} onClose={() => setRtModalOpen(false)} onSave={handleSaveRt} initialData={editingRt} />

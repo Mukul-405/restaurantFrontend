@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Users, LogOut, Menu as MenuIcon, X, Coffee, ShoppingCart, BarChart, Bed } from 'lucide-react';
+import { Users, LogOut, Menu as MenuIcon, X, Coffee, ShoppingCart, BarChart, Bed, RefreshCw, Utensils, Printer, CalendarDays, Building } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ProtectedRoute from '../ProtectedRoute';
 
@@ -52,7 +52,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/menu' ? 'bg-primary-light text-primary' : 'text-slate-400'
                     }`}
                 >
-                  <Coffee size={20} />
+                  <Utensils size={20} />
                   <span>Menu</span>
                 </Link>
                 <Link
@@ -68,7 +68,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/kots' ? 'bg-primary-light text-primary' : 'text-slate-400'
                     }`}
                 >
-                  <Coffee size={20} />
+                  <Printer size={20} />
                   <span>Print KOTs</span>
                 </Link>
                 <Link
@@ -76,16 +76,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/room-manage' ? 'bg-primary-light text-primary' : 'text-slate-400'
                     }`}
                 >
-                  <Bed size={20} />
-                  <span>Rooms</span>
+                  <Building size={20} />
+                  <span>Manage Rooms</span>
                 </Link>
                 <Link
                   href="/dashboard/book-room"
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/book-room' ? 'bg-primary-light text-primary' : 'text-slate-400'
                     }`}
                 >
-                  <Bed size={20} />
-                  <span>Book Room</span>
+                  <CalendarDays size={20} />
+                  <span>Reservation</span>
+                </Link>
+                <Link
+                  href="/dashboard/channel-manager"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/channel-manager' ? 'bg-primary-light text-primary' : 'text-slate-400'
+                    }`}
+                >
+                  <RefreshCw size={20} />
+                  <span>Room Status</span>
                 </Link>
               </>
             )}

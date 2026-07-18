@@ -499,7 +499,9 @@ export default function BookRoomPage() {
                               <option value="" disabled>Select a type...</option>
                               {roomTypes.map((type) => {
                                 const availForType = availability[type.roomCode];
-                                const availText = typeof availForType === 'number' ? ` - ${availForType} available` : '';
+                                const availText = checkingAvail 
+                                  ? ' - Checking...' 
+                                  : (typeof availForType === 'number' ? ` - ${availForType} available` : '');
                                 return (
                                   <option key={type.id} value={type.roomCode}>
                                     {type.name}{availText}
@@ -609,8 +611,8 @@ export default function BookRoomPage() {
             disabled={loading || checkingAvail}
             className={`px-8 py-3 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all text-sm ${(loading || checkingAvail) ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20 hover:-translate-y-0.5'}`}
           >
-            <CreditCard size={18} />
-            Continue to Assignment
+            {checkingAvail ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}
+            {checkingAvail ? 'Checking Availability...' : 'Continue to Assignment'}
           </button>
         </div>
           </motion.form>
