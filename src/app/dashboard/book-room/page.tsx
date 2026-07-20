@@ -35,8 +35,20 @@ export default function BookRoomPage() {
   const [searchPhone, setSearchPhone] = useState('');
   const [managedBookings, setManagedBookings] = useState<any[]>([]);
   const [searchingBookings, setSearchingBookings] = useState(false);
-  const [modalMode, setModalMode] = useState<'create' | 'checkin' | 'edit'>('create');
+  const [modalMode, setModalMode] = useState<'checkin' | 'edit'>('checkin');
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
+
+  const refreshRoomTypes = async () => {
+    try {
+      const data = await getRoomTypes();
+      setRoomTypes(data.filter(rt => rt.isActive));
+      return true;
+    } catch (e) {
+      console.error('Failed to fetch latest room types:', e);
+      setFormError('Failed to fetch latest room availability.');
+      return false;
+    }
+  };
 
   const handleSearchBookings = async () => {
     setSearchingBookings(true);
@@ -50,18 +62,10 @@ export default function BookRoomPage() {
     }
   };
 
-  const handleOpenCheckIn = async (booking: any) => {
-    try {
-      // Fetch latest room types to ensure physical room statuses are up to date
-      const data = await getRoomTypes();
-      setRoomTypes(data.filter(rt => rt.isActive));
-    } catch (e) {
-      console.error('Failed to fetch latest room types:', e);
-      setFormError('Failed to fetch latest room availability.');
-      return;
-    }
+  const openAssignmentModal = async (booking: any, mode: 'checkin' | 'edit') => {
+    if (!(await refreshRoomTypes())) return;
     
-    setModalMode('checkin');
+    setModalMode(mode);
     setSelectedBookingId(booking.id);
     const initialAssignments = (booking.rooms || []).map((r: any, i: number) => ({
       id: i,
@@ -90,27 +94,6 @@ export default function BookRoomPage() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleOpenEditRooms = async (booking: any) => {
-    try {
-      const data = await getRoomTypes();
-      setRoomTypes(data.filter(rt => rt.isActive));
-    } catch (e) {
-      console.error('Failed to fetch latest room types:', e);
-      setFormError('Failed to fetch latest room availability.');
-      return;
-    }
-    
-    setModalMode('edit');
-    setSelectedBookingId(booking.id);
-    const initialAssignments = (booking.rooms || []).map((r: any, i: number) => ({
-      id: i,
-      roomCode: r.roomCode,
-      roomNumber: r.roomNumber || ''
-    }));
-    setAssignments(initialAssignments);
-    setIsModalOpen(true);
   };
 
   const handleConfirmEditRooms = async (e: React.FormEvent) => {
@@ -225,7 +208,7 @@ export default function BookRoomPage() {
     setAssignments(assignments.map(a => a.id === id ? { ...a, roomNumber } : a));
   };
 
-  const submitBooking = async (finalAssignments: any[]) => {
+  const submitBooking = async () => {
     setSubmitting(true);
     setFormError('');
     setFormSuccess('');
@@ -237,16 +220,13 @@ export default function BookRoomPage() {
         ...formData,
         totalAdults,
         totalChildren,
-        rooms: rooms.map(r => {
-          const assignment = finalAssignments.find(a => a.id === r.id);
-          return {
-            roomCode: r.roomCode,
-            rateplanCode: r.rateplanCode,
-            adults: Number(r.adults),
-            children: Number(r.children),
-            roomNumber: assignment?.roomNumber || ''
-          };
-        })
+        rooms: rooms.map(r => ({
+          roomCode: r.roomCode,
+          rateplanCode: r.rateplanCode,
+          adults: Number(r.adults),
+          children: Number(r.children),
+          roomNumber: null
+        }))
       };
       
       await createBooking(payload);
@@ -274,49 +254,22 @@ export default function BookRoomPage() {
     }
 
     // Validate if they booked more rooms of a type than available
-    for (const rt of roomTypes) {
-      const countRequested = rooms.filter(r => r.roomCode === rt.roomCode).length;
-      const avail = availability[rt.roomCode] || 0;
-      if (countRequested > avail) {
-        setFormError(`You requested ${countRequested} room(s) of type ${rt.name}, but only ${avail} are available for these dates.`);
+    const requestedCounts: Record<string, number> = {};
+    rooms.forEach(r => { requestedCounts[r.roomCode] = (requestedCounts[r.roomCode] || 0) + 1 });
+    
+    for (const [code, count] of Object.entries(requestedCounts)) {
+      const avail = availability[code] || 0;
+      if (count > avail) {
+        const rtName = roomTypes.find(rt => rt.roomCode === code)?.name || code;
+        setFormError(`You requested ${count} room(s) of type ${rtName}, but only ${avail} are available for these dates.`);
         return;
       }
     }
     
-    const initialAssignments = rooms.map(r => ({
-      id: r.id,
-      roomCode: r.roomCode,
-      roomNumber: ''
-    }));
-    setAssignments(initialAssignments);
-
-    const todayStr = new Date().toLocaleDateString('en-CA');
-    if (formData.checkIn > todayStr) {
-      submitBooking(initialAssignments);
-    } else {
-      try {
-        const data = await getRoomTypes();
-        setRoomTypes(data.filter(rt => rt.isActive));
-      } catch (e) {
-        console.error('Failed to fetch latest room types:', e);
-        setFormError('Failed to fetch latest room availability.');
-        return;
-      }
-      setModalMode('create');
-      setIsModalOpen(true);
-    }
+    submitBooking();
   };
 
-  const handleConfirmBooking = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (assignments.some(a => !a.roomNumber)) {
-      setFormError("Please assign a physical room number for all booked rooms.");
-      return;
-    }
 
-    submitBooking(assignments);
-  };
 
   const resetForm = () => {
     setFormData({ guestName: '', guestEmail: '', guestPhone: '', checkIn: '', checkOut: '', specialRequests: '' });
@@ -644,7 +597,7 @@ export default function BookRoomPage() {
                   </div>
                   <div>
                     {b.status === 'RESERVED' && (
-                      <button onClick={() => handleOpenCheckIn(b)} className="bg-emerald-500 hover:bg-emerald-600 px-6 py-2 rounded-xl text-white font-bold transition-colors">
+                      <button onClick={() => openAssignmentModal(b, 'checkin')} className="bg-emerald-500 hover:bg-emerald-600 px-6 py-2 rounded-xl text-white font-bold transition-colors">
                         Check In
                       </button>
                     )}
@@ -653,7 +606,7 @@ export default function BookRoomPage() {
                         <span className="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-2">
                           <CheckCircle size={16} /> Checked In
                         </span>
-                        <button onClick={() => handleOpenEditRooms(b)} disabled={searchingBookings} className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-xl text-white font-bold transition-colors whitespace-nowrap">
+                        <button onClick={() => openAssignmentModal(b, 'edit')} disabled={searchingBookings} className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-xl text-white font-bold transition-colors whitespace-nowrap">
                           Edit Room
                         </button>
                         <button onClick={() => handleCheckOut(b)} disabled={searchingBookings} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-xl text-white font-bold transition-colors whitespace-nowrap">
@@ -699,7 +652,7 @@ export default function BookRoomPage() {
                 </button>
               </div>
 
-              <form onSubmit={modalMode === 'create' ? handleConfirmBooking : modalMode === 'checkin' ? handleConfirmCheckIn : handleConfirmEditRooms} className="space-y-4">
+              <form onSubmit={modalMode === 'checkin' ? handleConfirmCheckIn : handleConfirmEditRooms} className="space-y-4">
                 <p className="text-slate-400 text-sm mb-2">Select physical room numbers for your booked types.</p>
                 
                 <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">

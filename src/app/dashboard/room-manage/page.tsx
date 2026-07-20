@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchRoomTypes, fetchAvailability, createRoomType, updateRoomType, deleteRoomType, addRoomToType, deleteRoomFromType } from '../../../store/slices/roomTypesSlice';
-import { Plus, Edit2, Trash2, IndianRupee, Users as UsersIcon, Home, Calendar as CalendarIcon, Clock, Wrench, Calculator } from 'lucide-react';
+import { Plus, Edit2, Trash2, IndianRupee, Users as UsersIcon, Home, Calculator } from 'lucide-react';
 import RoomTypeModal from '../../../components/modals/RoomTypeModal';
 import GenericDeleteModal from '../../../components/modals/GenericDeleteModal';
 import CalculatePriceModal from '../../../components/modals/CalculatePriceModal';
@@ -24,21 +24,19 @@ export default function RoomManagePage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'roomType' | 'room', id: number | null, name: string, roomNumber?: string }>({ type: 'roomType', id: null, name: '' });
 
+  const [calcPriceModalOpen, setCalcPriceModalOpen] = useState(false);
+  const [selectedRtForCalc, setSelectedRtForCalc] = useState<any>(null);
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-
-  const [calcPriceModalOpen, setCalcPriceModalOpen] = useState(false);
-  const [selectedRtForCalc, setSelectedRtForCalc] = useState<any>(null);
+  const [fetchError, setFetchError] = useState('');
+  const [isFetching, setIsFetching] = useState(false);
 
   const todayStr = new Date().toLocaleDateString('en-CA');
 
   useEffect(() => {
     dispatch(fetchRoomTypes());
   }, [dispatch]);
-
-  const [fetchError, setFetchError] = useState('');
-  const [isFetching, setIsFetching] = useState(false);
 
   const handleFetch = async () => {
     setFetchError('');
@@ -60,7 +58,6 @@ export default function RoomManagePage() {
       setIsFetching(false);
     }
   };
-
 
   const handleSaveRt = async (data: any) => {
     if (editingRt) {
@@ -132,7 +129,6 @@ export default function RoomManagePage() {
         <div className="flex flex-col gap-4 mb-8">
           <div className="flex flex-col md:flex-row items-center gap-4 bg-surface/40 backdrop-blur-xl p-4 rounded-2xl border border-white/5 shadow-2xl">
             <div className="flex items-center gap-3 w-full md:w-auto">
-              <CalendarIcon size={18} className="text-slate-400" />
               <input
                 type="date"
                 min={todayStr}

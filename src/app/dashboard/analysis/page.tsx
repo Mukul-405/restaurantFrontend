@@ -5,20 +5,97 @@ import { motion } from 'framer-motion';
 import { IndianRupee, Receipt, TrendingUp, Users } from 'lucide-react';
 import { getRevenueAnalysis, getWaiterAnalysis, RevenueAnalysis, WaiterAnalysis } from '../../../lib/analysis';
 
+const DateRangeFilter = ({ 
+  title, icon: Icon, color, iconColor,
+  startDate, setStartDate, endDate, setEndDate,
+  onGenerate, loading, setDateRangeType
+}: any) => (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between flex-wrap gap-4 bg-surface/30 p-4 rounded-xl border border-white/5">
+      <div className="flex items-center gap-3">
+        <Icon className={iconColor} size={24} />
+        <h2 className="text-xl font-semibold text-slate-200">{title}</h2>
+      </div>
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-slate-400">Start:</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            onClick={(e) => (e.target as any).showPicker?.()}
+            className="bg-surface/50 border border-white/10 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 transition-all outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-slate-400">End:</label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            onClick={(e) => (e.target as any).showPicker?.()}
+            className="bg-surface/50 border border-white/10 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 transition-all outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50"
+          />
+        </div>
+        <button
+          onClick={onGenerate}
+          disabled={loading}
+          className={`px-4 py-2 ${color.bgLight} ${color.text} hover:${color.bgHover} border ${color.border} rounded-lg text-sm font-medium transition-all disabled:opacity-50`}
+        >
+          Generate
+        </button>
+      </div>
+    </div>
+
+    <div className="flex items-center gap-2 flex-wrap -mt-2">
+      <button onClick={() => setDateRangeType('today')} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">Today</button>
+      <button onClick={() => setDateRangeType('yesterday')} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">Yesterday</button>
+      <button onClick={() => setDateRangeType('7days')} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">Last 7 Days</button>
+      <button onClick={() => setDateRangeType('month')} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">This Month</button>
+    </div>
+  </div>
+);
+
+const StatCard = ({ title, value, icon: Icon, color }: { title: string, value: string, icon: any, color: string }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className={`relative overflow-hidden bg-surface/40 backdrop-blur-md p-6 rounded-2xl border border-white/10`}
+  >
+    <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 ${color} blur-2xl`} />
+    <div className="flex justify-between items-start mb-4">
+      <h3 className="text-slate-400 font-medium">{title}</h3>
+      <div className={`p-2 rounded-xl bg-surface/50 ${color.replace('bg-', 'text-')}`}>
+        <Icon size={20} />
+      </div>
+    </div>
+    <div className="text-3xl font-bold text-white tracking-tight">
+      {value}
+    </div>
+  </motion.div>
+);
+
+const getLocalDateString = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function AnalysisPage() {
   const [revenueStartDate, setRevenueStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
+    return getLocalDateString(d);
   });
-  const [revenueEndDate, setRevenueEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [revenueEndDate, setRevenueEndDate] = useState(() => getLocalDateString(new Date()));
 
   const [waiterStartDate, setWaiterStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
+    return getLocalDateString(d);
   });
-  const [waiterEndDate, setWaiterEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [waiterEndDate, setWaiterEndDate] = useState(() => getLocalDateString(new Date()));
 
   const [revenueData, setRevenueData] = useState<RevenueAnalysis | null>(null);
   const [waiterData, setWaiterData] = useState<WaiterAnalysis[]>([]);
@@ -27,7 +104,7 @@ export default function AnalysisPage() {
 
   const setDateRange = (type: string, setStart: (s: string) => void, setEnd: (s: string) => void, fetchFn: (start: string, end: string) => void) => {
     const today = new Date();
-    const end = today.toISOString().split('T')[0];
+    const end = getLocalDateString(today);
     let start = end;
 
     if (type === 'today') {
@@ -35,7 +112,7 @@ export default function AnalysisPage() {
     } else if (type === 'yesterday') {
       const y = new Date();
       y.setDate(y.getDate() - 1);
-      start = y.toISOString().split('T')[0];
+      start = getLocalDateString(y);
       setStart(start);
       setEnd(start);
       fetchFn(start, start);
@@ -43,11 +120,11 @@ export default function AnalysisPage() {
     } else if (type === '7days') {
       const d = new Date();
       d.setDate(d.getDate() - 7);
-      start = d.toISOString().split('T')[0];
+      start = getLocalDateString(d);
     } else if (type === 'month') {
       const d = new Date();
       d.setDate(1);
-      start = d.toISOString().split('T')[0];
+      start = getLocalDateString(d);
     }
 
     setStart(start);
@@ -85,25 +162,6 @@ export default function AnalysisPage() {
     }
   };
 
-  const StatCard = ({ title, value, icon: Icon, color }: { title: string, value: string, icon: any, color: string }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`relative overflow-hidden bg-surface/40 backdrop-blur-md p-6 rounded-2xl border border-white/10`}
-    >
-      <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 ${color} blur-2xl`} />
-      <div className="flex justify-between items-start mb-4">
-        <h3 className="text-slate-400 font-medium">{title}</h3>
-        <div className={`p-2 rounded-xl bg-surface/50 ${color.replace('bg-', 'text-')}`}>
-          <Icon size={20} />
-        </div>
-      </div>
-      <div className="text-3xl font-bold text-white tracking-tight">
-        {value}
-      </div>
-    </motion.div>
-  );
-
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
       <div className="flex flex-col gap-2">
@@ -115,48 +173,19 @@ export default function AnalysisPage() {
 
       {/* Revenue Section */}
       <section className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4 bg-surface/30 p-4 rounded-xl border border-white/5">
-          <div className="flex items-center gap-3">
-            <TrendingUp className="text-primary" size={24} />
-            <h2 className="text-xl font-semibold text-slate-200">Revenue Analysis</h2>
-          </div>
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-slate-400">Start:</label>
-              <input
-                type="date"
-                value={revenueStartDate}
-                onChange={(e) => setRevenueStartDate(e.target.value)}
-                onClick={(e) => (e.target as any).showPicker?.()}
-                className="bg-surface/50 border border-white/10 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 transition-all outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-slate-400">End:</label>
-              <input
-                type="date"
-                value={revenueEndDate}
-                onChange={(e) => setRevenueEndDate(e.target.value)}
-                onClick={(e) => (e.target as any).showPicker?.()}
-                className="bg-surface/50 border border-white/10 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 transition-all outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50"
-              />
-            </div>
-            <button
-              onClick={fetchRevenueAnalysis}
-              disabled={loadingRevenue}
-              className="px-4 py-2 bg-primary/20 text-primary hover:bg-primary/30 border border-primary/50 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
-            >
-              Generate
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap -mt-2">
-          <button onClick={() => setDateRange('today', setRevenueStartDate, setRevenueEndDate, fetchRevenueAnalysis)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">Today</button>
-          <button onClick={() => setDateRange('yesterday', setRevenueStartDate, setRevenueEndDate, fetchRevenueAnalysis)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">Yesterday</button>
-          <button onClick={() => setDateRange('7days', setRevenueStartDate, setRevenueEndDate, fetchRevenueAnalysis)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">Last 7 Days</button>
-          <button onClick={() => setDateRange('month', setRevenueStartDate, setRevenueEndDate, fetchRevenueAnalysis)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">This Month</button>
-        </div>
+        <DateRangeFilter 
+          title="Revenue Analysis"
+          icon={TrendingUp}
+          iconColor="text-primary"
+          color={{ bgLight: 'bg-primary/20', text: 'text-primary', bgHover: 'bg-primary/30', border: 'border-primary/50' }}
+          startDate={revenueStartDate}
+          setStartDate={setRevenueStartDate}
+          endDate={revenueEndDate}
+          setEndDate={setRevenueEndDate}
+          onGenerate={() => fetchRevenueAnalysis()}
+          loading={loadingRevenue}
+          setDateRangeType={(type: string) => setDateRange(type, setRevenueStartDate, setRevenueEndDate, fetchRevenueAnalysis)}
+        />
 
         {loadingRevenue ? (
           <div className="h-32 flex items-center justify-center">
@@ -166,19 +195,19 @@ export default function AnalysisPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <StatCard 
               title="Total Base Amount" 
-              value={`₹${parseFloat(revenueData?.totalBaseAmount || '0').toFixed(2)}`}
+              value={`₹${Number(revenueData?.totalBaseAmount || 0).toFixed(2)}`}
               icon={Receipt}
               color="bg-blue-500"
             />
             <StatCard 
               title="Total GST Amount" 
-              value={`₹${parseFloat(revenueData?.totalGstAmount || '0').toFixed(2)}`}
+              value={`₹${Number(revenueData?.totalGstAmount || 0).toFixed(2)}`}
               icon={Receipt}
               color="bg-orange-500"
             />
             <StatCard 
               title="Final Discounted Amount" 
-              value={`₹${parseFloat(revenueData?.totalFinalDiscountedAmount || '0').toFixed(2)}`}
+              value={`₹${Number(revenueData?.totalFinalDiscountedAmount || 0).toFixed(2)}`}
               icon={IndianRupee}
               color="bg-emerald-500"
             />
@@ -188,48 +217,19 @@ export default function AnalysisPage() {
 
       {/* Waiter Analysis Section */}
       <section className="space-y-6 pt-6">
-        <div className="flex items-center justify-between flex-wrap gap-4 bg-surface/30 p-4 rounded-xl border border-white/5">
-          <div className="flex items-center gap-3">
-            <Users className="text-purple-400" size={24} />
-            <h2 className="text-xl font-semibold text-slate-200">Staff Performance</h2>
-          </div>
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-slate-400">Start:</label>
-              <input
-                type="date"
-                value={waiterStartDate}
-                onChange={(e) => setWaiterStartDate(e.target.value)}
-                onClick={(e) => (e.target as any).showPicker?.()}
-                className="bg-surface/50 border border-white/10 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 transition-all outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-slate-400">End:</label>
-              <input
-                type="date"
-                value={waiterEndDate}
-                onChange={(e) => setWaiterEndDate(e.target.value)}
-                onClick={(e) => (e.target as any).showPicker?.()}
-                className="bg-surface/50 border border-white/10 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 transition-all outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50"
-              />
-            </div>
-            <button
-              onClick={fetchWaiterAnalysis}
-              disabled={loadingWaiters}
-              className="px-4 py-2 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border border-purple-500/50 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
-            >
-              Generate
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap -mt-2">
-          <button onClick={() => setDateRange('today', setWaiterStartDate, setWaiterEndDate, fetchWaiterAnalysis)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">Today</button>
-          <button onClick={() => setDateRange('yesterday', setWaiterStartDate, setWaiterEndDate, fetchWaiterAnalysis)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">Yesterday</button>
-          <button onClick={() => setDateRange('7days', setWaiterStartDate, setWaiterEndDate, fetchWaiterAnalysis)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">Last 7 Days</button>
-          <button onClick={() => setDateRange('month', setWaiterStartDate, setWaiterEndDate, fetchWaiterAnalysis)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">This Month</button>
-        </div>
+        <DateRangeFilter 
+          title="Staff Performance"
+          icon={Users}
+          iconColor="text-purple-400"
+          color={{ bgLight: 'bg-purple-500/20', text: 'text-purple-400', bgHover: 'bg-purple-500/30', border: 'border-purple-500/50' }}
+          startDate={waiterStartDate}
+          setStartDate={setWaiterStartDate}
+          endDate={waiterEndDate}
+          setEndDate={setWaiterEndDate}
+          onGenerate={() => fetchWaiterAnalysis()}
+          loading={loadingWaiters}
+          setDateRangeType={(type: string) => setDateRange(type, setWaiterStartDate, setWaiterEndDate, fetchWaiterAnalysis)}
+        />
 
         {loadingWaiters ? (
           <div className="h-48 flex items-center justify-center">
@@ -278,7 +278,7 @@ export default function AnalysisPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right font-semibold text-emerald-400">
-                          ₹{parseFloat(waiter.totalRevenue || '0').toFixed(2)}
+                          ₹{Number(waiter.totalRevenue || 0).toFixed(2)}
                         </td>
                       </motion.tr>
                     ))

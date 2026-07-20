@@ -3,7 +3,7 @@ import api from './api';
 export interface BookingRoomPayload {
   roomCode: string;
   rateplanCode: string;
-  roomNumber: string;
+  roomNumber: string | null;
   adults: number;
   children: number;
 }

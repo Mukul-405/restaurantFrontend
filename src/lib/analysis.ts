@@ -1,9 +1,9 @@
 import api from './api';
 
 export interface RevenueAnalysis {
-  totalBaseAmount: string;
-  totalGstAmount: string;
-  totalFinalDiscountedAmount: string;
+  totalBaseAmount: number;
+  totalGstAmount: number;
+  totalFinalDiscountedAmount: number;
 }
 
 export interface WaiterAnalysis {
@@ -11,7 +11,7 @@ export interface WaiterAnalysis {
   waiterName: string;
   phoneNumber: string;
   totalOrders: number;
-  totalRevenue: string;
+  totalRevenue: number;
 }
 
 export const getRevenueAnalysis = async (startDate: string, endDate: string): Promise<RevenueAnalysis> => {

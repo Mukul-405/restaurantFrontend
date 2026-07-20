@@ -6,6 +6,69 @@ import { fetchCMInventory, fetchCMRates, fetchCMReservations, pushCMInventory, p
 import { getRoomTypes } from '../../../lib/roomsApi';
 import { Calendar as CalendarIcon, RefreshCw, Home, IndianRupee, Users, Upload, Download, Plus, Trash2, CheckSquare, Square, Info } from 'lucide-react';
 
+const RestrictionsEditor = ({ restrictions, onChange }: { restrictions: any, onChange: (newRest: any) => void }) => {
+  const update = (field: string, value: any) => onChange({ ...restrictions, [field]: value });
+  return (
+    <div className="flex flex-col gap-4 mt-2 p-4 md:p-5 bg-black/40 rounded-2xl border border-white/10 relative">
+      <div className="absolute -top-3 left-6 px-3 py-0.5 bg-[#202128] text-[10px] uppercase font-extrabold tracking-widest text-primary rounded-md border border-white/10 shadow-lg">
+        Booking Rules
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+        <label className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer select-none group">
+          <div className="pt-0.5">
+            <input type="checkbox" checked={restrictions.stopSell} onChange={e => update('stopSell', e.target.checked)} className="w-4 h-4 accent-red-500 cursor-pointer" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-white group-hover:text-red-400 transition-colors">Stop Sell</span>
+            <span className="text-[10px] text-slate-400 mt-1 leading-snug">Disable and block all new bookings.</span>
+          </div>
+        </label>
+        <label className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer select-none group">
+          <div className="pt-0.5">
+            <input type="checkbox" checked={restrictions.closeOnArrival} onChange={e => update('closeOnArrival', e.target.checked)} className="w-4 h-4 accent-amber-500 cursor-pointer" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors">Close on Arrival</span>
+            <span className="text-[10px] text-slate-400 mt-1 leading-snug">Guests cannot check-in on this date.</span>
+          </div>
+        </label>
+        <label className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer select-none group">
+          <div className="pt-0.5">
+            <input type="checkbox" checked={restrictions.closeOnDeparture} onChange={e => update('closeOnDeparture', e.target.checked)} className="w-4 h-4 accent-amber-500 cursor-pointer" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors">Close on Departure</span>
+            <span className="text-[10px] text-slate-400 mt-1 leading-snug">Guests cannot check-out on this date.</span>
+          </div>
+        </label>
+      </div>
+      <div className="h-px w-full bg-white/5 my-1"></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
+          <span className="text-xs font-bold text-white">Min. Stay (Nights)</span>
+          <span className="text-[10px] text-slate-400 mb-2 leading-snug">Required length of stay.</span>
+          <input type="number" placeholder="e.g. 2" value={restrictions.minimumStay} onChange={e => update('minimumStay', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+        </div>
+        <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
+          <span className="text-xs font-bold text-white">Max. Stay (Nights)</span>
+          <span className="text-[10px] text-slate-400 mb-2 leading-snug">Maximum length of stay.</span>
+          <input type="number" placeholder="e.g. 14" value={restrictions.maximumStay} onChange={e => update('maximumStay', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+        </div>
+        <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
+          <span className="text-xs font-bold text-white">Min. Adv. Booking</span>
+          <span className="text-[10px] text-slate-400 mb-2 leading-snug">How many days in advance.</span>
+          <input type="number" placeholder="e.g. 1" value={restrictions.minimumAdvanceReservation} onChange={e => update('minimumAdvanceReservation', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+        </div>
+        <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
+          <span className="text-xs font-bold text-white">Max. Adv. Booking</span>
+          <span className="text-[10px] text-slate-400 mb-2 leading-snug">How far in the future.</span>
+          <input type="number" placeholder="e.g. 30" value={restrictions.maximumAdvanceReservation} onChange={e => update('maximumAdvanceReservation', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ChannelManagerPage() {
   const [activeTab, setActiveTab] = useState<'inventory' | 'rates' | 'reservations' | 'inventoryRestrictions' | 'rateRestrictions'>('inventory');
   const [syncMode, setSyncMode] = useState<'fetch' | 'push'>('fetch');
@@ -37,8 +100,7 @@ export default function ChannelManagerPage() {
     { code: 'simplotel', label: 'Simplotel' },
     { code: 'tiket', label: 'Tiket' },
     { code: 'traveloka', label: 'Traveloka' },
-    { code: 'makemytrip', label: 'MakeMyTrip' },
-    { code: 'goibibo', label: 'Goibibo' },
+    { code: 'gommt', label: 'MakeMyTrip / Goibibo' },
   ];
 
   const toggleChannel = (code: string) => {
@@ -99,110 +161,53 @@ export default function ChannelManagerPage() {
 
   const handlePush = async () => {
     setError(null);
-    if (!startDate || !endDate) {
-      setError('Please select both start date and end date to push.');
-      return;
-    }
-    if (new Date(startDate) > new Date(endDate)) {
-      setError('End date must be the same as or after the start date.');
-      return;
-    }
+    if (!startDate || !endDate) return setError('Please select both start date and end date to push.');
+    if (new Date(startDate) > new Date(endDate)) return setError('End date must be the same as or after the start date.');
+
+    const isRest = activeTab.includes('Restrictions');
+    if (isRest && selectedChannels.length === 0) return setError('Please select at least one target channel.');
+
+    const parseRest = (r: any) => ({
+      stopSell: r.stopSell,
+      minimumStay: r.minimumStay !== '' ? Number(r.minimumStay) : null,
+      maximumStay: r.maximumStay !== '' ? Number(r.maximumStay) : null,
+      closeOnArrival: r.closeOnArrival,
+      closeOnDeparture: r.closeOnDeparture,
+      minimumAdvanceReservation: r.minimumAdvanceReservation !== '' ? Number(r.minimumAdvanceReservation) : null,
+      maximumAdvanceReservation: r.maximumAdvanceReservation !== '' ? Number(r.maximumAdvanceReservation) : null,
+    });
+
+    let payload: any;
+    let pushFn: Function;
+    let alertMsg: string;
+
+    if (activeTab === 'inventory') {
+      const valid = pushInventoryData.filter(r => r.roomCode.trim() && r.available !== '');
+      if (!valid.length) return setError('Please add at least one valid room for inventory push.');
+      payload = [{ startDate, endDate, rooms: valid.map(r => ({ roomCode: r.roomCode, available: Number(r.available) })) }];
+      pushFn = pushCMInventory; alertMsg = 'Inventory';
+    } else if (activeTab === 'rates') {
+      const valid = pushRatesData.filter(r => r.roomCode.trim() && r.rateplanCode.trim() && r.rate !== '');
+      if (!valid.length) return setError('Please add at least one valid rate for rate push.');
+      payload = [{ startDate, endDate, rates: valid.map(r => ({ roomCode: r.roomCode, rateplanCode: r.rateplanCode, rate: Number(r.rate) })) }];
+      pushFn = pushCMRates; alertMsg = 'Rates';
+    } else if (activeTab === 'inventoryRestrictions') {
+      const valid = pushInvRestData.filter(r => r.roomCode.trim());
+      if (!valid.length) return setError('Please add at least one valid room for restrictions push.');
+      payload = [{ startDate, endDate, rooms: valid.map(r => ({ roomCode: r.roomCode, restrictions: parseRest(r.restrictions) })) }];
+      pushFn = pushCMInventory; alertMsg = 'Inventory Restrictions';
+    } else if (activeTab === 'rateRestrictions') {
+      const valid = pushRateRestData.filter(r => r.roomCode.trim() && r.rateplanCode.trim());
+      if (!valid.length) return setError('Please add at least one valid rate for restrictions push.');
+      payload = [{ startDate, endDate, rates: valid.map(r => ({ roomCode: r.roomCode, rateplanCode: r.rateplanCode, restrictions: parseRest(r.restrictions) })) }];
+      pushFn = pushCMRates; alertMsg = 'Rate Restrictions';
+    } else return;
 
     setIsPushing(true);
     try {
-      if (activeTab === 'inventory') {
-        const validRooms = pushInventoryData.filter(r => r.roomCode.trim() !== '' && r.available !== '');
-        if (validRooms.length === 0) {
-          setError('Please add at least one valid room for inventory push.');
-          setIsPushing(false);
-          return;
-        }
-        const payload = [{
-          startDate,
-          endDate,
-          rooms: validRooms.map(r => ({ roomCode: r.roomCode, available: Number(r.available) }))
-        }];
-        await pushCMInventory(payload);
-        alert('Inventory pushed successfully to Aiosell!');
-      } else if (activeTab === 'rates') {
-        const validRates = pushRatesData.filter(r => r.roomCode.trim() !== '' && r.rateplanCode.trim() !== '' && r.rate !== '');
-        if (validRates.length === 0) {
-          setError('Please add at least one valid rate for rate push.');
-          setIsPushing(false);
-          return;
-        }
-        const payload = [{
-          startDate,
-          endDate,
-          rates: validRates.map(r => ({ roomCode: r.roomCode, rateplanCode: r.rateplanCode, rate: Number(r.rate) }))
-        }];
-        await pushCMRates(payload);
-        alert('Rates pushed successfully to Aiosell!');
-      } else if (activeTab === 'inventoryRestrictions') {
-        const validRooms = pushInvRestData.filter(r => r.roomCode.trim() !== '');
-        if (validRooms.length === 0) {
-          setError('Please add at least one valid room for restrictions push.');
-          setIsPushing(false);
-          return;
-        }
-        if (selectedChannels.length === 0) {
-          setError('Please select at least one target channel.');
-          setIsPushing(false);
-          return;
-        }
-        const finalChannels = Array.from(new Set(selectedChannels.map(c => (c === 'makemytrip' || c === 'goibibo') ? 'gommt' : c)));
-        const payload = [{
-          startDate,
-          endDate,
-          rooms: validRooms.map(r => ({
-            roomCode: r.roomCode,
-            restrictions: {
-              stopSell: r.restrictions.stopSell,
-              minimumStay: r.restrictions.minimumStay !== '' ? Number(r.restrictions.minimumStay) : null,
-              maximumStay: r.restrictions.maximumStay !== '' ? Number(r.restrictions.maximumStay) : null,
-              closeOnArrival: r.restrictions.closeOnArrival,
-              closeOnDeparture: r.restrictions.closeOnDeparture,
-              minimumAdvanceReservation: r.restrictions.minimumAdvanceReservation !== '' ? Number(r.restrictions.minimumAdvanceReservation) : null,
-              maximumAdvanceReservation: r.restrictions.maximumAdvanceReservation !== '' ? Number(r.restrictions.maximumAdvanceReservation) : null,
-            }
-          }))
-        }];
-        await pushCMInventory(payload, finalChannels);
-        alert('Inventory Restrictions pushed successfully to Aiosell!');
-      } else if (activeTab === 'rateRestrictions') {
-        const validRates = pushRateRestData.filter(r => r.roomCode.trim() !== '' && r.rateplanCode.trim() !== '');
-        if (validRates.length === 0) {
-          setError('Please add at least one valid rate for restrictions push.');
-          setIsPushing(false);
-          return;
-        }
-        if (selectedChannels.length === 0) {
-          setError('Please select at least one target channel.');
-          setIsPushing(false);
-          return;
-        }
-        const finalChannels = Array.from(new Set(selectedChannels.map(c => (c === 'makemytrip' || c === 'goibibo') ? 'gommt' : c)));
-        const payload = [{
-          startDate,
-          endDate,
-          rates: validRates.map(r => ({
-            roomCode: r.roomCode,
-            rateplanCode: r.rateplanCode,
-            restrictions: {
-              stopSell: r.restrictions.stopSell,
-              minimumStay: r.restrictions.minimumStay !== '' ? Number(r.restrictions.minimumStay) : null,
-              maximumStay: r.restrictions.maximumStay !== '' ? Number(r.restrictions.maximumStay) : null,
-              closeOnArrival: r.restrictions.closeOnArrival,
-              closeOnDeparture: r.restrictions.closeOnDeparture,
-              minimumAdvanceReservation: r.restrictions.minimumAdvanceReservation !== '' ? Number(r.restrictions.minimumAdvanceReservation) : null,
-              maximumAdvanceReservation: r.restrictions.maximumAdvanceReservation !== '' ? Number(r.restrictions.maximumAdvanceReservation) : null,
-            }
-          }))
-        }];
-        await pushCMRates(payload, finalChannels);
-        alert('Rate Restrictions pushed successfully to Aiosell!');
-      }
-    } catch (err: any) {
+      await pushFn(payload, isRest ? selectedChannels : undefined);
+      alert(`${alertMsg} pushed successfully to Aiosell!`);
+    } catch (err) {
       console.error(err);
       setError(`Failed to push ${activeTab} data. Make sure credentials are set.`);
     } finally {
@@ -542,71 +547,14 @@ export default function ChannelManagerPage() {
                       </button>
                     )}
                   </div>
-                  <div className="flex flex-col gap-4 mt-2 p-4 md:p-5 bg-black/40 rounded-2xl border border-white/10 relative">
-                    <div className="absolute -top-3 left-6 px-3 py-0.5 bg-[#202128] text-[10px] uppercase font-extrabold tracking-widest text-primary rounded-md border border-white/10 shadow-lg">
-                      Booking Rules
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
-                      <label className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer select-none group">
-                        <div className="pt-0.5">
-                          <input type="checkbox" checked={item.restrictions.stopSell} onChange={e => { const nd = [...pushInvRestData]; nd[idx].restrictions.stopSell = e.target.checked; setPushInvRestData(nd); }} className="w-4 h-4 accent-red-500 cursor-pointer" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-white group-hover:text-red-400 transition-colors">Stop Sell</span>
-                          <span className="text-[10px] text-slate-400 mt-1 leading-snug">Disable and block all new bookings for this room.</span>
-                        </div>
-                      </label>
-
-                      <label className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer select-none group">
-                        <div className="pt-0.5">
-                          <input type="checkbox" checked={item.restrictions.closeOnArrival} onChange={e => { const nd = [...pushInvRestData]; nd[idx].restrictions.closeOnArrival = e.target.checked; setPushInvRestData(nd); }} className="w-4 h-4 accent-amber-500 cursor-pointer" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors">Close on Arrival</span>
-                          <span className="text-[10px] text-slate-400 mt-1 leading-snug">Guests cannot check-in on this date.</span>
-                        </div>
-                      </label>
-
-                      <label className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer select-none group">
-                        <div className="pt-0.5">
-                          <input type="checkbox" checked={item.restrictions.closeOnDeparture} onChange={e => { const nd = [...pushInvRestData]; nd[idx].restrictions.closeOnDeparture = e.target.checked; setPushInvRestData(nd); }} className="w-4 h-4 accent-amber-500 cursor-pointer" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors">Close on Departure</span>
-                          <span className="text-[10px] text-slate-400 mt-1 leading-snug">Guests cannot check-out on this date.</span>
-                        </div>
-                      </label>
-                    </div>
-
-                    <div className="h-px w-full bg-white/5 my-1"></div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
-                        <span className="text-xs font-bold text-white">Min. Stay (Nights)</span>
-                        <span className="text-[10px] text-slate-400 mb-2 leading-snug">Required length of stay.</span>
-                        <input type="number" placeholder="e.g. 2" value={item.restrictions.minimumStay} onChange={e => { const nd = [...pushInvRestData]; nd[idx].restrictions.minimumStay = e.target.value === '' ? '' : Number(e.target.value); setPushInvRestData(nd); }} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
-                        <span className="text-xs font-bold text-white">Max. Stay (Nights)</span>
-                        <span className="text-[10px] text-slate-400 mb-2 leading-snug">Maximum length of stay.</span>
-                        <input type="number" placeholder="e.g. 14" value={item.restrictions.maximumStay} onChange={e => { const nd = [...pushInvRestData]; nd[idx].restrictions.maximumStay = e.target.value === '' ? '' : Number(e.target.value); setPushInvRestData(nd); }} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
-                        <span className="text-xs font-bold text-white">Min. Adv. Booking (Days)</span>
-                        <span className="text-[10px] text-slate-400 mb-2 leading-snug">How many days in advance they must book.</span>
-                        <input type="number" placeholder="e.g. 1" value={item.restrictions.minimumAdvanceReservation} onChange={e => { const nd = [...pushInvRestData]; nd[idx].restrictions.minimumAdvanceReservation = e.target.value === '' ? '' : Number(e.target.value); setPushInvRestData(nd); }} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
-                        <span className="text-xs font-bold text-white">Max. Adv. Booking (Days)</span>
-                        <span className="text-[10px] text-slate-400 mb-2 leading-snug">How far in the future they can book.</span>
-                        <input type="number" placeholder="e.g. 30" value={item.restrictions.maximumAdvanceReservation} onChange={e => { const nd = [...pushInvRestData]; nd[idx].restrictions.maximumAdvanceReservation = e.target.value === '' ? '' : Number(e.target.value); setPushInvRestData(nd); }} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
-                      </div>
-                    </div>
-                  </div>
+                  <RestrictionsEditor 
+                    restrictions={item.restrictions} 
+                    onChange={(newRest) => { 
+                      const nd = [...pushInvRestData]; 
+                      nd[idx].restrictions = newRest; 
+                      setPushInvRestData(nd); 
+                    }} 
+                  />
                 </div>
               ))}
             </div>
@@ -678,71 +626,14 @@ export default function ChannelManagerPage() {
                     )}
                   </div>
                   
-                  <div className="flex flex-col gap-4 mt-2 p-4 md:p-5 bg-black/40 rounded-2xl border border-white/10 relative">
-                    <div className="absolute -top-3 left-6 px-3 py-0.5 bg-[#202128] text-[10px] uppercase font-extrabold tracking-widest text-primary rounded-md border border-white/10 shadow-lg">
-                      Booking Rules
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
-                      <label className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer select-none group">
-                        <div className="pt-0.5">
-                          <input type="checkbox" checked={item.restrictions.stopSell} onChange={e => { const nd = [...pushRateRestData]; nd[idx].restrictions.stopSell = e.target.checked; setPushRateRestData(nd); }} className="w-4 h-4 accent-red-500 cursor-pointer" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-white group-hover:text-red-400 transition-colors">Stop Sell</span>
-                          <span className="text-[10px] text-slate-400 mt-1 leading-snug">Disable and block all new bookings for this rate.</span>
-                        </div>
-                      </label>
-
-                      <label className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer select-none group">
-                        <div className="pt-0.5">
-                          <input type="checkbox" checked={item.restrictions.closeOnArrival} onChange={e => { const nd = [...pushRateRestData]; nd[idx].restrictions.closeOnArrival = e.target.checked; setPushRateRestData(nd); }} className="w-4 h-4 accent-amber-500 cursor-pointer" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors">Close on Arrival</span>
-                          <span className="text-[10px] text-slate-400 mt-1 leading-snug">Guests cannot check-in on this date.</span>
-                        </div>
-                      </label>
-
-                      <label className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer select-none group">
-                        <div className="pt-0.5">
-                          <input type="checkbox" checked={item.restrictions.closeOnDeparture} onChange={e => { const nd = [...pushRateRestData]; nd[idx].restrictions.closeOnDeparture = e.target.checked; setPushRateRestData(nd); }} className="w-4 h-4 accent-amber-500 cursor-pointer" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors">Close on Departure</span>
-                          <span className="text-[10px] text-slate-400 mt-1 leading-snug">Guests cannot check-out on this date.</span>
-                        </div>
-                      </label>
-                    </div>
-
-                    <div className="h-px w-full bg-white/5 my-1"></div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
-                        <span className="text-xs font-bold text-white">Min. Stay (Nights)</span>
-                        <span className="text-[10px] text-slate-400 mb-2 leading-snug">Required length of stay.</span>
-                        <input type="number" placeholder="e.g. 2" value={item.restrictions.minimumStay} onChange={e => { const nd = [...pushRateRestData]; nd[idx].restrictions.minimumStay = e.target.value === '' ? '' : Number(e.target.value); setPushRateRestData(nd); }} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
-                        <span className="text-xs font-bold text-white">Max. Stay (Nights)</span>
-                        <span className="text-[10px] text-slate-400 mb-2 leading-snug">Maximum length of stay.</span>
-                        <input type="number" placeholder="e.g. 14" value={item.restrictions.maximumStay} onChange={e => { const nd = [...pushRateRestData]; nd[idx].restrictions.maximumStay = e.target.value === '' ? '' : Number(e.target.value); setPushRateRestData(nd); }} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
-                        <span className="text-xs font-bold text-white">Min. Adv. Booking (Days)</span>
-                        <span className="text-[10px] text-slate-400 mb-2 leading-snug">How many days in advance they must book.</span>
-                        <input type="number" placeholder="e.g. 1" value={item.restrictions.minimumAdvanceReservation} onChange={e => { const nd = [...pushRateRestData]; nd[idx].restrictions.minimumAdvanceReservation = e.target.value === '' ? '' : Number(e.target.value); setPushRateRestData(nd); }} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
-                      </div>
-
-                      <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
-                        <span className="text-xs font-bold text-white">Max. Adv. Booking (Days)</span>
-                        <span className="text-[10px] text-slate-400 mb-2 leading-snug">How far in the future they can book.</span>
-                        <input type="number" placeholder="e.g. 30" value={item.restrictions.maximumAdvanceReservation} onChange={e => { const nd = [...pushRateRestData]; nd[idx].restrictions.maximumAdvanceReservation = e.target.value === '' ? '' : Number(e.target.value); setPushRateRestData(nd); }} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
-                      </div>
-                    </div>
-                  </div>
+                  <RestrictionsEditor 
+                    restrictions={item.restrictions} 
+                    onChange={(newRest) => { 
+                      const nd = [...pushRateRestData]; 
+                      nd[idx].restrictions = newRest; 
+                      setPushRateRestData(nd); 
+                    }} 
+                  />
                 </div>
               ))}
             </div>
@@ -764,17 +655,19 @@ export default function ChannelManagerPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {fetchedData?.inventory?.map((inv: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-white/5 transition-colors group">
-                          <td className="p-4 font-bold text-white">{inv.roomCode}</td>
-                          <td className="p-4 text-slate-300">{inv.date}</td>
-                          <td className="p-4 text-right">
-                            <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-bold inline-block">
-                              {inv.available} left
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {fetchedData?.updates?.flatMap((update: any, idx1: number) =>
+                        update.rooms?.map((inv: any, idx2: number) => (
+                          <tr key={`${idx1}-${idx2}`} className="hover:bg-white/5 transition-colors group">
+                            <td className="p-4 font-bold text-white">{inv.roomCode}</td>
+                            <td className="p-4 text-slate-300">{update.startDate}</td>
+                            <td className="p-4 text-right">
+                              <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-bold inline-block">
+                                {inv.available} left
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </>
                 )}
@@ -855,20 +748,22 @@ export default function ChannelManagerPage() {
 
             {/* Mobile Card View */}
             <div className="md:hidden flex flex-col gap-4">
-              {activeTab === 'inventory' && fetchedData?.inventory?.map((inv: any, idx: number) => (
-                <div key={idx} className="bg-surface/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="font-bold text-white text-lg">{inv.roomCode}</div>
-                    <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-bold">
-                      {inv.available} left
-                    </span>
+              {activeTab === 'inventory' && fetchedData?.updates?.flatMap((update: any, idx1: number) =>
+                update.rooms?.map((inv: any, idx2: number) => (
+                  <div key={`${idx1}-${idx2}`} className="bg-surface/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="font-bold text-white text-lg">{inv.roomCode}</div>
+                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-bold">
+                        {inv.available} left
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-400 text-sm">
+                      <CalendarIcon size={14} />
+                      <span>{update.startDate}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-400 text-sm">
-                    <CalendarIcon size={14} />
-                    <span>{inv.date}</span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
 
               {activeTab === 'rates' && fetchedData?.updates?.flatMap((update: any, idx1: number) =>
                 update.rates?.map((rate: any, idx2: number) => (
