@@ -79,6 +79,7 @@ export default function ResetPasswordModal({ isOpen, onClose, onSuccess, member 
                   value={password} 
                   onChange={e => setPassword(e.target.value)} 
                   required
+                  maxLength={128}
                 />
               </div>
               

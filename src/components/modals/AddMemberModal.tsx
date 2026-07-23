@@ -17,14 +17,13 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
   const handleAddSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFormError('');
-    if (!formData.name || !formData.phoneNumber || !formData.role) {
-      setFormError('Name, Phone Number, and Role are required.');
+    if (!formData.name || !formData.phoneNumber || !formData.role || !formData.password) {
+      setFormError('Name, Phone Number, Role, and Password are required.');
       return;
     }
     try {
       setFormLoading(true);
       const payload: any = { ...formData };
-      if (!payload.password) delete payload.password;
       await fetcher.createUser(payload);
       setFormData({ name: '', phoneNumber: '', role: 'WAITER', password: '' });
       onSuccess();
@@ -92,13 +91,14 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess }: AddMember
                 </select>
               </div>
               <div className="mb-4 flex flex-col">
-                <label className="block text-sm font-medium text-slate-400 mb-2">Password (Optional)</label>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Password</label>
                 <input 
                   type="password" 
                   className="w-full bg-black/20 border border-white/10 text-slate-200 px-4 py-3 rounded-lg font-sans text-base transition-all duration-300 outline-none focus:border-primary focus:shadow-[0_0_0_2px_var(--color-primary-light)]" 
-                  placeholder="Auto-generated if empty"
+                  placeholder="Enter password"
                   value={formData.password} 
                   onChange={e => setFormData({...formData, password: e.target.value})} 
+                  maxLength={128}
                 />
               </div>
               

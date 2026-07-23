@@ -74,6 +74,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
+              maxLength={128}
             />
           </div>
 
