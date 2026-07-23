@@ -2,8 +2,9 @@ import React, { useEffect,useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, Phone, Calendar, IndianRupee, User, Hash, Printer } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchOrderById, updateOrder } from '../../store/slices/orderSlice';
+import { fetchOrderById, updateOrder, transferOrderToRoom } from '../../store/slices/orderSlice';
 import CancelOrderModal from './CancelOrderModal';
+import TransferToRoomModal from './TransferToRoomModal';
 import { printReceipt } from '../../utils/printReceipt';
 
 interface OrderDetailsModalProps {
@@ -16,6 +17,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
   const dispatch = useAppDispatch();
   const { selectedOrder, status, error } = useAppSelector(state => state.order);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen && orderId) {
@@ -30,9 +32,10 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div key="order-details-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <div key="order-details-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -112,16 +115,22 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
 
                     {/* Action Buttons if Pending */}
                     {selectedOrder.status === 'PENDING' && (
-                      <div className="flex gap-3">
+                      <div className="flex flex-col gap-3 sm:flex-row">
                         <button
                           onClick={() => setIsCancelModalOpen(true)}
                           className="flex-1 py-3 bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 rounded-xl font-bold transition-all"
                         >
-                          Cancel Order
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => setIsTransferModalOpen(true)}
+                          className="flex-1 py-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-xl font-bold transition-all"
+                        >
+                          Transfer to Room
                         </button>
                         <button
                           onClick={() => handleStatusChange('COMPLETED')}
-                          className="flex-[2] py-3 bg-emerald-600 border border-emerald-500/20 text-white hover:bg-emerald-700 rounded-xl font-bold transition-all shadow-[0_4px_14px_0_rgba(16,185,129,0.39)]"
+                          className="flex-1 py-3 bg-emerald-600 border border-emerald-500/20 text-white hover:bg-emerald-700 rounded-xl font-bold transition-all shadow-[0_4px_14px_0_rgba(16,185,129,0.39)]"
                         >
                           Mark Completed
                         </button>
@@ -185,6 +194,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
           </motion.div>
         </div>
       )}
+      </AnimatePresence>
 
       <CancelOrderModal
         isOpen={isCancelModalOpen}
@@ -197,6 +207,18 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
           setIsCancelModalOpen(false);
         }}
       />
-    </AnimatePresence>
+
+      {selectedOrder && (
+        <TransferToRoomModal
+          isOpen={isTransferModalOpen}
+          onClose={() => setIsTransferModalOpen(false)}
+          orderId={selectedOrder.id}
+          onSubmit={async (guestPhone) => {
+            await dispatch(transferOrderToRoom({ id: selectedOrder.id, guestPhone })).unwrap();
+            dispatch(fetchOrderById(selectedOrder.id));
+          }}
+        />
+      )}
+    </>
   );
 }

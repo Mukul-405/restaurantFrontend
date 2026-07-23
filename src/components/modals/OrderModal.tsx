@@ -47,7 +47,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
   useEffect(() => {
     if (isOpen) {
       if (orderToEdit) {
-        setPhoneNumber(orderToEdit.phoneNumber);
+        setPhoneNumber(orderToEdit.phoneNumber || '');
         setTableNumber(orderToEdit.tableNumber ? orderToEdit.tableNumber.toString() : '');
         setSelectedItems(orderToEdit.items.map(i => ({
           menuItemId: i.menuItemId,
@@ -112,10 +112,6 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phoneNumber) {
-      setError('Phone number is required');
-      return;
-    }
     if (selectedItems.length === 0) {
       setError('Please add at least one item');
       return;
@@ -129,7 +125,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
         await dispatch(updateOrder({
           id: orderToEdit.id,
           data: {
-            phoneNumber,
+            phoneNumber: phoneNumber || undefined,
             items: selectedItems,
             baseAmount,
             gstAmount,
@@ -140,7 +136,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
         })).unwrap();
       } else {
         await dispatch(createOrder({
-          phoneNumber,
+          phoneNumber: phoneNumber || undefined,
           items: selectedItems,
           baseAmount,
           gstAmount,
@@ -194,15 +190,14 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                 <div className="bg-black/20 border border-white/5 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input
                     type="tel"
-                    value={phoneNumber}
+                    value={phoneNumber || ''}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     className="w-full bg-transparent border border-white/10 text-slate-200 px-4 py-3 rounded-xl font-sans text-sm transition-all duration-300 outline-none focus:border-primary placeholder-slate-500"
-                    placeholder="Phone Number *"
-                    required
+                    placeholder="Phone Number (Optional)"
                   />
                   <input
                     type="number"
-                    value={tableNumber}
+                    value={tableNumber || ''}
                     onChange={(e) => setTableNumber(e.target.value)}
                     className="w-full bg-transparent border border-white/10 text-slate-200 px-4 py-3 rounded-xl font-sans text-sm transition-all duration-300 outline-none focus:border-primary placeholder-slate-500"
                     placeholder="Table Number (Optional)"

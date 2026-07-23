@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle } from 'lucide-react';
+import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Printer } from 'lucide-react';
 import { getRoomTypes, RoomType, getAvailability } from '../../../lib/roomsApi';
 import { createBooking, BookingPayload, getBookings, checkInBooking, checkOutBooking, editBookingRooms } from '../../../lib/roomBookApi';
+import { printBookingBill } from '../../../utils/printReceipt';
 
 export default function BookRoomPage() {
   const [formData, setFormData] = useState({
@@ -37,6 +38,7 @@ export default function BookRoomPage() {
   const [searchingBookings, setSearchingBookings] = useState(false);
   const [modalMode, setModalMode] = useState<'checkin' | 'edit'>('checkin');
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
+  const [checkoutBooking, setCheckoutBooking] = useState<any>(null);
 
   const refreshRoomTypes = async () => {
     try {
@@ -571,60 +573,199 @@ export default function BookRoomPage() {
           </motion.form>
         ) : (
           <motion.div key="manage" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-            <div className="bg-surface border border-white/10 rounded-2xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                <Search size={18} className="text-blue-400" /> Search Bookings
-              </h2>
-              <div className="flex gap-4 max-w-md">
-                <input type="tel" value={searchPhone} onChange={e => setSearchPhone(e.target.value)} placeholder="Search by Phone Number" className={inputClass} />
-                <button onClick={handleSearchBookings} disabled={searchingBookings} className="bg-primary hover:bg-primary-hover px-6 rounded-xl text-white font-bold transition-colors whitespace-nowrap flex items-center justify-center min-w-[120px]">
-                  {searchingBookings ? <Loader2 size={18} className="animate-spin" /> : 'Search'}
+            {/* Search Bar Section */}
+            <div className="bg-surface border border-white/10 rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Search size={18} className="text-primary" /> Search Reservations
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Find active or past bookings by guest phone number</p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="tel"
+                    value={searchPhone}
+                    onChange={e => setSearchPhone(e.target.value)}
+                    placeholder="Enter phone number (e.g. 9876543210)"
+                    className={`${inputClass} pl-10 bg-black/40`}
+                    onKeyDown={e => e.key === 'Enter' && handleSearchBookings()}
+                  />
+                </div>
+                <button
+                  onClick={handleSearchBookings}
+                  disabled={searchingBookings}
+                  className="bg-primary hover:bg-primary-hover px-6 py-3 rounded-xl text-white font-bold transition-all whitespace-nowrap flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:-translate-y-0.5"
+                >
+                  {searchingBookings ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                  <span>{searchingBookings ? 'Searching...' : 'Search Bookings'}</span>
                 </button>
               </div>
             </div>
 
+            {/* Bookings List */}
             <div className="space-y-4">
-              {managedBookings.map(b => (
-                <div key={b.id} className="bg-surface border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-6">
-                  <div>
-                    <h3 className="text-lg font-bold text-white mb-1">{b.guestName} <span className="text-sm font-normal text-slate-400 ml-2">{b.guestPhone}</span></h3>
-                    <p className="text-slate-400 text-sm">
-                      Check-in: {new Date(b.checkIn).toLocaleDateString()} &bull; Check-out: {new Date(b.checkOut).toLocaleDateString()}
-                    </p>
-                    <p className="text-slate-400 text-sm mt-1">
-                      Rooms: {b.rooms?.length || 0}
-                    </p>
-                  </div>
-                  <div>
-                    {b.status === 'RESERVED' && (
-                      <button onClick={() => openAssignmentModal(b, 'checkin')} className="bg-emerald-500 hover:bg-emerald-600 px-6 py-2 rounded-xl text-white font-bold transition-colors">
-                        Check In
-                      </button>
-                    )}
-                    {b.status === 'CHECKED_IN' && (
-                      <div className="flex flex-col sm:flex-row items-center gap-3">
-                        <span className="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-2">
-                          <CheckCircle size={16} /> Checked In
-                        </span>
-                        <button onClick={() => openAssignmentModal(b, 'edit')} disabled={searchingBookings} className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-xl text-white font-bold transition-colors whitespace-nowrap">
-                          Edit Room
-                        </button>
-                        <button onClick={() => handleCheckOut(b)} disabled={searchingBookings} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-xl text-white font-bold transition-colors whitespace-nowrap">
-                          Check Out
-                        </button>
+              {managedBookings.map(b => {
+                const isPaid = b.paymentStatus === 'PAID';
+                
+                const roomSummary = (() => {
+                  const roomsArr = Array.isArray(b.rooms) ? b.rooms : [];
+                  if (roomsArr.length === 0) return 'No Rooms';
+
+                  const groups: Record<string, string[]> = {};
+                  const unassignedCounts: Record<string, number> = {};
+
+                  roomsArr.forEach((r: any) => {
+                    const code = r.roomCode || 'Room';
+                    if (r.roomNumber) {
+                      if (!groups[code]) groups[code] = [];
+                      groups[code].push(r.roomNumber);
+                    } else {
+                      unassignedCounts[code] = (unassignedCounts[code] || 0) + 1;
+                    }
+                  });
+
+                  const formatted: string[] = [];
+                  Object.keys(groups).forEach(code => {
+                    formatted.push(`${code}: ${groups[code].join(', ')}`);
+                  });
+                  Object.keys(unassignedCounts).forEach(code => {
+                    formatted.push(`${unassignedCounts[code]}x ${code}`);
+                  });
+
+                  return formatted.join(' | ') || `${roomsArr.length} Room(s)`;
+                })();
+
+                return (
+                  <div key={b.id} className="bg-surface border border-white/10 rounded-2xl p-5 sm:p-6 transition-all hover:border-white/20 shadow-lg space-y-4">
+                    {/* Top Row: Guest Info & Status Badge */}
+                    <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-white/5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-lg">
+                          {(b.guestName || 'G').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">{b.guestName || 'Guest'}</h3>
+                          <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                            <Phone size={13} className="text-slate-500" /> {b.guestPhone}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    {b.status !== 'RESERVED' && b.status !== 'CHECKED_IN' && (
-                      <span className="px-4 py-2 rounded-xl bg-slate-500/10 text-slate-400 font-bold border border-slate-500/20">
-                        {b.status}
-                      </span>
-                    )}
+
+                      {/* Status Badges */}
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
+                          b.status === 'CHECKED_IN'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : b.status === 'RESERVED'
+                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                            : b.status === 'CHECKED_OUT'
+                            ? 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                            : 'bg-red-500/10 text-red-400 border-red-500/20'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            b.status === 'CHECKED_IN' ? 'bg-emerald-400 animate-pulse' : b.status === 'RESERVED' ? 'bg-blue-400' : 'bg-slate-400'
+                          }`} />
+                          {b.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Middle Details Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="bg-black/20 p-3 rounded-xl border border-white/5">
+                        <div className="text-slate-400 mb-1 flex items-center gap-1">
+                          <Calendar size={13} className="text-slate-500" /> Check In
+                        </div>
+                        <div className="font-semibold text-slate-200">
+                          {new Date(b.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </div>
+                      </div>
+
+                      <div className="bg-black/20 p-3 rounded-xl border border-white/5">
+                        <div className="text-slate-400 mb-1 flex items-center gap-1">
+                          <Calendar size={13} className="text-slate-500" /> Check Out
+                        </div>
+                        <div className="font-semibold text-slate-200">
+                          {new Date(b.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </div>
+                      </div>
+
+                      <div className="bg-black/20 p-3 rounded-xl border border-white/5">
+                        <div className="text-slate-400 mb-1 flex items-center gap-1">
+                          <Bed size={13} className="text-slate-500" /> Rooms Assigned
+                        </div>
+                        <div className="font-semibold text-slate-200 truncate" title={roomSummary}>
+                          {roomSummary}
+                        </div>
+                      </div>
+
+                      <div className="bg-black/20 p-3 rounded-xl border border-white/5">
+                        <div className="text-slate-400 mb-1 flex items-center gap-1">
+                          <CreditCard size={13} className="text-slate-500" /> Payment
+                        </div>
+                        <div className="flex items-center gap-1.5 font-semibold">
+                          <span className="text-white font-mono">₹{Number(b.totalAmount || 0).toFixed(0)}</span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${isPaid ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'}`}>
+                            {b.paymentStatus}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Action Bar */}
+                    <div className="pt-2 flex flex-wrap items-center justify-end gap-2.5">
+                      {b.status === 'RESERVED' && (
+                        <button
+                          onClick={() => openAssignmentModal(b, 'checkin')}
+                          className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                        >
+                          <Key size={15} /> Check In
+                        </button>
+                      )}
+
+                      {b.status === 'CHECKED_IN' && (
+                        <>
+                          <button
+                            onClick={() => openAssignmentModal(b, 'edit')}
+                            disabled={searchingBookings}
+                            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                          >
+                            <Bed size={15} /> Change Room
+                          </button>
+                          <button
+                            onClick={() => setCheckoutBooking(b)}
+                            disabled={searchingBookings}
+                            className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs transition-all shadow-lg shadow-red-500/20 flex items-center justify-center gap-1.5"
+                          >
+                            <CheckCircle size={15} /> Check Out
+                          </button>
+                        </>
+                      )}
+
+                      {b.status === 'CHECKED_OUT' && (
+                        <button
+                          onClick={() => printBookingBill(b)}
+                          className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <Printer size={15} /> Print Bill
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+
               {managedBookings.length === 0 && !searchingBookings && (
-                <div className="text-center py-12 text-slate-400 bg-surface/50 border border-white/5 rounded-2xl">
-                  No bookings found. Enter a phone number and search.
+                <div className="text-center py-14 px-4 text-slate-400 bg-surface/40 border border-white/5 rounded-2xl space-y-2">
+                  <Search size={32} className="mx-auto text-slate-600 mb-2" />
+                  <div className="text-slate-300 font-semibold">No Bookings Found</div>
+                  <div className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Enter a guest phone number above to search and manage room assignments, check-ins, or check-outs.
+                  </div>
                 </div>
               )}
             </div>
@@ -636,57 +777,81 @@ export default function BookRoomPage() {
       <AnimatePresence>
         {isModalOpen && (
           <motion.div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
             <motion.div
-              className="w-full max-w-[500px] p-6 bg-surface border border-white/10 rounded-2xl shadow-2xl relative"
-              initial={{ scale: 0.95, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="w-full max-w-lg p-6 sm:p-7 bg-[#16181d] border border-white/10 rounded-3xl shadow-2xl relative overflow-hidden"
+              initial={{ scale: 0.95, opacity: 0, y: 15 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 15 }}
             >
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold flex items-center gap-2 text-white">
-                  <Key size={20} className="text-amber-400" /> Assign Physical Rooms
-                </h2>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+              {/* Accent Bar */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-75"></div>
+
+              {/* Header */}
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
+                      <Bed size={18} />
+                    </div>
+                    <h2 className="text-xl font-bold text-white tracking-tight">
+                      {modalMode === 'checkin' ? 'Assign Rooms & Check-In' : 'Change Room Allocation'}
+                    </h2>
+                  </div>
+                  <p className="text-slate-400 text-xs ml-9">
+                    Select physical room numbers for each reserved room type.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition-colors"
+                >
                   <X size={20} />
                 </button>
               </div>
 
               <form onSubmit={modalMode === 'checkin' ? handleConfirmCheckIn : handleConfirmEditRooms} className="space-y-4">
-                <p className="text-slate-400 text-sm mb-2">Select physical room numbers for your booked types.</p>
-                
-                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-3.5 max-h-[55vh] overflow-y-auto pr-1 custom-scrollbar">
                   {assignments.map((assignment, index) => {
                     const roomType = roomTypes.find(rt => rt.roomCode === assignment.roomCode);
                     const availableRooms = (roomType?.rooms as any[])?.filter((r: any) => r.status === 'no status' || (modalMode === 'edit' && r.userRoomBookingId === selectedBookingId)) || [];
 
                     return (
-                      <div key={assignment.id} className="bg-black/20 border border-white/10 rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-white font-medium text-sm">Room {index + 1}</h3>
-                          <span className="text-slate-400 text-xs">{roomType?.name || assignment.roomCode}</span>
+                      <div key={assignment.id} className="bg-black/30 border border-white/10 rounded-2xl p-4 space-y-2.5 transition-all hover:border-white/20">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-lg bg-primary/10 text-primary border border-primary/20 text-xs font-bold flex items-center justify-center">
+                              {index + 1}
+                            </span>
+                            <span className="text-white font-semibold text-xs">Room Slot #{index + 1}</span>
+                          </div>
+                          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-white/5 text-slate-300 border border-white/10">
+                            {roomType?.name || assignment.roomCode}
+                          </span>
                         </div>
                         
-                        <div className="relative">
+                        <div className="relative group">
+                          <Bed size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10" />
                           <select
                             required
                             value={assignment.roomNumber}
                             onChange={(e) => handleAssignmentChange(assignment.id, e.target.value)}
-                            className={`${inputClass} appearance-none bg-black/40 py-2.5 text-sm`}
+                            className={`${inputClass} appearance-none pl-10 bg-black/40 py-3 text-sm font-semibold rounded-xl text-white border-white/10`}
                           >
-                            <option value="" disabled>Select Room Number</option>
+                            <option value="" disabled>Select Room Number...</option>
                             {availableRooms.map((r: any) => {
                               const isSelectedElsewhere = assignments.some(a => a.id !== assignment.id && a.roomCode === assignment.roomCode && a.roomNumber === r.roomNumber);
                               return (
                                 <option key={r.roomNumber} value={r.roomNumber} disabled={isSelectedElsewhere}>
-                                  Room {r.roomNumber} {isSelectedElsewhere ? '(Selected)' : ''}
+                                  Room {r.roomNumber} {isSelectedElsewhere ? '(Selected in another slot)' : ''}
                                 </option>
                               );
                             })}
                           </select>
                           {availableRooms.length === 0 && (
-                            <p className="text-red-400 text-xs mt-2 bg-red-500/10 p-2 rounded border border-red-500/20">
-                              No rooms available for this type.
+                            <p className="text-red-400 text-xs mt-2 bg-red-500/10 p-2 rounded.xl border border-red-500/20 flex items-center gap-1.5">
+                              <AlertCircle size={14} /> No rooms available for this room type.
                             </p>
                           )}
                         </div>
@@ -695,24 +860,142 @@ export default function BookRoomPage() {
                   })}
                 </div>
 
-                <div className="pt-6 mt-4 border-t border-white/10 flex justify-end gap-3">
+                <div className="pt-4 border-t border-white/10 flex justify-end items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors text-sm"
+                    className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:bg-white/5 transition-all text-sm font-semibold"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className={`px-6 py-2.5 rounded-xl flex items-center gap-2 text-white font-bold transition-colors text-sm ${submitting ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20'}`}
+                    className={`px-6 py-2.5 rounded-xl flex items-center gap-2 text-white font-bold transition-all text-sm ${submitting ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20 hover:shadow-primary/30'}`}
                   >
                     {submitting ? <Loader2 className="animate-spin" size={16} /> : <Key size={16} />}
-                    {submitting ? 'Processing...' : 'Confirm'}
+                    <span>{submitting ? 'Saving Changes...' : modalMode === 'checkin' ? 'Confirm Check-In' : 'Save Room Allocation'}</span>
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Checkout Modal */}
+      <AnimatePresence>
+        {checkoutBooking && (
+          <motion.div
+            className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="w-full max-w-lg p-6 sm:p-7 bg-[#16181d] border border-white/10 rounded-3xl shadow-2xl relative overflow-hidden"
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+            >
+              {/* Accent Line */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-75"></div>
+
+              {/* Header */}
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <CreditCard size={18} />
+                    </div>
+                    <h2 className="text-xl font-bold text-white tracking-tight">Checkout Summary</h2>
+                  </div>
+                  <p className="text-slate-400 text-xs ml-9">
+                    {checkoutBooking.guestName || 'Guest'} &bull; {checkoutBooking.guestPhone}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCheckoutBooking(null)}
+                  className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Bill Details Breakdown */}
+              <div className="space-y-3 mb-6">
+                <div className="bg-black/30 border border-white/5 rounded-2xl p-4 space-y-3">
+                  {/* Room Charge Row */}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-300 font-medium flex items-center gap-2">
+                      <Bed size={15} className="text-slate-400" /> Room Bill
+                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                        checkoutBooking.paymentStatus === 'PAID'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                      }`}>
+                        {checkoutBooking.paymentStatus}
+                      </span>
+                      <span className="text-white font-bold font-mono">₹{Number(checkoutBooking.totalAmount ?? 0).toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Restaurant Bill Row */}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-300 font-medium flex items-center gap-2">
+                      <Tag size={15} className="text-slate-400" /> Restaurant Bill
+                    </span>
+                    <span className="text-white font-bold font-mono">₹{Number(checkoutBooking.foodTotalAmount ?? 0).toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Total Highlight Card */}
+                <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 rounded-2xl p-4 flex justify-between items-center">
+                  <div>
+                    <div className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-0.5">Total Amount Due</div>
+                    <div className="text-[11px] text-slate-500">
+                      {checkoutBooking.paymentStatus === 'PAID' ? 'Room bill paid (showing food balance)' : 'Includes Room + Restaurant'}
+                    </div>
+                  </div>
+                  <div className="text-emerald-400 font-black text-2xl font-mono tracking-tight">
+                    ₹{(
+                      (checkoutBooking.paymentStatus !== 'PAID' ? Number(checkoutBooking.totalAmount || 0) : 0) +
+                      Number(checkoutBooking.foodTotalAmount || 0)
+                    ).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCheckoutBooking(null)}
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:bg-white/5 transition-all text-sm font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => printBookingBill(checkoutBooking)}
+                  className="w-full sm:flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-all text-sm font-bold whitespace-nowrap"
+                >
+                  <Printer size={16} /> Print Bill
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCheckOut(checkoutBooking);
+                    setCheckoutBooking(null);
+                  }}
+                  className="w-full sm:flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 transition-all text-sm font-bold shadow-lg shadow-emerald-500/25 whitespace-nowrap"
+                >
+                  <CheckCircle size={16} /> Confirm Checkout
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

@@ -3,11 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchRoomTypes, fetchAvailability, createRoomType, updateRoomType, deleteRoomType, addRoomToType, deleteRoomFromType } from '../../../store/slices/roomTypesSlice';
-import { Plus, Edit2, Trash2, IndianRupee, Users as UsersIcon, Home, Calculator } from 'lucide-react';
+import { Plus, Edit2, Trash2, IndianRupee, Users as UsersIcon, Home, Calculator, User } from 'lucide-react';
 import RoomTypeModal from '../../../components/modals/RoomTypeModal';
 import GenericDeleteModal from '../../../components/modals/GenericDeleteModal';
 import CalculatePriceModal from '../../../components/modals/CalculatePriceModal';
 import AddRoomModal from '../../../components/modals/AddRoomModal';
+import GuestDetailsModal from '../../../components/modals/GuestDetailsModal';
 
 export default function RoomManagePage() {
   const dispatch = useAppDispatch();
@@ -20,6 +21,9 @@ export default function RoomManagePage() {
 
   const [rtModalOpen, setRtModalOpen] = useState(false);
   const [editingRt, setEditingRt] = useState<any>(null);
+
+  const [guestModalOpen, setGuestModalOpen] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'roomType' | 'room', id: number | null, name: string, roomNumber?: string }>({ type: 'roomType', id: null, name: '' });
@@ -205,54 +209,82 @@ export default function RoomManagePage() {
 
       <div>
         {activeTab === 'types' && (
-          <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {roomTypes.map(rt => (
-              <div key={rt.id} className="bg-surface/80 backdrop-blur-xl border border-white/10 rounded-2xl flex flex-col md:flex-row shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden">
-                <div className="p-6 md:w-1/4 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/5 shrink-0">
-                  <div className="flex items-start justify-between mb-3">
+              <div key={rt.id} className="bg-surface/80 backdrop-blur-xl border border-white/10 rounded-2xl flex flex-col justify-between shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-white/20 transition-all overflow-hidden group">
+                <div className="p-5 border-b border-white/5 relative overflow-hidden">
+                  <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 bg-primary blur-2xl group-hover:opacity-20 transition-opacity" />
+                  
+                  <div className="flex justify-between items-start mb-2 relative">
                     <div>
-                      <h3 className="text-2xl font-bold text-white mb-2">{rt.name}</h3>
-                      <span className="text-xs font-mono font-bold bg-white/10 text-slate-300 px-3 py-1.5 rounded-lg tracking-wider">{rt.roomCode}</span>
+                      <h3 className="text-2xl font-black text-white tracking-tight">{rt.name}</h3>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="text-xs font-mono font-bold bg-white/10 text-slate-300 px-2.5 py-1 rounded-md tracking-wider">{rt.roomCode}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-2">
-                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider inline-block ${rt.isActive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 ${rt.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${rt.isActive ? 'bg-emerald-400' : 'bg-red-400'}`} />
                       {rt.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
+                  <p className="text-sm text-slate-400 line-clamp-1 relative">{rt.description || 'No description provided.'}</p>
                 </div>
 
-                <div className="p-6 md:flex-1 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/5 bg-black/10">
-                  <p className="text-sm text-slate-300 line-clamp-2 leading-relaxed mb-4">{rt.description || 'No description provided for this room type.'}</p>
-
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2 text-sm text-slate-300">
-                      <IndianRupee size={16} className="text-slate-500" />
-                      <span className="font-bold text-white">₹{rt.basePrice || 0}</span> Base &bull; <span className="font-bold text-white">₹{rt.extraPersonAmount || 0}</span> Extra Person
+                <div className="p-5 bg-black/10 flex-1">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-slate-500 mb-1">
+                        <IndianRupee size={14} /> <span className="text-[11px] uppercase font-bold tracking-wider">Prices</span>
+                      </div>
+                      <div className="text-sm text-white font-medium">
+                        ₹{rt.basePrice || 0} <span className="text-slate-500 text-xs font-normal">Base</span>
+                      </div>
+                      <div className="text-sm text-white font-medium">
+                        ₹{rt.extraPersonAmount || 0} <span className="text-slate-500 text-xs font-normal">Extra</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-300">
-                      <UsersIcon size={16} className="text-slate-500" />
-                      <span className="font-bold text-white">{rt.maxAdults}</span> Adults &bull; <span className="font-bold text-white">{rt.maxChildren}</span> Children
+                    
+                    <div>
+                      <div className="flex items-center gap-1.5 text-slate-500 mb-1">
+                        <UsersIcon size={14} /> <span className="text-[11px] uppercase font-bold tracking-wider">Capacity</span>
+                      </div>
+                      <div className="text-sm text-white font-medium">
+                        {rt.maxAdults} <span className="text-slate-500 text-xs font-normal">Adults</span>
+                      </div>
+                      <div className="text-sm text-white font-medium">
+                        {rt.maxChildren} <span className="text-slate-500 text-xs font-normal">Children</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-300">
-                      <Home size={16} className="text-slate-500" />
-                      <span className="font-bold text-white">{rt.totalRooms}</span> Total Rooms &bull;
-                      <span className="font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md ml-1 border border-emerald-500/20">
-                        {rt.availableRooms || 0} Available
-                      </span>
+                    
+                    <div className="col-span-2 mt-2 pt-4 border-t border-white/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-slate-500">
+                          <Home size={14} /> <span className="text-[11px] uppercase font-bold tracking-wider">Rooms</span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-white font-bold">{rt.totalRooms}</span> <span className="text-slate-500 text-xs">Total</span>
+                          <span className="mx-2 text-white/20">&bull;</span>
+                          <span className="font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{rt.availableRooms || 0}</span> <span className="text-emerald-500/70 text-xs">Available</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 md:w-1/4 flex flex-col items-stretch justify-center gap-3 bg-black/20 shrink-0">
-                  <button onClick={() => { setSelectedRtForCalc(rt); setCalcPriceModalOpen(true); }} className="inline-flex flex-1 justify-center items-center gap-2 px-5 py-3 text-sm font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-300 rounded-xl transition-colors border border-blue-500/20"><Calculator size={16} /> Calculate Price</button>
-                  <div className="flex gap-3">
-                    <button onClick={() => { setEditingRt(rt); setRtModalOpen(true); }} className="inline-flex flex-1 justify-center items-center gap-2 px-5 py-3 text-sm font-bold text-slate-300 bg-white/5 hover:bg-white/10 hover:text-white rounded-xl transition-colors"><Edit2 size={16} /> Edit</button>
-                    <button onClick={() => handleDeleteRt(rt.id, rt.name)} className="inline-flex flex-1 justify-center items-center gap-2 px-5 py-3 text-sm font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 hover:text-red-300 rounded-xl transition-colors"><Trash2 size={16} /> Delete</button>
-                  </div>
+                <div className="p-4 bg-black/20 flex items-center gap-2 border-t border-white/5">
+                  <button onClick={() => { setSelectedRtForCalc(rt); setCalcPriceModalOpen(true); }} className="flex-[1.2] inline-flex justify-center items-center gap-2 px-3 py-2 text-xs font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-300 rounded-xl transition-colors border border-blue-500/20">
+                    <Calculator size={14} /> Calc Price
+                  </button>
+                  <button onClick={() => { setEditingRt(rt); setRtModalOpen(true); }} className="flex-[0.9] inline-flex justify-center items-center gap-2 px-3 py-2 text-xs font-bold text-slate-300 bg-white/5 hover:bg-white/10 hover:text-white rounded-xl transition-colors border border-white/10">
+                    <Edit2 size={14} /> Edit
+                  </button>
+                  <button onClick={() => handleDeleteRt(rt.id, rt.name)} className="flex-[0.9] inline-flex justify-center items-center gap-2 px-3 py-2 text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-300 rounded-xl transition-colors border border-rose-500/20">
+                    <Trash2 size={14} /> Delete
+                  </button>
                 </div>
               </div>
             ))}
+            
             {roomTypes.length === 0 && (
               <div className="col-span-full p-16 text-center border-2 border-dashed border-white/10 rounded-3xl text-slate-400 bg-surface/30 backdrop-blur-sm">
                 <div className="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/5 text-slate-500"><Home size={32} /></div>
@@ -264,10 +296,13 @@ export default function RoomManagePage() {
         )}
 
         {activeTab === 'rooms' && (
-          <div className="flex flex-col gap-6">
-            <div className="flex justify-end">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center flex-wrap gap-4 bg-surface/30 p-4 rounded-2xl border border-white/5">
+              <div className="text-slate-400 text-sm font-medium">
+                Total Rooms: <span className="text-white font-bold">{roomTypes.reduce((acc, rt) => acc + (rt.rooms?.length || 0), 0)}</span>
+              </div>
               <select
-                className="bg-black/20 border border-white/10 px-4 py-2.5 rounded-xl text-slate-200 outline-none focus:border-primary text-sm min-w-[200px]"
+                className="bg-surface/50 border border-white/10 px-4 py-2 rounded-xl text-slate-200 outline-none focus:border-primary text-sm min-w-[200px]"
                 value={roomFilter}
                 onChange={(e) => setRoomFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
               >
@@ -278,29 +313,58 @@ export default function RoomManagePage() {
               </select>
             </div>
             
-            {roomTypes
-              .filter(rt => roomFilter === 'all' || rt.id === roomFilter)
-              .flatMap(rt => 
-                (rt.rooms || []).map((room: any, idx: number) => (
-                  <div key={`${rt.id}-${room.roomNumber}-${idx}`} className="bg-surface/80 backdrop-blur-xl border border-white/10 rounded-2xl flex flex-col md:flex-row shadow-[0_8px_30px_rgb(0,0,0,0.12)] overflow-hidden">
-                  <div className="p-6 flex-1 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/5">
-                    <div className="flex flex-col gap-2 mb-3">
-                      <h3 className="text-2xl font-bold text-white">Room Number: {room.roomNumber}</h3>
-                      <span className="text-xs font-mono font-bold bg-white/10 text-slate-300 px-3 py-1.5 rounded-lg tracking-wider inline-flex items-center gap-1.5 w-fit"><Home size={12} /> {rt.name}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {roomTypes
+                .filter(rt => roomFilter === 'all' || rt.id === roomFilter)
+                .flatMap(rt => 
+                  (rt.rooms || []).map((room: any, idx: number) => (
+                    <div key={`${rt.id}-${room.roomNumber}-${idx}`} className="bg-surface/80 backdrop-blur-xl border border-white/10 p-5 rounded-2xl flex flex-col justify-between shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-white/20 transition-all">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start gap-2">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Room</span>
+                            <h3 className="text-2xl font-black text-white tracking-tight">{room.roomNumber}</h3>
+                          </div>
+                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 ${
+                            room.status === 'checked in' 
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
+                              : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${room.status === 'checked in' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                            {room.status === 'checked in' ? 'Checked In' : 'Available'}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-1.5 text-xs text-slate-300 bg-white/5 border border-white/5 px-2.5 py-1 rounded-lg w-fit">
+                          <Home size={12} className="text-slate-400" /> 
+                          <span className="font-medium">{rt.name}</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 mt-4 border-t border-white/5 flex items-center gap-2">
+                        {room.status === 'checked in' && room.userRoomBookingId ? (
+                          <button 
+                            onClick={() => { setSelectedBookingId(Number(room.userRoomBookingId)); setGuestModalOpen(true); }} 
+                            className="flex-1 inline-flex justify-center items-center gap-2 px-3 py-2 text-xs font-bold text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 hover:text-sky-300 rounded-xl transition-colors border border-sky-500/20"
+                          >
+                            <User size={14} /> View Guest
+                          </button>
+                        ) : (
+                          <div className="flex-1 text-[11px] text-slate-500 italic">Vacant</div>
+                        )}
+                        
+                        <button 
+                          onClick={() => handleDeleteRoom(rt.id, room.roomNumber)} 
+                          title="Delete Room"
+                          className="p-2 text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-300 rounded-xl transition-colors border border-rose-500/20"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="p-6 md:w-1/4 flex flex-col items-stretch justify-center gap-3 bg-black/20 shrink-0">
-                    <span className={`w-full justify-center px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-wider inline-flex items-center gap-2 ${room.status === 'checked in' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'}`}>
-                      {room.status === 'checked in' ? 'Checked In' : 'No Status'}
-                    </span>
-                    <button onClick={() => handleDeleteRoom(rt.id, room.roomNumber)} className="inline-flex w-full justify-center items-center gap-2 px-5 py-2.5 text-sm font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 hover:text-red-300 rounded-xl transition-colors">
-                      <Trash2 size={16} /> Delete
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
             
             {roomTypes
               .filter(rt => roomFilter === 'all' || rt.id === roomFilter)
@@ -319,7 +383,7 @@ export default function RoomManagePage() {
 
       <RoomTypeModal isOpen={rtModalOpen} onClose={() => setRtModalOpen(false)} onSave={handleSaveRt} initialData={editingRt} />
       <AddRoomModal isOpen={addRoomModalOpen} onClose={() => setAddRoomModalOpen(false)} onSave={handleSaveRoom} roomTypes={roomTypes} />
-
+      <GuestDetailsModal isOpen={guestModalOpen} onClose={() => setGuestModalOpen(false)} bookingId={selectedBookingId} />
       <CalculatePriceModal isOpen={calcPriceModalOpen} onClose={() => setCalcPriceModalOpen(false)} roomType={selectedRtForCalc} />
       <GenericDeleteModal
         isOpen={deleteModalOpen}

@@ -112,6 +112,18 @@ export const updateOrder = createAsyncThunk(
   }
 );
 
+export const transferOrderToRoom = createAsyncThunk(
+  'order/transferOrderToRoom',
+  async ({ id, guestPhone }: { id: number | string; guestPhone: string }, { rejectWithValue }) => {
+    try {
+      const response = await fetcher.transferOrderToRoom(id, guestPhone);
+      return { id, response };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to transfer order');
+    }
+  }
+);
+
 const orderSlice = createSlice({
   name: 'order',
   initialState,
@@ -155,6 +167,17 @@ const orderSlice = createSlice({
         }
         if (state.selectedOrder?.id === action.payload.id) {
           state.selectedOrder = action.payload;
+        }
+      })
+      // Transfer Order To Room
+      .addCase(transferOrderToRoom.fulfilled, (state, action) => {
+        const orderId = action.payload.id;
+        const index = state.orders.findIndex(order => order.id === orderId);
+        if (index !== -1) {
+          state.orders[index].status = 'COMPLETED';
+        }
+        if (state.selectedOrder?.id === orderId) {
+          state.selectedOrder.status = 'COMPLETED';
         }
       });
   },
