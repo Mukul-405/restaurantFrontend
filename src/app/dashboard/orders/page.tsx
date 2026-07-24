@@ -121,34 +121,14 @@ export default function OrdersPage() {
     }
   };
 
-  if (status === 'loading' && orders.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={32} />
-      </div>
-    );
-  }
-
-  if (status === 'failed' && orders.length === 0) {
-    return (
-      <div className="flex flex-col h-full items-center justify-center text-center">
-        <p className="text-danger mb-4">{error}</p>
-        <button 
-          onClick={() => fetchOrdersData()}
-          className="flex items-center gap-2 text-primary hover:text-primary-hover"
-        >
-          <RefreshCw size={16} />
-          <span>Retry</span>
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="h-full flex flex-col space-y-6">
       <div className="flex flex-row justify-between items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Orders</h1>
+          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
+            Orders
+            {status === 'loading' && <Loader2 className="animate-spin text-primary" size={20} />}
+          </h1>
         </div>
         <button
           onClick={handleOpenCreate}
@@ -257,8 +237,24 @@ export default function OrdersPage() {
 
 
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4">
-        {orders.length === 0 ? (
-          <div className="bg-surface/50 border border-white/10 rounded-2xl p-12 flex flex-col items-center justify-center text-slate-400">
+        {status === 'loading' ? (
+          <div className="bg-surface/50 border border-white/10 rounded-2xl p-16 flex flex-col items-center justify-center text-slate-400 min-h-[300px]">
+            <Loader2 className="animate-spin text-primary mb-3" size={36} />
+            <p className="text-sm font-medium">Loading orders...</p>
+          </div>
+        ) : status === 'failed' ? (
+          <div className="bg-surface/50 border border-white/10 rounded-2xl p-12 flex flex-col items-center justify-center text-slate-400 min-h-[300px]">
+            <p className="text-danger mb-4">{error || 'Failed to load orders'}</p>
+            <button 
+              onClick={() => fetchOrdersData()}
+              className="flex items-center gap-2 text-primary hover:text-primary-hover font-semibold"
+            >
+              <RefreshCw size={16} />
+              <span>Retry</span>
+            </button>
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="bg-surface/50 border border-white/10 rounded-2xl p-12 flex flex-col items-center justify-center text-slate-400 min-h-[300px]">
             <p>No orders found matching your filters.</p>
           </div>
         ) : (

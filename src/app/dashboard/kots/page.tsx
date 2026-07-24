@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Printer, RefreshCw, Loader2, Clock } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchOrders, updateOrder, Order } from '../../../store/slices/orderSlice';
 import { useAuth } from '../../../context/AuthContext';
@@ -85,7 +86,7 @@ export default function KOTPage() {
       setConfirmModal({ isOpen: true, orderId: order.id });
     } catch (err) {
       console.error('Failed to clear KOT status', err);
-      alert('Failed to print KOT.');
+      toast.error('Failed to print KOT.');
     } finally {
       setPrintingId(null);
     }
@@ -135,7 +136,8 @@ export default function KOTPage() {
         </div>
         <button
           onClick={() => dispatch(fetchOrders({ status: 'PENDING', limit: 100 }))}
-          className="p-2 bg-surface/50 border border-white/10 rounded-lg text-slate-200 hover:bg-white/5 transition-colors flex items-center gap-2"
+          disabled={status === 'loading'}
+          className="p-2 bg-surface/50 border border-white/10 rounded-lg text-slate-200 hover:bg-white/5 transition-colors flex items-center gap-2 disabled:opacity-50"
         >
           <RefreshCw size={18} className={status === 'loading' ? 'animate-spin' : ''} />
           <span className="hidden sm:inline">Refresh</span>

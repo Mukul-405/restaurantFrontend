@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { fetchCMInventory, fetchCMRates, fetchCMReservations, pushCMInventory, pushCMRates } from '../../../lib/cmApi';
 import { getRoomTypes } from '../../../lib/roomsApi';
 import { Calendar as CalendarIcon, RefreshCw, Home, IndianRupee, Users, Upload, Download, Plus, Trash2, CheckSquare, Square, Info } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const RestrictionsEditor = ({ restrictions, onChange }: { restrictions: any, onChange: (newRest: any) => void }) => {
   const update = (field: string, value: any) => onChange({ ...restrictions, [field]: value });
@@ -206,7 +207,7 @@ export default function ChannelManagerPage() {
     setIsPushing(true);
     try {
       await pushFn(payload, isRest ? selectedChannels : undefined);
-      alert(`${alertMsg} pushed successfully to Aiosell!`);
+      toast.success(`${alertMsg} pushed successfully to Aiosell!`);
     } catch (err) {
       console.error(err);
       setError(`Failed to push ${activeTab} data. Make sure credentials are set.`);

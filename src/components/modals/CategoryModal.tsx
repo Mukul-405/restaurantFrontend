@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 
 interface CategoryModalProps {
   isOpen: boolean;
@@ -80,6 +80,7 @@ export default function CategoryModal({ isOpen, onClose, onSave }: CategoryModal
               <div className="flex justify-end gap-3 mt-8">
                 <button type="button" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm cursor-pointer transition-all duration-200 border-none outline-none disabled:opacity-50 bg-transparent border border-white/10 text-slate-200 hover:bg-white/5" onClick={onClose}>Cancel</button>
                 <button type="submit" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm cursor-pointer transition-all duration-200 border-none outline-none disabled:opacity-50 bg-primary text-white shadow-[0_4px_14px_0_var(--color-primary-light)] hover:bg-primary-hover hover:-translate-y-[1px]" disabled={formLoading}>
+                  {formLoading && <Loader2 className="animate-spin" size={16} />}
                   {formLoading ? 'Saving...' : 'Save Category'}
                 </button>
               </div>

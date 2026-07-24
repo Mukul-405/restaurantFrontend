@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { X, ShieldAlert, ShieldCheck, Loader2 } from 'lucide-react';
 import { fetcher } from '../../lib/fetcher';
 import { User } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
 
 interface BlockMemberModalProps {
   isOpen: boolean;
@@ -26,7 +27,7 @@ export default function BlockMemberModal({ isOpen, onClose, onSuccess, member }:
       onSuccess();
       onClose();
     } catch (err: any) {
-      alert('Failed to update block status');
+      toast.error('Failed to update block status');
     } finally {
       setFormLoading(false);
     }
@@ -65,6 +66,7 @@ export default function BlockMemberModal({ isOpen, onClose, onSuccess, member }:
             <div className="flex justify-end gap-3 mt-8">
               <button type="button" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm cursor-pointer transition-all duration-200 border-none outline-none disabled:opacity-50 bg-transparent border border-white/10 text-slate-200 hover:bg-white/5" onClick={onClose}>Cancel</button>
               <button type="button" className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm cursor-pointer transition-all duration-200 border-none outline-none disabled:opacity-50 text-white ${isBlocking ? 'bg-warning hover:bg-yellow-600' : 'bg-success hover:bg-green-600'}`} onClick={handleBlockConfirm} disabled={formLoading}>
+                {formLoading && <Loader2 className="animate-spin" size={16} />}
                 {formLoading ? (isBlocking ? 'Blocking...' : 'Unblocking...') : (isBlocking ? 'Yes, Block' : 'Yes, Unblock')}
               </button>
             </div>

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertCircle } from 'lucide-react';
+import { X, AlertCircle, Loader2 } from 'lucide-react';
 import { fetcher } from '../../lib/fetcher';
 import { User } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
 
 interface DeleteMemberModalProps {
   isOpen: boolean;
@@ -22,7 +23,7 @@ export default function DeleteMemberModal({ isOpen, onClose, onSuccess, member }
       onSuccess();
       onClose();
     } catch (err: any) {
-      alert('Failed to delete member');
+      toast.error('Failed to delete member');
     } finally {
       setFormLoading(false);
     }
@@ -58,6 +59,7 @@ export default function DeleteMemberModal({ isOpen, onClose, onSuccess, member }
             <div className="flex justify-end gap-3 mt-8">
               <button type="button" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm cursor-pointer transition-all duration-200 border-none outline-none disabled:opacity-50 bg-transparent border border-white/10 text-slate-200 hover:bg-white/5" onClick={onClose}>Cancel</button>
               <button type="button" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm cursor-pointer transition-all duration-200 border-none outline-none disabled:opacity-50 bg-danger text-white hover:bg-danger-hover" onClick={handleDeleteConfirm} disabled={formLoading}>
+                {formLoading && <Loader2 className="animate-spin" size={16} />}
                 {formLoading ? 'Deleting...' : 'Yes, Delete'}
               </button>
             </div>

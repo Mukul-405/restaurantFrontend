@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Key } from 'lucide-react';
+import { X, Key, Loader2 } from 'lucide-react';
 import { fetcher } from '../../lib/fetcher';
 import { User } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
 
 interface ResetPasswordModalProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ export default function ResetPasswordModal({ isOpen, onClose, onSuccess, member 
       setPassword('');
       onSuccess();
       onClose();
-      alert(`Password successfully reset for ${member.name}. Active sessions have been revoked.`);
+      toast.success(`Password successfully reset for ${member.name}. Active sessions have been revoked.`);
     } catch (err: any) {
       setFormError(err.response?.data?.error || 'Failed to reset password');
     } finally {
@@ -88,6 +89,7 @@ export default function ResetPasswordModal({ isOpen, onClose, onSuccess, member 
               <div className="flex justify-end gap-3 mt-8">
                 <button type="button" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm cursor-pointer transition-all duration-200 border-none outline-none disabled:opacity-50 bg-transparent border border-white/10 text-slate-200 hover:bg-white/5" onClick={onClose}>Cancel</button>
                 <button type="submit" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm cursor-pointer transition-all duration-200 border-none outline-none disabled:opacity-50 bg-primary text-white shadow-[0_4px_14px_0_var(--color-primary-light)] hover:bg-primary-hover hover:-translate-y-[1px]" disabled={formLoading}>
+                  {formLoading && <Loader2 className="animate-spin" size={16} />}
                   {formLoading ? 'Resetting...' : 'Reset Password'}
                 </button>
               </div>

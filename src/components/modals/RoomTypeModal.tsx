@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X, Loader2 } from 'lucide-react';
 
 interface RoomTypeModalProps {
   isOpen: boolean;
@@ -159,7 +159,8 @@ export default function RoomTypeModal({ isOpen, onClose, onSave, initialData }: 
               {error && <div className="text-danger text-sm text-center">{error}</div>}
               <div className="flex justify-end gap-3 mt-4">
                 <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-lg border border-white/10 text-slate-200 hover:bg-white/5 font-semibold text-sm">Cancel</button>
-                <button type="submit" disabled={loading} className="px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary-hover font-semibold text-sm disabled:opacity-50">
+                <button type="submit" disabled={loading} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white hover:bg-primary-hover font-semibold text-sm disabled:opacity-50">
+                  {loading && <Loader2 className="animate-spin" size={16} />}
                   {loading ? 'Saving...' : 'Save'}
                 </button>
               </div>

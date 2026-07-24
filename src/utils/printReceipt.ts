@@ -1,9 +1,10 @@
 import { Order } from '../store/slices/orderSlice';
+import toast from 'react-hot-toast';
 
 export const printReceipt = (order: Order) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
-    alert('Please allow popups to print receipts.');
+    toast.error('Please allow popups to print receipts.');
     return;
   }
 
@@ -232,7 +233,7 @@ export const printReceipt = (order: Order) => {
 export const printBookingBill = (booking: any) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
-    alert('Please allow popups to print receipts.');
+    toast.error('Please allow popups to print receipts.');
     return;
   }
 

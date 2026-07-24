@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 import { AuthProvider } from "../context/AuthContext";
 import StoreProvider from "./StoreProvider";
+import { Toaster } from 'react-hot-toast';
 
 export default function RootLayout({
   children,
@@ -29,7 +30,10 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <StoreProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <Toaster position="top-right" />
+            {children}
+          </AuthProvider>
         </StoreProvider>
       </body>
     </html>

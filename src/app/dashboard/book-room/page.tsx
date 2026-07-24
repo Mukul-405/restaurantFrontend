@@ -39,6 +39,7 @@ export default function BookRoomPage() {
   const [modalMode, setModalMode] = useState<'checkin' | 'edit'>('checkin');
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   const [checkoutBooking, setCheckoutBooking] = useState<any>(null);
+  const [openingModalBookingId, setOpeningModalBookingId] = useState<number | null>(null);
 
   const refreshRoomTypes = async () => {
     try {
@@ -65,17 +66,22 @@ export default function BookRoomPage() {
   };
 
   const openAssignmentModal = async (booking: any, mode: 'checkin' | 'edit') => {
-    if (!(await refreshRoomTypes())) return;
-    
-    setModalMode(mode);
-    setSelectedBookingId(booking.id);
-    const initialAssignments = (booking.rooms || []).map((r: any, i: number) => ({
-      id: i,
-      roomCode: r.roomCode,
-      roomNumber: r.roomNumber || ''
-    }));
-    setAssignments(initialAssignments);
-    setIsModalOpen(true);
+    setOpeningModalBookingId(booking.id);
+    try {
+      if (!(await refreshRoomTypes())) return;
+
+      setModalMode(mode);
+      setSelectedBookingId(booking.id);
+      const initialAssignments = (booking.rooms || []).map((r: any, i: number) => ({
+        id: i,
+        roomCode: r.roomCode,
+        roomNumber: r.roomNumber || ''
+      }));
+      setAssignments(initialAssignments);
+      setIsModalOpen(true);
+    } finally {
+      setOpeningModalBookingId(null);
+    }
   };
 
   const handleConfirmCheckIn = async (e: React.FormEvent) => {
@@ -149,7 +155,7 @@ export default function BookRoomPage() {
       if (formData.checkIn && formData.checkOut) {
         const checkInDate = new Date(formData.checkIn);
         const checkOutDate = new Date(formData.checkOut);
-        
+
         if (checkInDate > checkOutDate) {
           return;
         }
@@ -167,12 +173,12 @@ export default function BookRoomPage() {
         setAvailability({});
       }
     };
-    
+
     // Add a slight debounce
     const timeoutId = setTimeout(() => {
       fetchAvailability();
     }, 300);
-    
+
     return () => clearTimeout(timeoutId);
   }, [formData.checkIn, formData.checkOut]);
 
@@ -217,7 +223,7 @@ export default function BookRoomPage() {
     try {
       const totalAdults = rooms.reduce((sum, room) => sum + Number(room.adults), 0);
       const totalChildren = rooms.reduce((sum, room) => sum + Number(room.children), 0);
-      
+
       const payload: BookingPayload = {
         ...formData,
         totalAdults,
@@ -230,7 +236,7 @@ export default function BookRoomPage() {
           roomNumber: null
         }))
       };
-      
+
       await createBooking(payload);
       setFormSuccess('Booking Confirmed! The reservation has been successfully created.');
       resetForm();
@@ -244,12 +250,12 @@ export default function BookRoomPage() {
 
   const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.checkIn || !formData.checkOut) {
       setFormError("Please select check-in and check-out dates.");
       return;
     }
-    
+
     if (new Date(formData.checkIn) > new Date(formData.checkOut)) {
       setFormError("Check-out date must be same or after check-in date.");
       return;
@@ -258,7 +264,7 @@ export default function BookRoomPage() {
     // Validate if they booked more rooms of a type than available
     const requestedCounts: Record<string, number> = {};
     rooms.forEach(r => { requestedCounts[r.roomCode] = (requestedCounts[r.roomCode] || 0) + 1 });
-    
+
     for (const [code, count] of Object.entries(requestedCounts)) {
       const avail = availability[code] || 0;
       if (count > avail) {
@@ -267,7 +273,7 @@ export default function BookRoomPage() {
         return;
       }
     }
-    
+
     submitBooking();
   };
 
@@ -328,248 +334,249 @@ export default function BookRoomPage() {
       <AnimatePresence mode="wait">
         {activeTab === 'book' ? (
           <motion.form key="book" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} onSubmit={handleContinue} className="space-y-6">
-        
-        {/* Card 1: Guest Information */}
-        <div className="bg-surface border border-white/10 rounded-2xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-            <User size={18} className="text-blue-400" /> Guest Information
-          </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className={labelClass}>Full Name</label>
-              <div className="relative group">
-                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
-                <input type="text" name="guestName" required value={formData.guestName} onChange={handleChange} className={`${inputClass} pl-10`} placeholder="Enter guest's full name" />
+            {/* Card 1: Guest Information */}
+            <div className="bg-surface border border-white/10 rounded-2xl p-6">
+              <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                <User size={18} className="text-blue-400" /> Guest Information
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className={labelClass}>Full Name</label>
+                  <div className="relative group">
+                    <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                    <input type="text" name="guestName" required value={formData.guestName} onChange={handleChange} className={`${inputClass} pl-10`} placeholder="Enter guest's full name" />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelClass}>Phone Number</label>
+                  <div className="relative group">
+                    <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                    <input type="tel" name="guestPhone" required value={formData.guestPhone} onChange={handleChange} className={`${inputClass} pl-10`} placeholder="555-000-0000" />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelClass}>Email Address</label>
+                  <div className="relative group">
+                    <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                    <input type="email" name="guestEmail" value={formData.guestEmail} onChange={handleChange} className={`${inputClass} pl-10`} placeholder="guest@example.com" />
+                  </div>
+                </div>
               </div>
             </div>
-            <div>
-              <label className={labelClass}>Phone Number</label>
-              <div className="relative group">
-                <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
-                <input type="tel" name="guestPhone" required value={formData.guestPhone} onChange={handleChange} className={`${inputClass} pl-10`} placeholder="555-000-0000" />
+
+            {/* Card 2: Stay Details */}
+            <div className="bg-surface border border-white/10 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Calendar size={18} className="text-purple-400" /> Stay Details
+                </h2>
+                {checkingAvail && (
+                  <span className="text-xs text-primary flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                    <Loader2 size={12} className="animate-spin" /> Checking dates...
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className={labelClass}>Check-in Date</label>
+                  <input type="date" name="checkIn" required min={todayStr} value={formData.checkIn} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
+                </div>
+                <div>
+                  <label className={labelClass}>Check-out Date</label>
+                  <input type="date" name="checkOut" required min={formData.checkIn || todayStr} value={formData.checkOut} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
+                </div>
               </div>
             </div>
-            <div>
-              <label className={labelClass}>Email Address</label>
-              <div className="relative group">
-                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
-                <input type="email" name="guestEmail" value={formData.guestEmail} onChange={handleChange} className={`${inputClass} pl-10`} placeholder="guest@example.com" />
+
+            {/* Card 3: Room Allocation */}
+            <div className="bg-surface border border-white/10 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Bed size={18} className="text-emerald-400" /> Room Allocation
+                </h2>
+                <span className="bg-emerald-500/10 text-emerald-400 text-xs font-bold px-3 py-1 rounded-lg border border-emerald-500/20">
+                  {rooms.length} {rooms.length === 1 ? 'Room' : 'Rooms'}
+                </span>
               </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Card 2: Stay Details */}
-        <div className="bg-surface border border-white/10 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Calendar size={18} className="text-purple-400" /> Stay Details
-            </h2>
-            {checkingAvail && (
-              <span className="text-xs text-primary flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                <Loader2 size={12} className="animate-spin" /> Checking dates...
-              </span>
-            )}
-          </div>
+              <div className="space-y-4">
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-slate-400 space-y-3 bg-black/10 rounded-xl border border-white/5">
+                    <Loader2 className="animate-spin text-primary" size={24} />
+                    <p className="text-sm">Loading available inventory...</p>
+                  </div>
+                ) : (
+                  <AnimatePresence>
+                    {rooms.map((room, index) => {
+                      const selectedRoomType = roomTypes.find(rt => rt.roomCode === room.roomCode);
+                      const ratePlans = selectedRoomType?.rateplanCodes || [];
+                      const availCount = room.roomCode && typeof availability[room.roomCode] === 'number' ? availability[room.roomCode] : null;
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className={labelClass}>Check-in Date</label>
-              <input type="date" name="checkIn" required min={todayStr} value={formData.checkIn} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
-            </div>
-            <div>
-              <label className={labelClass}>Check-out Date</label>
-              <input type="date" name="checkOut" required min={formData.checkIn || todayStr} value={formData.checkOut} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
-            </div>
-          </div>
-        </div>
+                      // Validation: are there enough rooms for this type?
+                      const requestedOfType = rooms.filter(r => r.roomCode === room.roomCode).length;
+                      const isOverbooked = availCount !== null && requestedOfType > availCount;
 
-        {/* Card 3: Room Allocation */}
-        <div className="bg-surface border border-white/10 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Bed size={18} className="text-emerald-400" /> Room Allocation
-            </h2>
-            <span className="bg-emerald-500/10 text-emerald-400 text-xs font-bold px-3 py-1 rounded-lg border border-emerald-500/20">
-              {rooms.length} {rooms.length === 1 ? 'Room' : 'Rooms'}
-            </span>
-          </div>
-
-          <div className="space-y-4">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-10 text-slate-400 space-y-3 bg-black/10 rounded-xl border border-white/5">
-                <Loader2 className="animate-spin text-primary" size={24} />
-                <p className="text-sm">Loading available inventory...</p>
-              </div>
-            ) : (
-              <AnimatePresence>
-                {rooms.map((room, index) => {
-                  const selectedRoomType = roomTypes.find(rt => rt.roomCode === room.roomCode);
-                  const ratePlans = selectedRoomType?.rateplanCodes || [];
-                  const availCount = room.roomCode && typeof availability[room.roomCode] === 'number' ? availability[room.roomCode] : null;
-                  
-                  // Validation: are there enough rooms for this type?
-                  const requestedOfType = rooms.filter(r => r.roomCode === room.roomCode).length;
-                  const isOverbooked = availCount !== null && requestedOfType > availCount;
-
-                  return (
-                  <motion.div 
-                    key={room.id}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0, margin: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className={`bg-black/20 border rounded-xl p-5 relative group transition-colors ${isOverbooked ? 'border-red-500/50 bg-red-500/5' : 'border-white/5 hover:border-white/10'}`}>
-                      {rooms.length > 1 && (
-                        <button 
-                          type="button" 
-                          onClick={() => removeRoom(index)}
-                          className="absolute top-4 right-4 text-slate-500 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg transition-colors z-10"
-                          title="Remove Room"
+                      return (
+                        <motion.div
+                          key={room.id}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0, margin: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
                         >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
+                          <div className={`bg-black/20 border rounded-xl p-5 relative group transition-colors ${isOverbooked ? 'border-red-500/50 bg-red-500/5' : 'border-white/5 hover:border-white/10'}`}>
+                            {rooms.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeRoom(index)}
+                                className="absolute top-4 right-4 text-slate-500 hover:text-red-400 hover:bg-red-400/10 p-1.5 rounded-lg transition-colors z-10"
+                                title="Remove Room"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
 
-                      <div className="flex items-center gap-3 mb-4">
-                        <h3 className="text-white font-medium text-sm">
-                          Room {index + 1} Configuration
-                        </h3>
-                      </div>
+                            <div className="flex items-center gap-3 mb-4">
+                              <h3 className="text-white font-medium text-sm">
+                                Room {index + 1} Configuration
+                              </h3>
+                            </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="md:col-span-2">
-                          <label className={labelClass}>Room Type</label>
-                          <div className="relative group">
-                            <Bed size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10" />
-                            <select
-                              required
-                              value={room.roomCode}
-                              onChange={(e) => handleRoomChange(index, 'roomCode', e.target.value)}
-                              className={`${inputClass} appearance-none pl-10 bg-black/40`}
-                            >
-                              <option value="" disabled>Select a type...</option>
-                              {roomTypes.map((type) => {
-                                const availForType = availability[type.roomCode];
-                                const availText = checkingAvail 
-                                  ? ' - Checking...' 
-                                  : (typeof availForType === 'number' ? ` - ${availForType} available` : '');
-                                return (
-                                  <option key={type.id} value={type.roomCode}>
-                                    {type.name}{availText}
-                                  </option>
-                                );
-                              })}
-                            </select>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <div className="md:col-span-2">
+                                <label className={labelClass}>Room Type</label>
+                                <div className="relative group">
+                                  <Bed size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10" />
+                                  <select
+                                    required
+                                    value={room.roomCode}
+                                    onChange={(e) => handleRoomChange(index, 'roomCode', e.target.value)}
+                                    className={`${inputClass} appearance-none pl-10 bg-black/40`}
+                                  >
+                                    <option value="" disabled>Select a type...</option>
+                                    {roomTypes.map((type) => {
+                                      const availForType = availability[type.roomCode];
+                                      const availText = checkingAvail
+                                        ? ' - Checking...'
+                                        : (typeof availForType === 'number' ? ` - ${availForType} available` : '');
+                                      return (
+                                        <option key={type.id} value={type.roomCode}>
+                                          {type.name}{availText}
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="md:col-span-2">
+                                <label className={labelClass}>Rate Plan</label>
+                                <div className="relative group">
+                                  <Tag size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10" />
+                                  <select
+                                    required
+                                    value={room.rateplanCode}
+                                    onChange={(e) => handleRoomChange(index, 'rateplanCode', e.target.value)}
+                                    className={`${inputClass} appearance-none pl-10 bg-black/40 disabled:opacity-50`}
+                                    disabled={!room.roomCode || ratePlans.length === 0}
+                                  >
+                                    <option value="" disabled>Select rate plan...</option>
+                                    {ratePlans.map((plan: any) => (
+                                      <option key={plan.code} value={plan.code}>
+                                        {plan.code} - ₹{plan.price}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="md:col-span-2 lg:col-span-1">
+                                <label className={labelClass}>Adults</label>
+                                <div className="relative group">
+                                  <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    required
+                                    value={room.adults}
+                                    onChange={(e) => handleRoomChange(index, 'adults', parseInt(e.target.value) || 1)}
+                                    className={`${inputClass} pl-10 bg-black/40`}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="md:col-span-2 lg:col-span-1">
+                                <label className={labelClass}>Children</label>
+                                <div className="relative group">
+                                  <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    required
+                                    value={room.children}
+                                    onChange={(e) => handleRoomChange(index, 'children', parseInt(e.target.value) || 0)}
+                                    className={`${inputClass} pl-10 bg-black/40`}
+                                  />
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        </motion.div>
+                      )
+                    })}
+                  </AnimatePresence>
+                )}
 
-                        <div className="md:col-span-2">
-                          <label className={labelClass}>Rate Plan</label>
-                          <div className="relative group">
-                            <Tag size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10" />
-                            <select
-                              required
-                              value={room.rateplanCode}
-                              onChange={(e) => handleRoomChange(index, 'rateplanCode', e.target.value)}
-                              className={`${inputClass} appearance-none pl-10 bg-black/40 disabled:opacity-50`}
-                              disabled={!room.roomCode || ratePlans.length === 0}
-                            >
-                              <option value="" disabled>Select rate plan...</option>
-                              {ratePlans.map((plan: any) => (
-                                <option key={plan.code} value={plan.code}>
-                                  {plan.code} - ₹{plan.price}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
+                {!loading && (
+                  <button
+                    type="button"
+                    onClick={addRoom}
+                    className="w-full py-4 rounded-xl border border-dashed border-white/20 text-slate-400 hover:text-white hover:border-white/40 hover:bg-white/5 transition-all flex items-center justify-center gap-2 font-medium text-sm mt-2"
+                  >
+                    <Plus size={16} className="text-emerald-400" />
+                    Add Another Room
+                  </button>
+                )}
+              </div>
 
-                        <div className="md:col-span-2 lg:col-span-1">
-                          <label className={labelClass}>Adults</label>
-                          <div className="relative group">
-                            <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
-                            <input
-                              type="number"
-                              min="1"
-                              required
-                              value={room.adults}
-                              onChange={(e) => handleRoomChange(index, 'adults', parseInt(e.target.value) || 1)}
-                              className={`${inputClass} pl-10 bg-black/40`}
-                            />
-                          </div>
-                        </div>
+              <div className="mt-6 border-t border-white/10 pt-6">
+                <label className={labelClass}>Special Requests (Optional)</label>
+                <div className="relative group">
+                  <AlignLeft size={16} className="absolute left-4 top-4 text-slate-500 group-focus-within:text-primary transition-colors" />
+                  <textarea
+                    name="specialRequests"
+                    value={formData.specialRequests}
+                    onChange={handleChange}
+                    rows={3}
+                    className={`${inputClass} pl-10 resize-none`}
+                    placeholder="Any preferences or special requests..."
+                  ></textarea>
+                </div>
+              </div>
+            </div>
 
-                        <div className="md:col-span-2 lg:col-span-1">
-                          <label className={labelClass}>Children</label>
-                          <div className="relative group">
-                            <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
-                            <input
-                              type="number"
-                              min="0"
-                              required
-                              value={room.children}
-                              onChange={(e) => handleRoomChange(index, 'children', parseInt(e.target.value) || 0)}
-                              className={`${inputClass} pl-10 bg-black/40`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )})}
-              </AnimatePresence>
-            )}
-
-            {!loading && (
+            {/* Action Footer */}
+            <div className="flex flex-col sm:flex-row justify-end gap-4 pt-2">
               <button
                 type="button"
-                onClick={addRoom}
-                className="w-full py-4 rounded-xl border border-dashed border-white/20 text-slate-400 hover:text-white hover:border-white/40 hover:bg-white/5 transition-all flex items-center justify-center gap-2 font-medium text-sm mt-2"
+                onClick={resetForm}
+                className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors text-sm flex items-center justify-center gap-2"
               >
-                <Plus size={16} className="text-emerald-400" />
-                Add Another Room
+                <RefreshCw size={16} /> Reset
               </button>
-            )}
-          </div>
-          
-          <div className="mt-6 border-t border-white/10 pt-6">
-            <label className={labelClass}>Special Requests (Optional)</label>
-            <div className="relative group">
-              <AlignLeft size={16} className="absolute left-4 top-4 text-slate-500 group-focus-within:text-primary transition-colors" />
-              <textarea
-                name="specialRequests"
-                value={formData.specialRequests}
-                onChange={handleChange}
-                rows={3}
-                className={`${inputClass} pl-10 resize-none`}
-                placeholder="Any preferences or special requests..."
-              ></textarea>
+              <button
+                type="submit"
+                disabled={loading || checkingAvail}
+                className={`px-8 py-3 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all text-sm ${(loading || checkingAvail) ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20 hover:-translate-y-0.5'}`}
+              >
+                {checkingAvail ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}
+                {checkingAvail ? 'Checking Availability...' : 'Continue to Assignment'}
+              </button>
             </div>
-          </div>
-        </div>
-
-        {/* Action Footer */}
-        <div className="flex flex-col sm:flex-row justify-end gap-4 pt-2">
-          <button
-            type="button"
-            onClick={resetForm}
-            className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors text-sm flex items-center justify-center gap-2"
-          >
-            <RefreshCw size={16} /> Reset
-          </button>
-          <button
-            type="submit"
-            disabled={loading || checkingAvail}
-            className={`px-8 py-3 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all text-sm ${(loading || checkingAvail) ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20 hover:-translate-y-0.5'}`}
-          >
-            {checkingAvail ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}
-            {checkingAvail ? 'Checking Availability...' : 'Continue to Assignment'}
-          </button>
-        </div>
           </motion.form>
         ) : (
           <motion.div key="manage" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
@@ -608,165 +615,183 @@ export default function BookRoomPage() {
 
             {/* Bookings List */}
             <div className="space-y-4">
-              {managedBookings.map(b => {
-                const isPaid = b.paymentStatus === 'PAID';
-                
-                const roomSummary = (() => {
-                  const roomsArr = Array.isArray(b.rooms) ? b.rooms : [];
-                  if (roomsArr.length === 0) return 'No Rooms';
-
-                  const groups: Record<string, string[]> = {};
-                  const unassignedCounts: Record<string, number> = {};
-
-                  roomsArr.forEach((r: any) => {
-                    const code = r.roomCode || 'Room';
-                    if (r.roomNumber) {
-                      if (!groups[code]) groups[code] = [];
-                      groups[code].push(r.roomNumber);
-                    } else {
-                      unassignedCounts[code] = (unassignedCounts[code] || 0) + 1;
-                    }
-                  });
-
-                  const formatted: string[] = [];
-                  Object.keys(groups).forEach(code => {
-                    formatted.push(`${code}: ${groups[code].join(', ')}`);
-                  });
-                  Object.keys(unassignedCounts).forEach(code => {
-                    formatted.push(`${unassignedCounts[code]}x ${code}`);
-                  });
-
-                  return formatted.join(' | ') || `${roomsArr.length} Room(s)`;
-                })();
-
-                return (
-                  <div key={b.id} className="bg-surface border border-white/10 rounded-2xl p-5 sm:p-6 transition-all hover:border-white/20 shadow-lg space-y-4">
-                    {/* Top Row: Guest Info & Status Badge */}
-                    <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-white/5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-lg">
-                          {(b.guestName || 'G').charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">{b.guestName || 'Guest'}</h3>
-                          <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-                            <Phone size={13} className="text-slate-500" /> {b.guestPhone}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Status Badges */}
-                      <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
-                          b.status === 'CHECKED_IN'
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : b.status === 'RESERVED'
-                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                            : b.status === 'CHECKED_OUT'
-                            ? 'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                            : 'bg-red-500/10 text-red-400 border-red-500/20'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            b.status === 'CHECKED_IN' ? 'bg-emerald-400 animate-pulse' : b.status === 'RESERVED' ? 'bg-blue-400' : 'bg-slate-400'
-                          }`} />
-                          {b.status.replace('_', ' ')}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Middle Details Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                      <div className="bg-black/20 p-3 rounded-xl border border-white/5">
-                        <div className="text-slate-400 mb-1 flex items-center gap-1">
-                          <Calendar size={13} className="text-slate-500" /> Check In
-                        </div>
-                        <div className="font-semibold text-slate-200">
-                          {new Date(b.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </div>
-                      </div>
-
-                      <div className="bg-black/20 p-3 rounded-xl border border-white/5">
-                        <div className="text-slate-400 mb-1 flex items-center gap-1">
-                          <Calendar size={13} className="text-slate-500" /> Check Out
-                        </div>
-                        <div className="font-semibold text-slate-200">
-                          {new Date(b.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </div>
-                      </div>
-
-                      <div className="bg-black/20 p-3 rounded-xl border border-white/5">
-                        <div className="text-slate-400 mb-1 flex items-center gap-1">
-                          <Bed size={13} className="text-slate-500" /> Rooms Assigned
-                        </div>
-                        <div className="font-semibold text-slate-200 truncate" title={roomSummary}>
-                          {roomSummary}
-                        </div>
-                      </div>
-
-                      <div className="bg-black/20 p-3 rounded-xl border border-white/5">
-                        <div className="text-slate-400 mb-1 flex items-center gap-1">
-                          <CreditCard size={13} className="text-slate-500" /> Payment
-                        </div>
-                        <div className="flex items-center gap-1.5 font-semibold">
-                          <span className="text-white font-mono">₹{Number(b.totalAmount || 0).toFixed(0)}</span>
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${isPaid ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'}`}>
-                            {b.paymentStatus}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bottom Action Bar */}
-                    <div className="pt-2 flex flex-wrap items-center justify-end gap-2.5">
-                      {b.status === 'RESERVED' && (
-                        <button
-                          onClick={() => openAssignmentModal(b, 'checkin')}
-                          className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
-                        >
-                          <Key size={15} /> Check In
-                        </button>
-                      )}
-
-                      {b.status === 'CHECKED_IN' && (
-                        <>
-                          <button
-                            onClick={() => openAssignmentModal(b, 'edit')}
-                            disabled={searchingBookings}
-                            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 font-bold text-xs transition-all flex items-center justify-center gap-1.5"
-                          >
-                            <Bed size={15} /> Change Room
-                          </button>
-                          <button
-                            onClick={() => setCheckoutBooking(b)}
-                            disabled={searchingBookings}
-                            className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs transition-all shadow-lg shadow-red-500/20 flex items-center justify-center gap-1.5"
-                          >
-                            <CheckCircle size={15} /> Check Out
-                          </button>
-                        </>
-                      )}
-
-                      {b.status === 'CHECKED_OUT' && (
-                        <button
-                          onClick={() => printBookingBill(b)}
-                          className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 font-bold text-xs transition-all flex items-center justify-center gap-1.5"
-                        >
-                          <Printer size={15} /> Print Bill
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {managedBookings.length === 0 && !searchingBookings && (
-                <div className="text-center py-14 px-4 text-slate-400 bg-surface/40 border border-white/5 rounded-2xl space-y-2">
-                  <Search size={32} className="mx-auto text-slate-600 mb-2" />
-                  <div className="text-slate-300 font-semibold">No Bookings Found</div>
-                  <div className="text-xs text-slate-500 max-w-sm mx-auto">
-                    Enter a guest phone number above to search and manage room assignments, check-ins, or check-outs.
-                  </div>
+              {searchingBookings ? (
+                <div className="text-center py-14 px-4 text-slate-400 bg-surface/40 border border-white/5 rounded-2xl flex flex-col items-center justify-center gap-3">
+                  <Loader2 size={32} className="animate-spin text-primary" />
+                  <span className="text-sm font-medium text-slate-300">Searching bookings...</span>
                 </div>
+              ) : (
+                <>
+                  {managedBookings.map(b => {
+                    const isPaid = b.paymentStatus === 'PAID';
+
+                    const roomSummary = (() => {
+                      const roomsArr = Array.isArray(b.rooms) ? b.rooms : [];
+                      if (roomsArr.length === 0) return 'No Rooms';
+
+                      const groups: Record<string, string[]> = {};
+                      const unassignedCounts: Record<string, number> = {};
+
+                      roomsArr.forEach((r: any) => {
+                        const code = r.roomCode || 'Room';
+                        if (r.roomNumber) {
+                          if (!groups[code]) groups[code] = [];
+                          groups[code].push(r.roomNumber);
+                        } else {
+                          unassignedCounts[code] = (unassignedCounts[code] || 0) + 1;
+                        }
+                      });
+
+                      const formatted: string[] = [];
+                      Object.keys(groups).forEach(code => {
+                        formatted.push(`${code}: ${groups[code].join(', ')}`);
+                      });
+                      Object.keys(unassignedCounts).forEach(code => {
+                        formatted.push(`${unassignedCounts[code]}x ${code}`);
+                      });
+
+                      return formatted.join(' | ') || `${roomsArr.length} Room(s)`;
+                    })();
+
+                    return (
+                      <div key={b.id} className="bg-surface border border-white/10 rounded-2xl p-5 sm:p-6 transition-all hover:border-white/20 shadow-lg space-y-4">
+                        {/* Top Row: Guest Info & Status Badge */}
+                        <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-white/5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-lg">
+                              {(b.guestName || 'G').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">{b.guestName || 'Guest'}</h3>
+                              <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                                <Phone size={13} className="text-slate-500" /> {b.guestPhone}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Status Badges */}
+                          <div className="flex items-center gap-2">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${b.status === 'CHECKED_IN'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : b.status === 'RESERVED'
+                                  ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                  : b.status === 'CHECKED_OUT'
+                                    ? 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                    : 'bg-red-500/10 text-red-400 border-red-500/20'
+                              }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${b.status === 'CHECKED_IN' ? 'bg-emerald-400 animate-pulse' : b.status === 'RESERVED' ? 'bg-blue-400' : 'bg-slate-400'
+                                }`} />
+                              {b.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Middle Details Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                          <div className="bg-black/20 p-3 rounded-xl border border-white/5">
+                            <div className="text-slate-400 mb-1 flex items-center gap-1">
+                              <Calendar size={13} className="text-slate-500" /> Check In
+                            </div>
+                            <div className="font-semibold text-slate-200">
+                              {new Date(b.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </div>
+                          </div>
+
+                          <div className="bg-black/20 p-3 rounded-xl border border-white/5">
+                            <div className="text-slate-400 mb-1 flex items-center gap-1">
+                              <Calendar size={13} className="text-slate-500" /> Check Out
+                            </div>
+                            <div className="font-semibold text-slate-200">
+                              {new Date(b.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </div>
+                          </div>
+
+                          <div className="bg-black/20 p-3 rounded-xl border border-white/5">
+                            <div className="text-slate-400 mb-1 flex items-center gap-1">
+                              <Bed size={13} className="text-slate-500" /> Rooms Assigned
+                            </div>
+                            <div className="font-semibold text-slate-200 truncate" title={roomSummary}>
+                              {roomSummary}
+                            </div>
+                          </div>
+
+                          <div className="bg-black/20 p-3 rounded-xl border border-white/5">
+                            <div className="text-slate-400 mb-1 flex items-center gap-1">
+                              <CreditCard size={13} className="text-slate-500" /> Payment
+                            </div>
+                            <div className="flex items-center gap-1.5 font-semibold">
+                              <span className="text-white font-mono">₹{Number(b.totalAmount || 0).toFixed(0)}</span>
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${isPaid ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'}`}>
+                                {b.paymentStatus}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bottom Action Bar */}
+                        <div className="pt-2 flex flex-wrap items-center justify-end gap-2.5">
+                          {b.status === 'RESERVED' && (
+                            <button
+                              onClick={() => openAssignmentModal(b, 'checkin')}
+                              disabled={searchingBookings || openingModalBookingId === b.id}
+                              className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold text-xs transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                            >
+                              {openingModalBookingId === b.id ? (
+                                <Loader2 size={15} className="animate-spin" />
+                              ) : (
+                                <Key size={15} />
+                              )}
+                              <span>{openingModalBookingId === b.id ? 'Opening...' : 'Check In'}</span>
+                            </button>
+                          )}
+
+                          {b.status === 'CHECKED_IN' && (
+                            <>
+                              <button
+                                onClick={() => openAssignmentModal(b, 'edit')}
+                                disabled={searchingBookings || openingModalBookingId === b.id}
+                                className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 disabled:opacity-50 text-blue-400 border border-blue-500/20 font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                              >
+                                {openingModalBookingId === b.id ? (
+                                  <Loader2 size={15} className="animate-spin" />
+                                ) : (
+                                  <Bed size={15} />
+                                )}
+                                <span>{openingModalBookingId === b.id ? 'Opening...' : 'Change Room'}</span>
+                              </button>
+                              <button
+                                onClick={() => setCheckoutBooking(b)}
+                                disabled={searchingBookings || openingModalBookingId === b.id}
+                                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold text-xs transition-all shadow-lg shadow-red-500/20 flex items-center justify-center gap-1.5"
+                              >
+                                <CheckCircle size={15} /> Check Out
+                              </button>
+                            </>
+                          )}
+
+                          {b.status === 'CHECKED_OUT' && (
+                            <button
+                              onClick={() => printBookingBill(b)}
+                              className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                            >
+                              <Printer size={15} /> Print Bill
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {managedBookings.length === 0 && !searchingBookings && (
+                    <div className="text-center py-14 px-4 text-slate-400 bg-surface/40 border border-white/5 rounded-2xl space-y-2">
+                      <Search size={32} className="mx-auto text-slate-600 mb-2" />
+                      <div className="text-slate-300 font-semibold">No Bookings Found</div>
+                      <div className="text-xs text-slate-500 max-w-sm mx-auto">
+                        Enter a guest phone number above to search and manage room assignments, check-ins, or check-outs.
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </motion.div>
@@ -830,7 +855,7 @@ export default function BookRoomPage() {
                             {roomType?.name || assignment.roomCode}
                           </span>
                         </div>
-                        
+
                         <div className="relative group">
                           <Bed size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10" />
                           <select
@@ -932,11 +957,10 @@ export default function BookRoomPage() {
                       <Bed size={15} className="text-slate-400" /> Room Bill
                     </span>
                     <div className="flex items-center gap-2.5">
-                      <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border ${
-                        checkoutBooking.paymentStatus === 'PAID'
+                      <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border ${checkoutBooking.paymentStatus === 'PAID'
                           ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                           : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                      }`}>
+                        }`}>
                         {checkoutBooking.paymentStatus}
                       </span>
                       <span className="text-white font-bold font-mono">₹{Number(checkoutBooking.totalAmount ?? 0).toFixed(2)}</span>

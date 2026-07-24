@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchRoomTypes, fetchAvailability, createRoomType, updateRoomType, deleteRoomType, addRoomToType, deleteRoomFromType } from '../../../store/slices/roomTypesSlice';
 import { Plus, Edit2, Trash2, IndianRupee, Users as UsersIcon, Home, Calculator, User } from 'lucide-react';
+import toast from 'react-hot-toast';
 import RoomTypeModal from '../../../components/modals/RoomTypeModal';
 import GenericDeleteModal from '../../../components/modals/GenericDeleteModal';
 import CalculatePriceModal from '../../../components/modals/CalculatePriceModal';
@@ -101,7 +102,7 @@ export default function RoomManagePage() {
       setDeleteModalOpen(false);
     } catch (err) {
       console.error(err);
-      alert(`Failed to delete ${deleteTarget.type}`);
+      toast.error(`Failed to delete ${deleteTarget.type}`);
     }
   };
 

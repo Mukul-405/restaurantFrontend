@@ -18,6 +18,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
   const { selectedOrder, status, error } = useAppSelector(state => state.order);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
     if (isOpen && orderId) {
@@ -27,7 +28,12 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
 
   const handleStatusChange = async (newStatus: string) => {
     if (selectedOrder) {
-      await dispatch(updateOrder({ id: selectedOrder.id, data: { status: newStatus } }));
+      setIsUpdatingStatus(true);
+      try {
+        await dispatch(updateOrder({ id: selectedOrder.id, data: { status: newStatus } }));
+      } finally {
+        setIsUpdatingStatus(false);
+      }
     }
   };
 
@@ -130,8 +136,10 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
                         </button>
                         <button
                           onClick={() => handleStatusChange('COMPLETED')}
-                          className="flex-1 py-3 bg-emerald-600 border border-emerald-500/20 text-white hover:bg-emerald-700 rounded-xl font-bold transition-all shadow-[0_4px_14px_0_rgba(16,185,129,0.39)]"
+                          disabled={isUpdatingStatus}
+                          className="flex-1 py-3 bg-emerald-600 border border-emerald-500/20 text-white hover:bg-emerald-700 rounded-xl font-bold transition-all shadow-[0_4px_14px_0_rgba(16,185,129,0.39)] disabled:opacity-50 flex items-center justify-center gap-2"
                         >
+                          {isUpdatingStatus && <Loader2 className="animate-spin" size={16} />}
                           Mark Completed
                         </button>
                       </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, X, Loader2 } from 'lucide-react';
 
 interface GenericDeleteModalProps {
   isOpen: boolean;
@@ -63,10 +63,11 @@ export default function GenericDeleteModal({ isOpen, onClose, onConfirm, title, 
               </button>
               <button 
                 type="button" 
-                className="px-5 py-2.5 rounded-lg font-sans font-semibold text-sm transition-all bg-danger text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.3)] hover:bg-red-600 hover:-translate-y-[1px] disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-sans font-semibold text-sm transition-all bg-danger text-white shadow-[0_4px_14px_0_rgba(239,68,68,0.3)] hover:bg-red-600 hover:-translate-y-[1px] disabled:opacity-50"
                 onClick={handleDelete}
                 disabled={loading}
               >
+                {loading && <Loader2 className="animate-spin" size={16} />}
                 {loading ? 'Deleting...' : 'Delete'}
               </button>
             </div>
