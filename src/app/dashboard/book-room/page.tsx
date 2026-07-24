@@ -54,9 +54,13 @@ export default function BookRoomPage() {
   };
 
   const handleSearchBookings = async () => {
+    if (!searchPhone.trim()) {
+      setManagedBookings([]);
+      return;
+    }
     setSearchingBookings(true);
     try {
-      const data = await getBookings(searchPhone);
+      const data = await getBookings(searchPhone.trim());
       setManagedBookings(data);
     } catch (error) {
       console.error('Failed to search bookings:', error);
