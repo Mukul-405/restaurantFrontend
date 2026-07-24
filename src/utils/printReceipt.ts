@@ -1,5 +1,6 @@
 import { Order } from '../store/slices/orderSlice';
 import toast from 'react-hot-toast';
+import { escapeHtml } from './escapeHtml';
 
 export const printReceipt = (order: Order) => {
   const printWindow = window.open('', '_blank');
@@ -21,6 +22,7 @@ export const printReceipt = (order: Order) => {
     <!DOCTYPE html>
     <html>
       <head>
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
         <title>Receipt - Order #${order.id}</title>
         <style>
           @page { margin: 0; size: 80mm auto; }
@@ -133,8 +135,8 @@ export const printReceipt = (order: Order) => {
           
           <div class="table-guest">
             <div>Table No:</div>
-            <div style="font-size: 15px;">${order.tableNumber ? `TABLE-${order.tableNumber}` : 'WALK-IN'}</div>
-            <div style="margin-top: 4px; font-size: 15px;">Guest : ${order.phoneNumber || 'CASH'}</div>
+            <div style="font-size: 15px;">${order.tableNumber ? `TABLE-${escapeHtml(order.tableNumber)}` : 'WALK-IN'}</div>
+            <div style="margin-top: 4px; font-size: 15px;">Guest : ${escapeHtml(order.phoneNumber) || 'CASH'}</div>
           </div>
           
           <div class="divider-thick" style="margin-bottom: 0;"></div>
@@ -150,7 +152,7 @@ export const printReceipt = (order: Order) => {
             <tbody>
               ${order.items.map(item => `
                 <tr>
-                  <td class="text-left item-name">${item.name}</td>
+                  <td class="text-left item-name">${escapeHtml(item.name)}</td>
                   <td class="w-qty" style="text-align: center;">${item.quantity}</td>
                   <td class="w-rate">${Number(item.price).toFixed(2)}</td>
                   <td class="w-amount">${(Number(item.price) * item.quantity).toFixed(2)}</td>
@@ -210,24 +212,20 @@ export const printReceipt = (order: Order) => {
           
           <div class="cashier">
             <span style="font-size: 24px; line-height: 10px; margin-right: 4px; position: relative; top: -4px;">.</span>
-            Cashier: ${order.user?.name || 'Admin'}
+            Cashier: ${escapeHtml(order.user?.name) || 'Admin'}
           </div>
         </div>
-        
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              window.close();
-            }, 300);
-          }
-        </script>
       </body>
     </html>
   `;
 
   printWindow.document.write(html);
   printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 300);
 };
 
 export const printBookingBill = (booking: any) => {
@@ -255,16 +253,16 @@ export const printBookingBill = (booking: any) => {
 
   const roomRows = rooms.map((r: any) => `
     <tr>
-      <td class="text-left item-name">${r.roomCode}${r.roomNumber ? ` (Room ${r.roomNumber})` : ''}</td>
-      <td class="w-qty" style="text-align: center;">${r.rateplanCode || '-'}</td>
+      <td class="text-left item-name">${escapeHtml(r.roomCode)}${r.roomNumber ? ` (Room ${escapeHtml(r.roomNumber)})` : ''}</td>
+      <td class="w-qty" style="text-align: center;">${escapeHtml(r.rateplanCode) || '-'}</td>
       <td class="w-amount">${r.adults || 0} / ${r.children || 0}</td>
     </tr>
   `).join('');
 
   const foodRows = foodOrders.map((f: any) => `
     <tr>
-      <td class="text-left item-name">${f.name}</td>
-      <td class="w-qty" style="text-align: center;">${f.quantity}</td>
+      <td class="text-left item-name">${escapeHtml(f.name)}</td>
+      <td class="w-qty" style="text-align: center;">${escapeHtml(f.quantity)}</td>
       <td class="w-rate">${Number(f.price).toFixed(2)}</td>
       <td class="w-amount">${(Number(f.price) * f.quantity).toFixed(2)}</td>
     </tr>
@@ -274,7 +272,8 @@ export const printBookingBill = (booking: any) => {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Booking Bill - ${booking.bookingId}</title>
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
+        <title>Booking Bill - ${escapeHtml(booking.bookingId)}</title>
         <style>
           @page { margin: 0; size: 80mm auto; }
           body { 
@@ -341,14 +340,14 @@ export const printBookingBill = (booking: any) => {
           <div class="divider-thick"></div>
           
           <div class="flex-between font-bold" style="margin-bottom: 4px;">
-            <div style="font-size: 15px;">Booking: ${booking.bookingId}</div>
+            <div style="font-size: 15px;">Booking: ${escapeHtml(booking.bookingId)}</div>
             <div class="meta-right">Date : ${formattedDate}</div>
           </div>
           <div class="flex-between font-bold">
-            <div>Guest: ${booking.guestName || 'N/A'}</div>
+            <div>Guest: ${escapeHtml(booking.guestName) || 'N/A'}</div>
             <div class="meta-right">Time: ${formattedTime}</div>
           </div>
-          <div class="font-bold" style="margin-top: 4px;">Phone: ${booking.guestPhone || 'N/A'}</div>
+          <div class="font-bold" style="margin-top: 4px;">Phone: ${escapeHtml(booking.guestPhone) || 'N/A'}</div>
           <div class="font-bold" style="margin-top: 2px;">
             Check-in: ${new Date(booking.checkIn).toLocaleDateString()} &bull; Check-out: ${new Date(booking.checkOut).toLocaleDateString()}
           </div>
@@ -358,7 +357,7 @@ export const printBookingBill = (booking: any) => {
           <!-- Room Details -->
           <div class="section-title">
             Room Bill
-            <span class="${booking.paymentStatus === 'PAID' ? 'paid-badge' : 'pending-badge'}">${booking.paymentStatus}</span>
+            <span class="${booking.paymentStatus === 'PAID' ? 'paid-badge' : 'pending-badge'}">${escapeHtml(booking.paymentStatus)}</span>
           </div>
           <table>
             <thead>
@@ -464,19 +463,15 @@ export const printBookingBill = (booking: any) => {
             Cashier: Admin
           </div>
         </div>
-        
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              window.close();
-            }, 300);
-          }
-        </script>
       </body>
     </html>
   `;
 
   printWindow.document.write(html);
   printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 300);
 };

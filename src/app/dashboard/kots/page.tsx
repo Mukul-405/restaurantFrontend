@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchOrders, updateOrder, Order } from '../../../store/slices/orderSlice';
 import { useAuth } from '../../../context/AuthContext';
 import { ConfirmPrintModal } from '../../../components/modals/ConfirmPrintModal';
+import { escapeHtml } from '../../../utils/escapeHtml';
 
 export default function KOTPage() {
   const dispatch = useAppDispatch();
@@ -34,14 +35,15 @@ export default function KOTPage() {
 
       const itemsHtml = itemsToPrint.map((item: any) => `
         <div style="display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 8px;">
-          <span>${item.name}</span>
-          <strong>x${item.qty}</strong>
+          <span>${escapeHtml(item.name)}</span>
+          <strong>x${escapeHtml(item.qty)}</strong>
         </div>
       `).join('');
 
       const printContent = `
         <html>
           <head>
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
             <title>Print KOT</title>
             <style>
               body { font-family: monospace; padding: 10px; width: 300px; color: #000; }
@@ -54,8 +56,8 @@ export default function KOTPage() {
           <body>
             <div class="header">
               <h2>KOT</h2>
-              <p>Order #${order.id} | Table: ${order.tableNumber || '-'}</p>
-              <p>Waiter: ${order.user?.name || '-'}</p>
+              <p>Order #${order.id} | Table: ${escapeHtml(order.tableNumber) || '-'}</p>
+              <p>Waiter: ${escapeHtml(order.user?.name) || '-'}</p>
               <p>Time: ${new Date().toLocaleTimeString()}</p>
             </div>
             <div class="items">
@@ -69,8 +71,10 @@ export default function KOTPage() {
       `;
 
       if (iframe.contentDocument) {
-        // Replace document.write with modern innerHTML to avoid TS deprecation warnings
-        iframe.contentDocument.documentElement.innerHTML = printContent;
+        const doc = iframe.contentDocument;
+        doc.open();
+        doc.write(printContent);
+        doc.close();
       }
       
       if (iframe.contentWindow) {

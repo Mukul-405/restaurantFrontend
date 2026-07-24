@@ -5,6 +5,11 @@ if (!process.env.NEXT_PUBLIC_API_URL) {
   throw new Error('NEXT_PUBLIC_API_URL is not defined in the environment variables.');
 }
 
+// Never send credentials over plain HTTP in production.
+if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_API_URL.startsWith('https://')) {
+  throw new Error('NEXT_PUBLIC_API_URL must use https:// in production.');
+}
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const api = axios.create({
