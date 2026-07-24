@@ -1,0 +1,55 @@
+# Render Blueprint for the static frontend.
+# Security headers live here because a static export runs no Node — helmet
+# (backend only) cannot set them. If this site was created manually in the
+# dashboard instead of via Blueprint, copy each header below into
+# Static Site -> Settings -> Headers (path /* , the Name/Value pairs).
+services:
+  - type: web
+    name: restaurantfrontend
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: out
+    headers:
+      # script-src keeps 'unsafe-inline': Next static export emits inline
+      # bootstrap scripts and has no server to issue nonces. The app's own
+      # XSS sinks (print docs) are already escaped + carry their own meta-CSP.
+      - path: /*
+        name: Content-Security-Policy
+        value: >-
+          default-src 'self';
+          base-uri 'self';
+          object-src 'none';
+          frame-ancestors 'none';
+          form-action 'self';
+          img-src 'self' data: blob:;
+          script-src 'self' 'unsafe-inline';
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+          font-src 'self' https://fonts.gstatic.com data:;
+          connect-src 'self' https://restaurant-backend-xwhi.onrender.com;
+          upgrade-insecure-requests
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=(), payment=()
+      - path: /*
+        name: Cross-Origin-Opener-Policy
+        value: same-origin
+      - path: /*
+        name: Cross-Origin-Resource-Policy
+        value: same-origin
+      - path: /*
+        name: X-Permitted-Cross-Domain-Policies
+        value: none
+      # HSTS intentionally omitted: Render's edge already sends a stronger one
+      # (max-age=315360000; includeSubDomains; preload). Setting it here risks
+      # downgrading it.
+      # Cross-Origin-Embedder-Policy omitted: require-corp breaks Google Fonts;
+      # app needs no cross-origin isolation.
