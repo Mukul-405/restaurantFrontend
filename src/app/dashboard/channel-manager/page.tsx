@@ -65,6 +65,21 @@ const RestrictionsEditor = ({ restrictions, onChange }: { restrictions: any, onC
           <span className="text-[10px] text-slate-400 mb-2 leading-snug">How far in the future.</span>
           <input type="number" placeholder="e.g. 30" value={restrictions.maximumAdvanceReservation} onChange={e => update('maximumAdvanceReservation', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
         </div>
+        <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
+          <span className="text-xs font-bold text-white">Min. Stay on Arrival</span>
+          <span className="text-[10px] text-slate-400 mb-2 leading-snug">Min nights if arriving this date.</span>
+          <input type="number" placeholder="e.g. 2" value={restrictions.minimumStayArrival} onChange={e => update('minimumStayArrival', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+        </div>
+        <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
+          <span className="text-xs font-bold text-white">Max. Stay on Arrival</span>
+          <span className="text-[10px] text-slate-400 mb-2 leading-snug">Max nights if arriving this date.</span>
+          <input type="number" placeholder="e.g. 14" value={restrictions.maximumStayArrival} onChange={e => update('maximumStayArrival', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+        </div>
+        <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
+          <span className="text-xs font-bold text-white">Exact Stay on Arrival</span>
+          <span className="text-[10px] text-slate-400 mb-2 leading-snug">Exact nights if arriving this date.</span>
+          <input type="number" placeholder="e.g. 3" value={restrictions.exactStayArrival} onChange={e => update('exactStayArrival', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+        </div>
       </div>
     </div>
   );
@@ -80,7 +95,7 @@ export default function ChannelManagerPage() {
   const [isPushing, setIsPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const defaultRestrictions = { stopSell: false, minimumStay: '', maximumStay: '', closeOnArrival: false, closeOnDeparture: false, minimumAdvanceReservation: '', maximumAdvanceReservation: '' };
+  const defaultRestrictions = { stopSell: false, minimumStay: '', maximumStay: '', closeOnArrival: false, closeOnDeparture: false, minimumStayArrival: '', maximumStayArrival: '', exactStayArrival: '', minimumAdvanceReservation: '', maximumAdvanceReservation: '' };
 
   const [pushInventoryData, setPushInventoryData] = useState<Array<{ roomCode: string, available: number | '' }>>([{ roomCode: '', available: '' }]);
   const [pushRatesData, setPushRatesData] = useState<Array<{ roomCode: string, rateplanCode: string, rate: number | '' }>>([{ roomCode: '', rateplanCode: '', rate: '' }]);
@@ -168,12 +183,17 @@ export default function ChannelManagerPage() {
     const isRest = activeTab.includes('Restrictions');
     if (isRest && selectedChannels.length === 0) return setError('Please select at least one target channel.');
 
+    // Aiosell rule 11: send every restriction key explicitly as null when unset,
+    // never omit it. The *Arrival fields have no UI yet -> always null.
     const parseRest = (r: any) => ({
       stopSell: r.stopSell,
       minimumStay: r.minimumStay !== '' ? Number(r.minimumStay) : null,
       maximumStay: r.maximumStay !== '' ? Number(r.maximumStay) : null,
       closeOnArrival: r.closeOnArrival,
       closeOnDeparture: r.closeOnDeparture,
+      minimumStayArrival: r.minimumStayArrival !== '' && r.minimumStayArrival != null ? Number(r.minimumStayArrival) : null,
+      maximumStayArrival: r.maximumStayArrival !== '' && r.maximumStayArrival != null ? Number(r.maximumStayArrival) : null,
+      exactStayArrival: r.exactStayArrival !== '' && r.exactStayArrival != null ? Number(r.exactStayArrival) : null,
       minimumAdvanceReservation: r.minimumAdvanceReservation !== '' ? Number(r.minimumAdvanceReservation) : null,
       maximumAdvanceReservation: r.maximumAdvanceReservation !== '' ? Number(r.maximumAdvanceReservation) : null,
     });
