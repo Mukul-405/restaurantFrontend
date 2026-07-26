@@ -5,23 +5,32 @@ import { motion } from 'framer-motion';
 import { Printer, RefreshCw, Loader2, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchOrders, updateOrder, Order } from '../../../store/slices/orderSlice';
+import { fetchKots, updateOrder, Kot } from '../../../store/slices/orderSlice';
 import { useAuth } from '../../../context/AuthContext';
 import { ConfirmPrintModal } from '../../../components/modals/ConfirmPrintModal';
 import { escapeHtml } from '../../../utils/escapeHtml';
 
+const PAGE_SIZE = 20;
+
 export default function KOTPage() {
   const dispatch = useAppDispatch();
-  const { orders, status } = useAppSelector((state) => state.order);
+  const { kots, kotMeta, kotStatus } = useAppSelector((state) => state.order);
   const { user } = useAuth();
+  const [currentPage, setCurrentPage] = useState(1);
   const [printingId, setPrintingId] = useState<number | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; orderId: number | null }>({ isOpen: false, orderId: null });
 
+  const status = kotStatus;
+
+  const fetchKotsData = (page = currentPage) => {
+    dispatch(fetchKots({ page, limit: PAGE_SIZE }));
+  };
+
   useEffect(() => {
-    dispatch(fetchOrders({ status: 'PENDING', limit: 100 }));
+    dispatch(fetchKots({ page: 1, limit: PAGE_SIZE }));
   }, [dispatch]);
 
-  const handlePrintKOT = async (order: Order) => {
+  const handlePrintKOT = async (order: Kot) => {
     try {
       setPrintingId(order.id);
       
@@ -103,7 +112,10 @@ export default function KOTPage() {
           id: confirmModal.orderId,
           data: { kotHistory: [] }
         })).unwrap();
-        dispatch(fetchOrders({ status: 'PENDING', limit: 100 }));
+        // Clearing the last KOT on a page would leave it empty, so step back one.
+        const nextPage = kots.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+        setCurrentPage(nextPage);
+        fetchKotsData(nextPage);
       } catch (err) {
         console.error('Failed to clear KOT status', err);
       }
@@ -111,7 +123,7 @@ export default function KOTPage() {
     setConfirmModal({ isOpen: false, orderId: null });
   };
 
-  if (status === 'loading' && orders.length === 0) {
+  if (status === 'loading' && kots.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="animate-spin text-primary" size={32} />
@@ -119,12 +131,13 @@ export default function KOTPage() {
     );
   }
 
-  // Only show orders that have pending items in their KOT queue
-  const ordersWithKOTs = orders.filter(o => o.kotHistory && o.kotHistory.length > 0);
+  // Server already filters to orders with a non-empty KOT queue.
+  const ordersWithKOTs = kots;
 
-  const totalPendingOrders = ordersWithKOTs.length;
+  // Total spans every page; item count is only what this page holds.
+  const totalPendingOrders = kotMeta.total;
   let totalPendingItems = 0;
-  
+
   ordersWithKOTs.forEach(order => {
     order.kotHistory?.forEach(item => {
       totalPendingItems += item.qty;
@@ -139,7 +152,7 @@ export default function KOTPage() {
           <p className="text-sm text-slate-400">Manage and print pending items for the kitchen.</p>
         </div>
         <button
-          onClick={() => dispatch(fetchOrders({ status: 'PENDING', limit: 100 }))}
+          onClick={() => fetchKotsData()}
           disabled={status === 'loading'}
           className="p-2 bg-surface/50 border border-white/10 rounded-lg text-slate-200 hover:bg-white/5 transition-colors flex items-center gap-2 disabled:opacity-50"
         >
@@ -154,7 +167,7 @@ export default function KOTPage() {
           <span className="text-3xl font-bold text-slate-100">{totalPendingOrders}</span>
         </div>
         <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-[0_4px_20px_0_var(--color-primary-light)]">
-          <span className="text-slate-300 text-sm font-medium mb-1">Total Pending Items</span>
+          <span className="text-slate-300 text-sm font-medium mb-1">Pending Items (this page)</span>
           <span className="text-3xl font-bold text-yellow-400">{totalPendingItems}</span>
         </div>
       </div>
@@ -220,9 +233,41 @@ export default function KOTPage() {
         )}
       </div>
 
-      <ConfirmPrintModal 
-        isOpen={confirmModal.isOpen} 
-        onConfirm={handleConfirmResult} 
+      {kotMeta.totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-black/20 p-4 rounded-xl border border-white/10 shrink-0">
+          <span className="text-sm text-slate-400">
+            Showing page <span className="font-semibold text-slate-200">{kotMeta.page}</span> of <span className="font-semibold text-slate-200">{kotMeta.totalPages}</span> ({kotMeta.total} total KOTs)
+          </span>
+          <div className="flex gap-2">
+            <button
+              disabled={kotMeta.page <= 1}
+              onClick={() => {
+                const newPage = kotMeta.page - 1;
+                setCurrentPage(newPage);
+                fetchKotsData(newPage);
+              }}
+              className="px-4 py-2 bg-surface border border-white/10 rounded-lg text-sm text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
+            >
+              Previous
+            </button>
+            <button
+              disabled={kotMeta.page >= kotMeta.totalPages}
+              onClick={() => {
+                const newPage = kotMeta.page + 1;
+                setCurrentPage(newPage);
+                fetchKotsData(newPage);
+              }}
+              className="px-4 py-2 bg-surface border border-white/10 rounded-lg text-sm text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/5 transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ConfirmPrintModal
+        isOpen={confirmModal.isOpen}
+        onConfirm={handleConfirmResult}
       />
     </div>
   );

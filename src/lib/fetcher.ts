@@ -68,6 +68,10 @@ export const fetcher = {
     const { data } = await api.get('/orders', { params });
     return data;
   },
+  getKots: async (params?: Record<string, any>) => {
+    const { data } = await api.get('/orders/kots', { params });
+    return data;
+  },
   getOrderById: async (id: number | string) => {
     const { data } = await api.get(`/orders/${id}`);
     return data;
