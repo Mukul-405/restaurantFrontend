@@ -1,28 +1,31 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useAuth, UserRole } from '../context/AuthContext';
+import { useAuth, hasPermission, Permission } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: UserRole[];
+  // Any one of these permissions is enough — SUPERADMIN always passes.
+  requirePermissions?: Permission[];
 }
 
-export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requirePermissions }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+
+  const allowed = !requirePermissions || requirePermissions.some(p => hasPermission(user, p));
 
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
         router.push('/login');
-      } else if (allowedRoles && !allowedRoles.includes(user.role)) {
+      } else if (!allowed) {
         // Redirect to a default dashboard if they don't have access to this specific route
         router.push('/dashboard');
       }
     }
-  }, [user, isLoading, router, allowedRoles]);
+  }, [user, isLoading, router, allowed]);
 
   if (isLoading) {
     return (
@@ -32,7 +35,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     );
   }
 
-  if (!user || (allowedRoles && !allowedRoles.includes(user.role))) {
+  if (!user || !allowed) {
     return null;
   }
 

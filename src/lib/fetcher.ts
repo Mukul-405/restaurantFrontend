@@ -24,6 +24,10 @@ export const fetcher = {
     const { data } = await api.post('/users', userData);
     return data;
   },
+  updateUser: async (userId: string, userData: any) => {
+    const { data } = await api.patch(`/users/${userId}`, userData);
+    return data;
+  },
   deleteUser: async (userId: string) => {
     const { data } = await api.delete(`/users/${userId}`);
     return data;

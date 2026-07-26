@@ -5,8 +5,19 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Users, LogOut, Menu as MenuIcon, X, Coffee, ShoppingCart, BarChart, Bed, RefreshCw, Utensils, Printer, CalendarDays, Building } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, hasPermission, Permission } from '../../context/AuthContext';
 import ProtectedRoute from '../ProtectedRoute';
+
+const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; permission: Permission }[] = [
+  { href: '/dashboard/members', label: 'Members', icon: Users, permission: 'MANAGE_MEMBERS' },
+  { href: '/dashboard/menu', label: 'Menu', icon: Utensils, permission: 'MANAGE_MENU' },
+  { href: '/dashboard/analysis', label: 'Analysis', icon: BarChart, permission: 'VIEW_ANALYSIS' },
+  { href: '/dashboard/kots', label: 'Print KOTs', icon: Printer, permission: 'PRINT_KOTS' },
+  { href: '/dashboard/room-manage', label: 'Manage Rooms', icon: Building, permission: 'MANAGE_ROOMS' },
+  { href: '/dashboard/book-room', label: 'Reservation', icon: CalendarDays, permission: 'MANAGE_RESERVATIONS' },
+  { href: '/dashboard/channel-manager', label: 'Room Status', icon: RefreshCw, permission: 'VIEW_ROOM_STATUS' },
+  { href: '/dashboard/orders', label: 'Orders', icon: ShoppingCart, permission: 'MANAGE_ORDERS' },
+];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -37,74 +48,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </button>
           </div>
           <nav className="flex-1 p-4 flex flex-col gap-2">
-            {user?.role === 'ADMIN' && (
-              <>
-                <Link
-                  href="/dashboard/members"
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/members' ? 'bg-primary-light text-primary' : 'text-slate-400'
-                    }`}
-                >
-                  <Users size={20} />
-                  <span>Members</span>
-                </Link>
-                <Link
-                  href="/dashboard/menu"
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/menu' ? 'bg-primary-light text-primary' : 'text-slate-400'
-                    }`}
-                >
-                  <Utensils size={20} />
-                  <span>Menu</span>
-                </Link>
-                <Link
-                  href="/dashboard/analysis"
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/analysis' ? 'bg-primary-light text-primary' : 'text-slate-400'
-                    }`}
-                >
-                  <BarChart size={20} />
-                  <span>Analysis</span>
-                </Link>
-                <Link
-                  href="/dashboard/kots"
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/kots' ? 'bg-primary-light text-primary' : 'text-slate-400'
-                    }`}
-                >
-                  <Printer size={20} />
-                  <span>Print KOTs</span>
-                </Link>
-                <Link
-                  href="/dashboard/room-manage"
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/room-manage' ? 'bg-primary-light text-primary' : 'text-slate-400'
-                    }`}
-                >
-                  <Building size={20} />
-                  <span>Manage Rooms</span>
-                </Link>
-                <Link
-                  href="/dashboard/book-room"
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/book-room' ? 'bg-primary-light text-primary' : 'text-slate-400'
-                    }`}
-                >
-                  <CalendarDays size={20} />
-                  <span>Reservation</span>
-                </Link>
-                <Link
-                  href="/dashboard/channel-manager"
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/channel-manager' ? 'bg-primary-light text-primary' : 'text-slate-400'
-                    }`}
-                >
-                  <RefreshCw size={20} />
-                  <span>Room Status</span>
-                </Link>
-              </>
-            )}
-            <Link
-              href="/dashboard/orders"
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === '/dashboard/orders' ? 'bg-primary-light text-primary' : 'text-slate-400'
-                }`}
-            >
-              <ShoppingCart size={20} />
-              <span>Orders</span>
-            </Link>
+            {NAV_ITEMS.filter(item => hasPermission(user, item.permission)).map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-white/5 hover:text-slate-200 ${pathname === href ? 'bg-primary-light text-primary' : 'text-slate-400'
+                  }`}
+              >
+                <Icon size={20} />
+                <span>{label}</span>
+              </Link>
+            ))}
           </nav>
         </aside>
 

@@ -5,15 +5,34 @@ import { useRouter, usePathname } from 'next/navigation';
 import { fetcher } from '../lib/fetcher';
 import { setAccessToken } from '../lib/token';
 
-export type UserRole = 'ADMIN' | 'MANAGER' | 'WAITER' | 'CASHIER' | 'KITCHEN_STAFF' | 'RECEPTIONIST';
+export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'MANAGER' | 'WAITER' | 'CASHIER' | 'KITCHEN_STAFF' | 'RECEPTIONIST';
+
+// One value per sidebar section — mirrors the backend Permission enum.
+export type Permission =
+  | 'MANAGE_MEMBERS'
+  | 'MANAGE_MENU'
+  | 'VIEW_ANALYSIS'
+  | 'PRINT_KOTS'
+  | 'MANAGE_ROOMS'
+  | 'MANAGE_RESERVATIONS'
+  | 'VIEW_ROOM_STATUS'
+  | 'MANAGE_ORDERS';
 
 export interface User {
   id: string;
   name: string;
   phoneNumber: string;
   role: UserRole;
+  permissions: Permission[];
   isActive: boolean;
 }
+
+// SUPERADMIN passes every check, same rule as the backend's `hasPermission`.
+export const hasPermission = (user: User | null, permission: Permission): boolean => {
+  if (!user) return false;
+  if (user.role === 'SUPERADMIN') return true;
+  return user.permissions.includes(permission);
+};
 
 interface AuthContextType {
   user: User | null;
@@ -65,11 +84,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = (accessToken: string, userData: User) => {
     setAccessToken(accessToken);
     setUser(userData);
-    if (userData.role === 'ADMIN') {
-      router.push('/dashboard/members');
-    } else {
-      router.push('/dashboard');
-    }
+    // Which sections a role gets access to now varies per-user, not per-role,
+    // so land on the generic dashboard and let the sidebar guide them.
+    router.push('/dashboard');
   };
 
   const logout = async () => {

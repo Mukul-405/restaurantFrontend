@@ -1,21 +1,25 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, ShieldAlert, ShieldCheck, Key } from 'lucide-react';
+import { Plus, Trash2, ShieldAlert, ShieldCheck, Key, Pencil } from 'lucide-react';
 import { fetcher } from '../../../lib/fetcher';
-import { User } from '../../../context/AuthContext';
+import { User, useAuth } from '../../../context/AuthContext';
 import AddMemberModal from '../../../components/modals/AddMemberModal';
+import EditMemberModal from '../../../components/modals/EditMemberModal';
 import DeleteMemberModal from '../../../components/modals/DeleteMemberModal';
 import BlockMemberModal from '../../../components/modals/BlockMemberModal';
 import ResetPasswordModal from '../../../components/modals/ResetPasswordModal';
 
 export default function MembersPage() {
+  const { user: currentUser } = useAuth();
   const [members, setMembers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [memberToEdit, setMemberToEdit] = useState<User | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<User | null>(null);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
@@ -98,38 +102,65 @@ export default function MembersPage() {
                     </span>
                   </td>
                   <td className="p-3 sm:p-4 text-left border-b border-white/10 whitespace-nowrap">
-                    <div className="flex gap-2">
-                      <button 
-                        className="bg-transparent border-none text-slate-400 cursor-pointer p-1.5 rounded transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
-                        onClick={() => {
-                          setMemberToReset(member);
-                          setIsResetModalOpen(true);
-                        }}
-                        title="Reset Password"
-                      >
-                        <Key size={18} />
-                      </button>
-                      <button 
-                        className="bg-transparent border-none text-slate-400 cursor-pointer p-1.5 rounded transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
-                        onClick={() => {
-                          setMemberToBlock(member);
-                          setIsBlockModalOpen(true);
-                        }}
-                        title={member.isActive ? "Block User" : "Unblock User"}
-                      >
-                        {member.isActive ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
-                      </button>
-                      <button 
-                        className="bg-transparent border-none text-slate-400 cursor-pointer p-1.5 rounded transition-colors duration-200 hover:bg-white/10 hover:text-danger"
-                        onClick={() => {
-                          setMemberToDelete(member);
-                          setIsDeleteModalOpen(true);
-                        }}
-                        title="Delete User"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
+                    {/* Superadmin is provisioned by hand in the DB and can't be edited, blocked, or
+                        deleted by anyone — but it can still reset its own password. */}
+                    {member.role === 'SUPERADMIN' ? (
+                      member.id === currentUser?.id && (
+                        <button
+                          className="bg-transparent border-none text-slate-400 cursor-pointer p-1.5 rounded transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
+                          onClick={() => {
+                            setMemberToReset(member);
+                            setIsResetModalOpen(true);
+                          }}
+                          title="Reset Password"
+                        >
+                          <Key size={18} />
+                        </button>
+                      )
+                    ) : (
+                      <div className="flex gap-2">
+                        <button
+                          className="bg-transparent border-none text-slate-400 cursor-pointer p-1.5 rounded transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
+                          onClick={() => {
+                            setMemberToEdit(member);
+                            setIsEditModalOpen(true);
+                          }}
+                          title="Edit Member"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        <button
+                          className="bg-transparent border-none text-slate-400 cursor-pointer p-1.5 rounded transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
+                          onClick={() => {
+                            setMemberToReset(member);
+                            setIsResetModalOpen(true);
+                          }}
+                          title="Reset Password"
+                        >
+                          <Key size={18} />
+                        </button>
+                        <button
+                          className="bg-transparent border-none text-slate-400 cursor-pointer p-1.5 rounded transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
+                          onClick={() => {
+                            setMemberToBlock(member);
+                            setIsBlockModalOpen(true);
+                          }}
+                          title={member.isActive ? "Block User" : "Unblock User"}
+                        >
+                          {member.isActive ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
+                        </button>
+                        <button
+                          className="bg-transparent border-none text-slate-400 cursor-pointer p-1.5 rounded transition-colors duration-200 hover:bg-white/10 hover:text-danger"
+                          onClick={() => {
+                            setMemberToDelete(member);
+                            setIsDeleteModalOpen(true);
+                          }}
+                          title="Delete User"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))
@@ -168,38 +199,63 @@ export default function MembersPage() {
                   {member.role}
                 </span>
                 
-                <div className="flex gap-1">
-                  <button 
-                    className="bg-transparent border-none text-slate-400 cursor-pointer p-2 rounded-lg transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
-                    onClick={() => {
-                      setMemberToReset(member);
-                      setIsResetModalOpen(true);
-                    }}
-                    title="Reset Password"
-                  >
-                    <Key size={18} />
-                  </button>
-                  <button 
-                    className="bg-transparent border-none text-slate-400 cursor-pointer p-2 rounded-lg transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
-                    onClick={() => {
-                      setMemberToBlock(member);
-                      setIsBlockModalOpen(true);
-                    }}
-                    title={member.isActive ? "Block User" : "Unblock User"}
-                  >
-                    {member.isActive ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
-                  </button>
-                  <button 
-                    className="bg-transparent border-none text-slate-400 cursor-pointer p-2 rounded-lg transition-colors duration-200 hover:bg-white/10 hover:text-danger"
-                    onClick={() => {
-                      setMemberToDelete(member);
-                      setIsDeleteModalOpen(true);
-                    }}
-                    title="Delete User"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+                {member.role === 'SUPERADMIN' ? (
+                  member.id === currentUser?.id && (
+                    <button
+                      className="bg-transparent border-none text-slate-400 cursor-pointer p-2 rounded-lg transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
+                      onClick={() => {
+                        setMemberToReset(member);
+                        setIsResetModalOpen(true);
+                      }}
+                      title="Reset Password"
+                    >
+                      <Key size={18} />
+                    </button>
+                  )
+                ) : (
+                  <div className="flex gap-1">
+                    <button
+                      className="bg-transparent border-none text-slate-400 cursor-pointer p-2 rounded-lg transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
+                      onClick={() => {
+                        setMemberToEdit(member);
+                        setIsEditModalOpen(true);
+                      }}
+                      title="Edit Member"
+                    >
+                      <Pencil size={18} />
+                    </button>
+                    <button
+                      className="bg-transparent border-none text-slate-400 cursor-pointer p-2 rounded-lg transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
+                      onClick={() => {
+                        setMemberToReset(member);
+                        setIsResetModalOpen(true);
+                      }}
+                      title="Reset Password"
+                    >
+                      <Key size={18} />
+                    </button>
+                    <button
+                      className="bg-transparent border-none text-slate-400 cursor-pointer p-2 rounded-lg transition-colors duration-200 hover:bg-white/10 hover:text-slate-200"
+                      onClick={() => {
+                        setMemberToBlock(member);
+                        setIsBlockModalOpen(true);
+                      }}
+                      title={member.isActive ? "Block User" : "Unblock User"}
+                    >
+                      {member.isActive ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
+                    </button>
+                    <button
+                      className="bg-transparent border-none text-slate-400 cursor-pointer p-2 rounded-lg transition-colors duration-200 hover:bg-white/10 hover:text-danger"
+                      onClick={() => {
+                        setMemberToDelete(member);
+                        setIsDeleteModalOpen(true);
+                      }}
+                      title="Delete User"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))
@@ -211,6 +267,14 @@ export default function MembersPage() {
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)} 
         onSuccess={fetchMembers} 
+      />
+
+      {/* Edit Member Modal */}
+      <EditMemberModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSuccess={fetchMembers}
+        member={memberToEdit}
       />
 
       {/* Delete Confirmation Modal */}

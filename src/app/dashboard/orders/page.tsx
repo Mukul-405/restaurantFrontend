@@ -42,8 +42,12 @@ export default function OrdersPage() {
   };
 
   useEffect(() => {
-    fetcher.getUsers().then(data => setWaiters(data)).catch(console.error);
-  }, []);
+    // Only admins see the waiter filter dropdown, so only they need this list.
+    // Everyone else calling it would 403 anyway — /users requires MANAGE_MEMBERS.
+    if (user?.role === 'ADMIN' || user?.role === 'SUPERADMIN') {
+      fetcher.getUsers().then(data => setWaiters(data)).catch(console.error);
+    }
+  }, [user?.role]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -158,7 +162,7 @@ export default function OrdersPage() {
         </div>
         
         <div className="flex w-full lg:w-auto gap-2">
-          {user?.role === 'ADMIN' && (
+          {(user?.role === 'ADMIN' || user?.role === 'SUPERADMIN') && (
             <select
               value={waiterFilter}
               onChange={(e) => setWaiterFilter(e.target.value)}
