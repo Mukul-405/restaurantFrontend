@@ -48,37 +48,37 @@ const RestrictionsEditor = ({ restrictions, onChange }: { restrictions: any, onC
         <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
           <span className="text-xs font-bold text-white">Min. Stay (Nights)</span>
           <span className="text-[10px] text-slate-400 mb-2 leading-snug">Required length of stay.</span>
-          <input type="number" placeholder="e.g. 2" value={restrictions.minimumStay} onChange={e => update('minimumStay', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+          <input type="number" step="1" placeholder="e.g. 2" value={restrictions.minimumStay} onChange={e => update('minimumStay', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
         </div>
         <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
           <span className="text-xs font-bold text-white">Max. Stay (Nights)</span>
           <span className="text-[10px] text-slate-400 mb-2 leading-snug">Maximum length of stay.</span>
-          <input type="number" placeholder="e.g. 14" value={restrictions.maximumStay} onChange={e => update('maximumStay', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+          <input type="number" step="1" placeholder="e.g. 14" value={restrictions.maximumStay} onChange={e => update('maximumStay', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
         </div>
         <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
           <span className="text-xs font-bold text-white">Min. Adv. Booking</span>
           <span className="text-[10px] text-slate-400 mb-2 leading-snug">How many days in advance.</span>
-          <input type="number" placeholder="e.g. 1" value={restrictions.minimumAdvanceReservation} onChange={e => update('minimumAdvanceReservation', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+          <input type="number" step="1" placeholder="e.g. 1" value={restrictions.minimumAdvanceReservation} onChange={e => update('minimumAdvanceReservation', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
         </div>
         <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
           <span className="text-xs font-bold text-white">Max. Adv. Booking</span>
           <span className="text-[10px] text-slate-400 mb-2 leading-snug">How far in the future.</span>
-          <input type="number" placeholder="e.g. 30" value={restrictions.maximumAdvanceReservation} onChange={e => update('maximumAdvanceReservation', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+          <input type="number" step="1" placeholder="e.g. 30" value={restrictions.maximumAdvanceReservation} onChange={e => update('maximumAdvanceReservation', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
         </div>
         <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
           <span className="text-xs font-bold text-white">Min. Stay on Arrival</span>
           <span className="text-[10px] text-slate-400 mb-2 leading-snug">Min nights if arriving this date.</span>
-          <input type="number" placeholder="e.g. 2" value={restrictions.minimumStayArrival} onChange={e => update('minimumStayArrival', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+          <input type="number" step="1" placeholder="e.g. 2" value={restrictions.minimumStayArrival} onChange={e => update('minimumStayArrival', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
         </div>
         <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
           <span className="text-xs font-bold text-white">Max. Stay on Arrival</span>
           <span className="text-[10px] text-slate-400 mb-2 leading-snug">Max nights if arriving this date.</span>
-          <input type="number" placeholder="e.g. 14" value={restrictions.maximumStayArrival} onChange={e => update('maximumStayArrival', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+          <input type="number" step="1" placeholder="e.g. 14" value={restrictions.maximumStayArrival} onChange={e => update('maximumStayArrival', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
         </div>
         <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-white/5 border border-white/5 focus-within:border-primary/50 transition-colors">
           <span className="text-xs font-bold text-white">Exact Stay on Arrival</span>
           <span className="text-[10px] text-slate-400 mb-2 leading-snug">Exact nights if arriving this date.</span>
-          <input type="number" placeholder="e.g. 3" value={restrictions.exactStayArrival} onChange={e => update('exactStayArrival', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
+          <input type="number" step="1" placeholder="e.g. 3" value={restrictions.exactStayArrival} onChange={e => update('exactStayArrival', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-slate-200 outline-none focus:border-primary text-xs font-mono" />
         </div>
       </div>
     </div>
@@ -113,7 +113,6 @@ export default function ChannelManagerPage() {
     { code: 'ctrip', label: 'CTrip' },
     { code: 'easemytrip', label: 'Ease My Trip' },
     { code: 'expedia', label: 'Expedia' },
-    { code: 'simplotel', label: 'Simplotel' },
     { code: 'tiket', label: 'Tiket' },
     { code: 'traveloka', label: 'Traveloka' },
     { code: 'gommt', label: 'MakeMyTrip / Goibibo' },
@@ -167,9 +166,9 @@ export default function ChannelManagerPage() {
         data = await fetchCMReservations(startDate, endDate);
       }
       setFetchedData(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError(`Failed to fetch ${activeTab} data.`);
+      setError(err.response?.data?.message || `Failed to fetch ${activeTab} data.`);
     } finally {
       setIsFetching(false);
     }
@@ -187,15 +186,15 @@ export default function ChannelManagerPage() {
     // never omit it. The *Arrival fields have no UI yet -> always null.
     const parseRest = (r: any) => ({
       stopSell: r.stopSell,
-      minimumStay: r.minimumStay !== '' ? Number(r.minimumStay) : null,
-      maximumStay: r.maximumStay !== '' ? Number(r.maximumStay) : null,
+      minimumStay: r.minimumStay !== '' ? parseInt(String(r.minimumStay), 10) : null,
+      maximumStay: r.maximumStay !== '' ? parseInt(String(r.maximumStay), 10) : null,
       closeOnArrival: r.closeOnArrival,
       closeOnDeparture: r.closeOnDeparture,
-      minimumStayArrival: r.minimumStayArrival !== '' && r.minimumStayArrival != null ? Number(r.minimumStayArrival) : null,
-      maximumStayArrival: r.maximumStayArrival !== '' && r.maximumStayArrival != null ? Number(r.maximumStayArrival) : null,
-      exactStayArrival: r.exactStayArrival !== '' && r.exactStayArrival != null ? Number(r.exactStayArrival) : null,
-      minimumAdvanceReservation: r.minimumAdvanceReservation !== '' ? Number(r.minimumAdvanceReservation) : null,
-      maximumAdvanceReservation: r.maximumAdvanceReservation !== '' ? Number(r.maximumAdvanceReservation) : null,
+      minimumStayArrival: r.minimumStayArrival !== '' && r.minimumStayArrival != null ? parseInt(String(r.minimumStayArrival), 10) : null,
+      maximumStayArrival: r.maximumStayArrival !== '' && r.maximumStayArrival != null ? parseInt(String(r.maximumStayArrival), 10) : null,
+      exactStayArrival: r.exactStayArrival !== '' && r.exactStayArrival != null ? parseInt(String(r.exactStayArrival), 10) : null,
+      minimumAdvanceReservation: r.minimumAdvanceReservation !== '' ? parseInt(String(r.minimumAdvanceReservation), 10) : null,
+      maximumAdvanceReservation: r.maximumAdvanceReservation !== '' ? parseInt(String(r.maximumAdvanceReservation), 10) : null,
     });
 
     let payload: any;
@@ -228,9 +227,9 @@ export default function ChannelManagerPage() {
     try {
       await pushFn(payload, isRest ? selectedChannels : undefined);
       toast.success(`${alertMsg} pushed successfully to Aiosell!`);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError(`Failed to push ${activeTab} data. Make sure credentials are set.`);
+      setError(err.response?.data?.message || `Failed to push ${activeTab} data. Make sure credentials are set.`);
     } finally {
       setIsPushing(false);
     }
@@ -749,8 +748,8 @@ export default function ChannelManagerPage() {
                             <div className="text-xs text-slate-400">to {res.checkout}</div>
                           </td>
                           <td className="p-4 text-slate-300">
-                            <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${res.status === 'confirmed' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'}`}>
-                              {res.status || 'N/A'}
+                            <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${res.action === 'book' || res.action === 'modify' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : res.action === 'cancel' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'}`}>
+                              {res.action ? res.action.toUpperCase() : 'N/A'}
                             </span>
                           </td>
                           <td className="p-4 text-slate-300 text-sm">
@@ -817,8 +816,8 @@ export default function ChannelManagerPage() {
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <div className="font-bold text-white text-xl">₹{res.amount?.amountAfterTax || 0}</div>
-                      <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${res.status === 'confirmed' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'}`}>
-                        {res.status || 'N/A'}
+                      <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${res.action === 'book' || res.action === 'modify' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : res.action === 'cancel' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'}`}>
+                        {res.action || 'N/A'}
                       </span>
                     </div>
                   </div>

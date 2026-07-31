@@ -391,6 +391,12 @@ export default function BookRoomPage() {
                 <div>
                   <label className={labelClass}>Check-out Date</label>
                   <input type="date" name="checkOut" required min={formData.checkIn || todayStr} value={formData.checkOut} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
+                  {formData.checkOut && (
+                    <div className="mt-2 text-xs text-slate-400 flex items-center gap-1.5">
+                      <Calendar size={12} className="text-slate-500" />
+                      <span>Estimated checkout: <strong>{new Date(formData.checkOut).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} at 11:00 AM</strong></span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
