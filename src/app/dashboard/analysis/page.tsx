@@ -129,7 +129,11 @@ export default function AnalysisPage() {
     setErrors(prev => ({ ...prev, [section]: null }));
   };
 
-  const setPresetDateRange = (type: string, section: keyof typeof dateRanges, fetchFn: () => void) => {
+  const setPresetDateRange = (
+    type: string, 
+    section: keyof typeof dateRanges, 
+    apiCall: (s: string, e: string) => Promise<any>
+  ) => {
     setErrors(prev => ({ ...prev, [section]: null }));
     const today = new Date();
     const end = getLocalDateString(today);
@@ -139,7 +143,7 @@ export default function AnalysisPage() {
       const y = new Date(); y.setDate(y.getDate() - 1);
       start = getLocalDateString(y);
       setDateRanges(prev => ({ ...prev, [section]: { start, end: start } }));
-      setTimeout(fetchFn, 0); // Wait for state to update
+      fetchData(section, apiCall, start, start);
       return;
     } else if (type === '7days') {
       const d = new Date(); d.setDate(d.getDate() - 7);
@@ -150,11 +154,17 @@ export default function AnalysisPage() {
     }
 
     setDateRanges(prev => ({ ...prev, [section]: { start, end } }));
-    setTimeout(fetchFn, 0);
+    fetchData(section, apiCall, start, end);
   };
 
-  const fetchData = async (section: keyof typeof dateRanges, apiCall: (s: string, e: string) => Promise<any>) => {
-    const { start, end } = dateRanges[section];
+  const fetchData = async (
+    section: keyof typeof dateRanges, 
+    apiCall: (s: string, e: string) => Promise<any>,
+    overrideStart?: string,
+    overrideEnd?: string
+  ) => {
+    const start = overrideStart ?? dateRanges[section].start;
+    const end = overrideEnd ?? dateRanges[section].end;
     if (!start || !end) return;
 
     const startD = new Date(start);
@@ -207,7 +217,7 @@ export default function AnalysisPage() {
           setEndDate={(v: string) => updateDateRange('booking', 'end', v)}
           onGenerate={fetchBookingAnalysis}
           loading={loading.booking}
-          setDateRangeType={(type: string) => setPresetDateRange(type, 'booking', fetchBookingAnalysis)}
+          setDateRangeType={(type: string) => setPresetDateRange(type, 'booking', getBookingAnalysis)}
           error={errors.booking}
         />
 
@@ -252,7 +262,7 @@ export default function AnalysisPage() {
           setEndDate={(v: string) => updateDateRange('channel', 'end', v)}
           onGenerate={fetchChannelAnalysis}
           loading={loading.channel}
-          setDateRangeType={(type: string) => setPresetDateRange(type, 'channel', fetchChannelAnalysis)}
+          setDateRangeType={(type: string) => setPresetDateRange(type, 'channel', getChannelAnalysis)}
           error={errors.channel}
         />
 
@@ -318,7 +328,7 @@ export default function AnalysisPage() {
           setEndDate={(v: string) => updateDateRange('revenue', 'end', v)}
           onGenerate={fetchRevenueAnalysis}
           loading={loading.revenue}
-          setDateRangeType={(type: string) => setPresetDateRange(type, 'revenue', fetchRevenueAnalysis)}
+          setDateRangeType={(type: string) => setPresetDateRange(type, 'revenue', getRevenueAnalysis)}
           error={errors.revenue}
         />
 
@@ -363,7 +373,7 @@ export default function AnalysisPage() {
           setEndDate={(v: string) => updateDateRange('waiter', 'end', v)}
           onGenerate={fetchWaiterAnalysis}
           loading={loading.waiter}
-          setDateRangeType={(type: string) => setPresetDateRange(type, 'waiter', fetchWaiterAnalysis)}
+          setDateRangeType={(type: string) => setPresetDateRange(type, 'waiter', getWaiterAnalysis)}
           error={errors.waiter}
         />
 
