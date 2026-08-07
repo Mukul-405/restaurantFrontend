@@ -36,6 +36,11 @@ let failedQueue: Array<{
   reject: (reason?: any) => void;
 }> = [];
 
+const withRefreshLock = <T,>(fn: () => Promise<T>): Promise<T> =>
+  typeof navigator !== 'undefined' && navigator.locks
+    ? navigator.locks.request('auth:refresh', fn) as Promise<T>
+    : fn();
+
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -64,6 +69,7 @@ api.interceptors.response.use(
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
+            originalRequest._retry = true;
             originalRequest.headers.Authorization = `Bearer ${token}`;
             return api(originalRequest);
           })
@@ -76,9 +82,11 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post(`${API_URL}/auth/refresh-token`, undefined, {
-          withCredentials: true,
-        });
+        const { data } = await withRefreshLock(() =>
+          axios.post(`${API_URL}/auth/refresh-token`, undefined, {
+            withCredentials: true,
+          })
+        );
 
         const newAccessToken = data.accessToken;
 

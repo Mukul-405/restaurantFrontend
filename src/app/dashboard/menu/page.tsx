@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit2, Trash2, Loader2, RefreshCw, FolderPlus, ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchMenu, createMenuItem, updateMenuItem, deleteMenuItem, createCategories, MenuItem } from '../../../store/slices/menuSlice';
+import { matchesMenuSearch } from '../../../utils/menuSearch';
 import MenuModal from '../../../components/modals/MenuModal';
 import DeleteConfirmModal from '../../../components/modals/DeleteConfirmModal';
 import CategoryModal from '../../../components/modals/CategoryModal';
@@ -64,11 +65,7 @@ export default function MenuManagementPage() {
     await dispatch(deleteMenuItem(id)).unwrap();
   };
 
-  const filteredItems = items.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (item.categoryName && item.categoryName.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredItems = items.filter(item => matchesMenuSearch(item, searchQuery));
 
   const groupedItems = filteredItems.reduce((acc, item) => {
     const cat = item.categoryName || 'UNCATEGORIZED';

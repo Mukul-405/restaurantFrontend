@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Plus, Trash2, Search, ChevronDown } from 'lucide-react';
+import { X, Loader2, Plus, Trash2, Search, ChevronDown, RefreshCw } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { createOrder, updateOrder, Order } from '../../store/slices/orderSlice';
 import { fetchMenu } from '../../store/slices/menuSlice';
+import { matchesMenuSearch } from '../../utils/menuSearch';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -14,7 +15,7 @@ interface OrderModalProps {
 
 export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: OrderModalProps) {
   const dispatch = useAppDispatch();
-  const { items: menuItems, categories, status: menuStatus } = useAppSelector(state => state.menu);
+  const { items: menuItems, categories, status: menuStatus, error: menuError } = useAppSelector(state => state.menu);
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [tableNumber, setTableNumber] = useState('');
@@ -38,11 +39,15 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Refetch on every open, not just when `idle`. A single failed load used to
+  // leave status at 'failed' forever, so the item grid stayed empty until a full
+  // page reload — and a cached 'succeeded' menu never picked up items another
+  // device added.
   useEffect(() => {
-    if (isOpen && menuStatus === 'idle') {
+    if (isOpen) {
       dispatch(fetchMenu());
     }
-  }, [isOpen, menuStatus, dispatch]);
+  }, [isOpen, dispatch]);
 
   useEffect(() => {
     if (isOpen) {
@@ -103,6 +108,12 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
       i.menuItemId === menuItemId ? { ...i, price } : i
     ));
   };
+
+  const visibleItems = menuItems.filter(item => {
+    if (!matchesMenuSearch(item, searchQuery)) return false;
+    if (selectedCategory === 'CART') return selectedItems.some(s => s.menuItemId === Number(item.id));
+    return selectedCategory === 'ALL' || item.categoryName === selectedCategory;
+  });
 
   const baseAmount = Number(selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2));
   const gstAmount = Number((baseAmount * 0.05).toFixed(2));
@@ -261,17 +272,42 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                   ))}
                 </div>
 
+                {/* Menu load state — silence here used to look like an empty menu */}
+                {menuStatus === 'loading' && menuItems.length === 0 && (
+                  <div className="flex justify-center py-10">
+                    <Loader2 className="animate-spin text-primary" size={28} />
+                  </div>
+                )}
+
+                {/* Shown even when a stale menu is cached — silently serving an
+                    out-of-date menu is how items go missing without anyone knowing. */}
+                {menuStatus === 'failed' && (
+                  <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-danger/20 bg-danger/10 p-3">
+                    <p className="text-danger text-sm">
+                      {menuItems.length > 0
+                        ? 'Menu may be out of date — refresh failed.'
+                        : menuError || 'Failed to load menu'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => dispatch(fetchMenu())}
+                      className="flex shrink-0 items-center gap-2 text-primary hover:text-primary-hover text-sm"
+                    >
+                      <RefreshCw size={16} />
+                      <span>Retry</span>
+                    </button>
+                  </div>
+                )}
+
+                {menuStatus === 'succeeded' && menuItems.length > 0 && visibleItems.length === 0 && (
+                  <p className="py-10 text-center text-sm text-slate-400">
+                    {selectedCategory === 'CART' ? 'Cart is empty.' : 'No items match this search or category.'}
+                  </p>
+                )}
+
                 {/* Item List (Grid on desktop, list on mobile) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {menuItems
-                    .filter(item => {
-                      if (selectedCategory === 'CART') {
-                        return selectedItems.some(s => s.menuItemId === Number(item.id));
-                      }
-                      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-                      const matchesCat = selectedCategory === 'ALL' || item.categoryName === selectedCategory;
-                      return matchesSearch && matchesCat;
-                    })
+                  {visibleItems
                     .map((item) => {
                       const selectedItem = selectedItems.find(s => s.menuItemId === Number(item.id));
                       const qty = selectedItem?.quantity || 0;
@@ -279,7 +315,12 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                       return (
                         <div key={item.id} className="bg-[#24262b] border border-white/5 rounded-2xl p-4 flex justify-between items-center shadow-sm">
                           <div>
-                            <h4 className="text-slate-200 font-medium text-base mb-1">{item.name}</h4>
+                            <h4 className="text-slate-200 font-medium text-base mb-1">
+                              {item.name}
+                              {!item.isAvailable && (
+                                <span className="ml-2 text-[10px] uppercase tracking-wider text-amber-400/90 font-semibold">Unavailable</span>
+                              )}
+                            </h4>
                             <div className="text-emerald-400 font-bold tracking-wide">₹{item.price}</div>
                           </div>
                           

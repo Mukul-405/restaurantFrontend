@@ -90,6 +90,14 @@ export const createCategories = createAsyncThunk(
   }
 );
 
+// A brand-new category arrives on the item, not in `categories` — without this
+// its filter chip never renders and the item is unreachable.
+const rememberCategory = (state: MenuState, name?: string) => {
+  if (name && !state.categories.some((cat) => cat.name === name)) {
+    state.categories.push({ id: name, name });
+  }
+};
+
 const menuSlice = createSlice({
   name: 'menu',
   initialState,
@@ -116,10 +124,8 @@ const menuSlice = createSlice({
       })
       // Create Menu Item
       .addCase(createMenuItem.fulfilled, (state, action: PayloadAction<MenuItem>) => {
-        state.items.push(action.payload);
-        // We might need to refresh categories if a new one was created, 
-        // but typically we can rely on a full refetch or user seeing it.
-        // For now we add the item.
+        state.items.unshift(action.payload);
+        rememberCategory(state, action.payload.categoryName);
       })
       // Update Menu Item
       .addCase(updateMenuItem.fulfilled, (state, action: PayloadAction<MenuItem>) => {
@@ -127,6 +133,7 @@ const menuSlice = createSlice({
         if (index !== -1) {
           state.items[index] = action.payload;
         }
+        rememberCategory(state, action.payload.categoryName);
       })
       // Delete Menu Item
       .addCase(deleteMenuItem.fulfilled, (state, action: PayloadAction<string | number>) => {

@@ -22,6 +22,7 @@ export interface Order {
   discountAmount: number;
   finalDiscountedAmount: number;
   status: OrderStatus;
+  paymentMode?: 'CASH' | 'CARD' | 'UPI';
   cancellationReason: string | null;
   tableNumber: number | null;
   items: OrderItem[];

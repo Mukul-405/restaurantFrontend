@@ -12,12 +12,14 @@ interface ReceiptModalProps {
     gstAmount: number;
     discountAmount: number;
     finalDiscountedAmount: number;
+    paymentMode: 'CASH' | 'CARD' | 'UPI';
   }) => Promise<void>;
 }
 
 export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: ReceiptModalProps) {
   const [discountType, setDiscountType] = useState<'PERCENTAGE' | 'FLAT'>('PERCENTAGE');
   const [discountValue, setDiscountValue] = useState<string>('');
+  const [paymentMode, setPaymentMode] = useState<'CASH' | 'CARD' | 'UPI'>('CASH');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +27,7 @@ export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: Rece
     if (isOpen) {
       setDiscountType('PERCENTAGE');
       setDiscountValue('');
+      setPaymentMode('CASH');
       setError(null);
       setIsSubmitting(false);
     }
@@ -63,7 +66,8 @@ export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: Rece
         baseAmount: Number(baseAmount.toFixed(2)),
         gstAmount: Number(gstAmount.toFixed(2)),
         discountAmount: Number(discountAmount.toFixed(2)),
-        finalDiscountedAmount: Number(finalTotal.toFixed(2))
+        finalDiscountedAmount: Number(finalTotal.toFixed(2)),
+        paymentMode
       });
       onClose();
     } catch (err: any) {
@@ -153,6 +157,27 @@ export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: Rece
                       max={discountType === 'PERCENTAGE' ? "100" : baseAmount}
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Payment Mode Section */}
+              <div className="space-y-4 mt-6">
+                <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Payment Mode</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  {['CASH', 'CARD', 'UPI'].map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setPaymentMode(mode as any)}
+                      className={`px-3 py-2 rounded-xl border text-sm font-semibold transition-all ${
+                        paymentMode === mode
+                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
+                          : 'border-white/10 bg-black/20 text-slate-400 hover:bg-white/5'
+                      }`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
