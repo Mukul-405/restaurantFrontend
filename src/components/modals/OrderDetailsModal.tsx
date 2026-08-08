@@ -30,7 +30,11 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
     if (selectedOrder) {
       setIsUpdatingStatus(true);
       try {
-        await dispatch(updateOrder({ id: selectedOrder.id, data: { status: newStatus } }));
+        const payload: any = { status: newStatus };
+        if (newStatus === 'COMPLETED' && !selectedOrder.paymentMode) {
+          payload.paymentMode = 'CASH';
+        }
+        await dispatch(updateOrder({ id: selectedOrder.id, data: payload }));
       } finally {
         setIsUpdatingStatus(false);
       }

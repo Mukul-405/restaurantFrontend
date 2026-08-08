@@ -42,12 +42,15 @@ export default function KOTPage() {
       iframe.style.display = 'none';
       document.body.appendChild(iframe);
 
-      const itemsHtml = itemsToPrint.map((item: any) => `
-        <div style="display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 8px;">
-          <span>${escapeHtml(item.name)}</span>
-          <strong>x${escapeHtml(item.qty)}</strong>
-        </div>
-      `).join('');
+      const itemsHtml = itemsToPrint.map((item: any) => {
+        const qty = item.qty ?? item.quantity ?? 1;
+        return `
+          <tr style="font-size: 16px;">
+            <td style="padding: 4px 0; font-weight: bold; vertical-align: top; width: 45px;">${escapeHtml(qty)}</td>
+            <td style="padding: 4px 0; font-weight: bold; vertical-align: top;">${escapeHtml(item.name)}</td>
+          </tr>
+        `;
+      }).join('');
 
       const printContent = `
         <html>
@@ -55,11 +58,14 @@ export default function KOTPage() {
             <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
             <title>Print KOT</title>
             <style>
-              body { font-family: monospace; padding: 10px; width: 300px; color: #000; }
-              .header { text-align: center; margin-bottom: 15px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-              .footer { text-align: center; margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px; }
-              h2 { margin: 0 0 5px 0; font-size: 24px; }
-              p { margin: 2px 0; font-size: 14px; }
+              @page { margin: 0; size: 80mm auto; }
+              body { font-family: monospace; padding: 8px; width: 100%; box-sizing: border-box; color: #000; margin: 0; }
+              .header { text-align: center; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 8px; }
+              .footer { text-align: center; margin-top: 12px; border-top: 1px dashed #000; padding-top: 8px; }
+              h2 { margin: 0 0 4px 0; font-size: 22px; }
+              p { margin: 2px 0; font-size: 13px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+              th { border-bottom: 1px dashed #000; text-align: left; padding-bottom: 4px; font-size: 14px; }
             </style>
           </head>
           <body>
@@ -69,9 +75,17 @@ export default function KOTPage() {
               <p>Waiter: ${escapeHtml(order.user?.name) || '-'}</p>
               <p>Time: ${new Date().toLocaleTimeString()}</p>
             </div>
-            <div class="items">
-              ${itemsHtml}
-            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 45px;">QTY</th>
+                  <th>ITEM</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
             <div class="footer">
               <p>*** END OF KOT ***</p>
             </div>
