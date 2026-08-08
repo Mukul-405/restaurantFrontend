@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { IndianRupee, Receipt, TrendingUp, Users, Bed, Building2, Calendar, AlertCircle } from 'lucide-react';
+import { IndianRupee, Receipt, TrendingUp, Users, Bed, Building2, Calendar, AlertCircle, Banknote, CreditCard, QrCode } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getRevenueAnalysis, getWaiterAnalysis, getBookingAnalysis, getChannelAnalysis, RevenueAnalysis, WaiterAnalysis, BookingAnalysis, ChannelAnalysis } from '../../../lib/analysis';
 
@@ -87,6 +87,60 @@ const StatCard = ({ title, value, icon: Icon, color }: { title: string, value: s
     </div>
     <div className="text-3xl font-bold text-white tracking-tight">
       {value}
+    </div>
+  </motion.div>
+);
+
+const PaymentModeCard = ({ 
+  title, 
+  baseAmount, 
+  gstAmount, 
+  totalAmount, 
+  icon: Icon, 
+  colorClass,
+  badgeBg,
+  borderColor
+}: { 
+  title: string; 
+  baseAmount: number; 
+  gstAmount: number; 
+  totalAmount: number; 
+  icon: any; 
+  colorClass: string;
+  badgeBg: string;
+  borderColor: string;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className={`bg-surface/40 backdrop-blur-md p-6 rounded-2xl border ${borderColor} flex flex-col justify-between space-y-4 hover:border-white/20 transition-all`}
+  >
+    <div className="flex justify-between items-start">
+      <div className="flex items-center gap-3">
+        <div className={`p-2.5 rounded-xl ${badgeBg}`}>
+          <Icon size={22} className={colorClass} />
+        </div>
+        <div>
+          <h3 className="text-slate-100 font-bold text-lg">{title}</h3>
+          <span className="text-slate-400 text-xs font-medium uppercase tracking-wider">Payment Mode</span>
+        </div>
+      </div>
+    </div>
+
+    <div className="space-y-1">
+      <span className="text-xs text-slate-400 font-medium block">Total (Base + GST)</span>
+      <span className="text-2xl font-black text-white tracking-tight">₹{Number(totalAmount || 0).toFixed(2)}</span>
+    </div>
+
+    <div className="pt-3 border-t border-white/10 grid grid-cols-2 gap-3 text-sm">
+      <div className="bg-black/20 p-2.5 rounded-xl border border-white/5">
+        <span className="text-slate-400 text-xs block mb-0.5">Base Amount</span>
+        <span className="text-slate-200 font-bold">₹{Number(baseAmount || 0).toFixed(2)}</span>
+      </div>
+      <div className="bg-black/20 p-2.5 rounded-xl border border-white/5">
+        <span className="text-slate-400 text-xs block mb-0.5">GST (5%)</span>
+        <span className="text-amber-400 font-bold">₹{Number(gstAmount || 0).toFixed(2)}</span>
+      </div>
     </div>
   </motion.div>
 );
@@ -337,25 +391,60 @@ export default function AnalysisPage() {
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard 
-              title="Total Base Amount" 
-              value={`₹${Number(data.revenue?.totalBaseAmount || 0).toFixed(2)}`}
-              icon={Receipt}
-              color="bg-blue-500"
-            />
-            <StatCard 
-              title="Total GST Amount" 
-              value={`₹${Number(data.revenue?.totalGstAmount || 0).toFixed(2)}`}
-              icon={Receipt}
-              color="bg-orange-500"
-            />
-            <StatCard 
-              title="Final Discounted Amount" 
-              value={`₹${Number(data.revenue?.totalFinalDiscountedAmount || 0).toFixed(2)}`}
-              icon={IndianRupee}
-              color="bg-emerald-500"
-            />
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <StatCard 
+                title="Total Base Amount" 
+                value={`₹${Number(data.revenue?.totalBaseAmount || 0).toFixed(2)}`}
+                icon={Receipt}
+                color="bg-blue-500"
+              />
+              <StatCard 
+                title="Total GST Amount" 
+                value={`₹${Number(data.revenue?.totalGstAmount || 0).toFixed(2)}`}
+                icon={Receipt}
+                color="bg-orange-500"
+              />
+              <StatCard 
+                title="Final Discounted Amount" 
+                value={`₹${Number(data.revenue?.totalFinalDiscountedAmount || 0).toFixed(2)}`}
+                icon={IndianRupee}
+                color="bg-emerald-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <PaymentModeCard 
+                title="Cash Collection"
+                baseAmount={data.revenue?.paymentModes?.CASH?.baseAmount ?? 0}
+                gstAmount={data.revenue?.paymentModes?.CASH?.gstAmount ?? 0}
+                totalAmount={data.revenue?.paymentModes?.CASH?.totalAmount ?? (data.revenue?.cashAmount || 0)}
+                icon={Banknote}
+                colorClass="text-emerald-400"
+                badgeBg="bg-emerald-500/20"
+                borderColor="border-emerald-500/30"
+              />
+              <PaymentModeCard 
+                title="Card Collection"
+                baseAmount={data.revenue?.paymentModes?.CARD?.baseAmount ?? 0}
+                gstAmount={data.revenue?.paymentModes?.CARD?.gstAmount ?? 0}
+                totalAmount={data.revenue?.paymentModes?.CARD?.totalAmount ?? (data.revenue?.cardAmount || 0)}
+                icon={CreditCard}
+                colorClass="text-sky-400"
+                badgeBg="bg-sky-500/20"
+                borderColor="border-sky-500/30"
+              />
+              <PaymentModeCard 
+                title="UPI Collection"
+                baseAmount={data.revenue?.paymentModes?.UPI?.baseAmount ?? 0}
+                gstAmount={data.revenue?.paymentModes?.UPI?.gstAmount ?? 0}
+                totalAmount={data.revenue?.paymentModes?.UPI?.totalAmount ?? (data.revenue?.upiAmount || 0)}
+                icon={QrCode}
+                colorClass="text-purple-400"
+                badgeBg="bg-purple-500/20"
+                borderColor="border-purple-500/30"
+              />
+            </div>
           </div>
         )}
       </section>

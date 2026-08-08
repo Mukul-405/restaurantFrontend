@@ -1,9 +1,23 @@
 import api from './api';
 
+export interface PaymentModeBreakdown {
+  baseAmount: number;
+  gstAmount: number;
+  totalAmount: number;
+}
+
 export interface RevenueAnalysis {
   totalBaseAmount: number;
   totalGstAmount: number;
   totalFinalDiscountedAmount: number;
+  paymentModes?: {
+    CASH: PaymentModeBreakdown;
+    CARD: PaymentModeBreakdown;
+    UPI: PaymentModeBreakdown;
+  };
+  cashAmount?: number;
+  cardAmount?: number;
+  upiAmount?: number;
 }
 
 export interface WaiterAnalysis {
