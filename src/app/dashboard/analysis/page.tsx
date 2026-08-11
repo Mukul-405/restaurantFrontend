@@ -2,16 +2,18 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { IndianRupee, Receipt, TrendingUp, Users, Bed, Building2, Calendar, AlertCircle, Banknote, CreditCard, QrCode } from 'lucide-react';
+import { IndianRupee, Receipt, TrendingUp, Users, Bed, Building2, Calendar, AlertCircle, Banknote, CreditCard, QrCode, Download, Printer } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getRevenueAnalysis, getWaiterAnalysis, getBookingAnalysis, getChannelAnalysis, RevenueAnalysis, WaiterAnalysis, BookingAnalysis, ChannelAnalysis } from '../../../lib/analysis';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#f43f5e', '#6366f1'];
 
-const DateRangeFilter = ({ 
+const DateRangeFilter = ({
   title, icon: Icon, color, iconColor,
   startDate, setStartDate, endDate, setEndDate,
-  onGenerate, loading, setDateRangeType, error
+  onGenerate, loading, setDateRangeType, error, onDownload, onPrint, hasData
 }: any) => (
   <div className="space-y-4">
     <div className="flex items-center justify-between flex-wrap gap-4 bg-surface/30 p-4 rounded-xl border border-white/5">
@@ -40,6 +42,30 @@ const DateRangeFilter = ({
             className="bg-surface/50 border border-white/10 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 transition-all outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50"
           />
         </div>
+        {hasData && (
+          <div className="flex items-center gap-2">
+            {onPrint && (
+              <button
+                onClick={onPrint}
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 text-white hover:bg-white/10 border border-white/10 rounded-lg text-sm font-medium transition-all"
+                title="Print Report"
+              >
+                <Printer size={16} />
+                Print
+              </button>
+            )}
+            {onDownload && (
+              <button
+                onClick={onDownload}
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 text-white hover:bg-white/10 border border-white/10 rounded-lg text-sm font-medium transition-all"
+                title="Download PDF"
+              >
+                <Download size={16} />
+                PDF
+              </button>
+            )}
+          </div>
+        )}
         <button
           onClick={onGenerate}
           disabled={loading}
@@ -59,7 +85,7 @@ const DateRangeFilter = ({
       </div>
 
       {error && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-2 text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-medium"
@@ -91,22 +117,22 @@ const StatCard = ({ title, value, icon: Icon, color }: { title: string, value: s
   </motion.div>
 );
 
-const PaymentModeCard = ({ 
-  title, 
-  baseAmount, 
-  gstAmount, 
-  totalAmount, 
-  icon: Icon, 
+const PaymentModeCard = ({
+  title,
+  baseAmount,
+  gstAmount,
+  totalAmount,
+  icon: Icon,
   colorClass,
   badgeBg,
   borderColor,
   gradientFrom
-}: { 
-  title: string; 
-  baseAmount: number; 
-  gstAmount: number; 
-  totalAmount: number; 
-  icon: any; 
+}: {
+  title: string;
+  baseAmount: number;
+  gstAmount: number;
+  totalAmount: number;
+  icon: any;
   colorClass: string;
   badgeBg: string;
   borderColor: string;
@@ -193,8 +219,8 @@ export default function AnalysisPage() {
   };
 
   const setPresetDateRange = (
-    type: string, 
-    section: keyof typeof dateRanges, 
+    type: string,
+    section: keyof typeof dateRanges,
     apiCall: (s: string, e: string) => Promise<any>
   ) => {
     setErrors(prev => ({ ...prev, [section]: null }));
@@ -221,7 +247,7 @@ export default function AnalysisPage() {
   };
 
   const fetchData = async (
-    section: keyof typeof dateRanges, 
+    section: keyof typeof dateRanges,
     apiCall: (s: string, e: string) => Promise<any>,
     overrideStart?: string,
     overrideEnd?: string
@@ -256,6 +282,75 @@ export default function AnalysisPage() {
   const fetchRevenueAnalysis = () => fetchData('revenue', getRevenueAnalysis);
   const fetchWaiterAnalysis = () => fetchData('waiter', getWaiterAnalysis);
 
+  const generateBookingPDF = () => {
+    if (!data.booking) return null;
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text(`Hotel Bookings & Occupancy Report`, 14, 22);
+    doc.setFontSize(11);
+    doc.text(`Period: ${dateRanges.booking.start} to ${dateRanges.booking.end}`, 14, 30);
+
+    autoTable(doc, {
+      startY: 40,
+      head: [['Metric', 'Value']],
+      body: [
+        ['Total Room Revenue', `INR ${data.booking.totalRoomRevenue.toFixed(2)}`],
+        ['Total Bookings', data.booking.totalBookings.toString()],
+        ['Rooms Sold (Occupancy)', data.booking.totalRoomsSold.toString()]
+      ]
+    });
+    return doc;
+  };
+
+  const generateRevenuePDF = () => {
+    if (!data.revenue) return null;
+    const doc = new jsPDF();
+    const rev = data.revenue;
+    doc.setFontSize(18);
+    doc.text(`Revenue Analysis Report`, 14, 22);
+    doc.setFontSize(11);
+    doc.text(`Period: ${dateRanges.revenue.start} to ${dateRanges.revenue.end}`, 14, 30);
+
+    autoTable(doc, {
+      startY: 40,
+      head: [['Metric', 'Base Amount (INR)', 'GST Amount (INR)', 'Total Amount (INR)']],
+      body: [
+        ['Overall Revenue', rev.totalBaseAmount.toFixed(2), rev.totalGstAmount.toFixed(2), rev.totalFinalDiscountedAmount.toFixed(2)],
+        ['Cash', (rev.paymentModes?.CASH?.baseAmount || 0).toFixed(2), (rev.paymentModes?.CASH?.gstAmount || 0).toFixed(2), (rev.paymentModes?.CASH?.totalAmount || 0).toFixed(2)],
+        ['Card', (rev.paymentModes?.CARD?.baseAmount || 0).toFixed(2), (rev.paymentModes?.CARD?.gstAmount || 0).toFixed(2), (rev.paymentModes?.CARD?.totalAmount || 0).toFixed(2)],
+        ['UPI', (rev.paymentModes?.UPI?.baseAmount || 0).toFixed(2), (rev.paymentModes?.UPI?.gstAmount || 0).toFixed(2), (rev.paymentModes?.UPI?.totalAmount || 0).toFixed(2)],
+        ['Room Transfer', (rev.paymentModes?.ROOM_TRANSFER?.baseAmount || 0).toFixed(2), (rev.paymentModes?.ROOM_TRANSFER?.gstAmount || 0).toFixed(2), (rev.paymentModes?.ROOM_TRANSFER?.totalAmount || 0).toFixed(2)]
+      ]
+    });
+    return doc;
+  };
+
+  const downloadBookingReport = () => {
+    const doc = generateBookingPDF();
+    if (doc) doc.save(`hotel-bookings-${dateRanges.booking.start}-to-${dateRanges.booking.end}.pdf`);
+  };
+
+  const printBookingReport = () => {
+    const doc = generateBookingPDF();
+    if (doc) {
+      doc.autoPrint();
+      window.open(doc.output('bloburl'), '_blank');
+    }
+  };
+
+  const downloadRevenueReport = () => {
+    const doc = generateRevenuePDF();
+    if (doc) doc.save(`revenue-${dateRanges.revenue.start}-to-${dateRanges.revenue.end}.pdf`);
+  };
+
+  const printRevenueReport = () => {
+    const doc = generateRevenuePDF();
+    if (doc) {
+      doc.autoPrint();
+      window.open(doc.output('bloburl'), '_blank');
+    }
+  };
+
   // Intentionally not fetching data on mount. Data should only be fetched when explicitly requested.
 
   return (
@@ -269,7 +364,7 @@ export default function AnalysisPage() {
 
       {/* Booking Analysis Section */}
       <section className="space-y-6">
-        <DateRangeFilter 
+        <DateRangeFilter
           title="Hotel Bookings & Occupancy"
           icon={Bed}
           iconColor="text-amber-400"
@@ -282,6 +377,9 @@ export default function AnalysisPage() {
           loading={loading.booking}
           setDateRangeType={(type: string) => setPresetDateRange(type, 'booking', getBookingAnalysis)}
           error={errors.booking}
+          onDownload={downloadBookingReport}
+          onPrint={printBookingReport}
+          hasData={!!data.booking}
         />
 
         {loading.booking ? (
@@ -290,19 +388,19 @@ export default function AnalysisPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard 
+            <StatCard
               title="Total Room Revenue"
               value={`₹${Number(data.booking?.totalRoomRevenue || 0).toFixed(2)}`}
               icon={IndianRupee}
               color="bg-amber-500"
             />
-            <StatCard 
+            <StatCard
               title="Total Bookings"
               value={`${data.booking?.totalBookings || 0}`}
               icon={Calendar}
               color="bg-emerald-500"
             />
-            <StatCard 
+            <StatCard
               title="Rooms Sold (Occupancy)"
               value={`${data.booking?.totalRoomsSold || 0}`}
               icon={Building2}
@@ -314,7 +412,7 @@ export default function AnalysisPage() {
 
       {/* Channel Breakdown Section */}
       <section className="space-y-6 pt-6 border-t border-white/5">
-        <DateRangeFilter 
+        <DateRangeFilter
           title="Channel Breakdown"
           icon={Building2}
           iconColor="text-sky-400"
@@ -353,7 +451,7 @@ export default function AnalysisPage() {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip 
+                      <Tooltip
                         contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
                         itemStyle={{ color: '#fff' }}
                       />
@@ -380,7 +478,7 @@ export default function AnalysisPage() {
 
       {/* Revenue Section */}
       <section className="space-y-6 pt-6 border-t border-white/5">
-        <DateRangeFilter 
+        <DateRangeFilter
           title="Revenue Analysis"
           icon={TrendingUp}
           iconColor="text-primary"
@@ -393,6 +491,9 @@ export default function AnalysisPage() {
           loading={loading.revenue}
           setDateRangeType={(type: string) => setPresetDateRange(type, 'revenue', getRevenueAnalysis)}
           error={errors.revenue}
+          onDownload={downloadRevenueReport}
+          onPrint={printRevenueReport}
+          hasData={!!data.revenue}
         />
 
         {loading.revenue ? (
@@ -402,20 +503,20 @@ export default function AnalysisPage() {
         ) : (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <StatCard 
-                title="Total Base Amount" 
+              <StatCard
+                title="Total Base Amount"
                 value={`₹${Number(data.revenue?.totalBaseAmount || 0).toFixed(2)}`}
                 icon={Receipt}
                 color="bg-blue-500"
               />
-              <StatCard 
-                title="Total GST Amount" 
+              <StatCard
+                title="Total GST Amount"
                 value={`₹${Number(data.revenue?.totalGstAmount || 0).toFixed(2)}`}
                 icon={Receipt}
                 color="bg-orange-500"
               />
-              <StatCard 
-                title="Final Discounted Amount" 
+              <StatCard
+                title="Final Discounted Amount"
                 value={`₹${Number(data.revenue?.totalFinalDiscountedAmount || 0).toFixed(2)}`}
                 icon={IndianRupee}
                 color="bg-emerald-500"
@@ -423,7 +524,7 @@ export default function AnalysisPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-              <PaymentModeCard 
+              <PaymentModeCard
                 title="Cash Collection"
                 baseAmount={data.revenue?.paymentModes?.CASH?.baseAmount ?? 0}
                 gstAmount={data.revenue?.paymentModes?.CASH?.gstAmount ?? 0}
@@ -434,7 +535,7 @@ export default function AnalysisPage() {
                 borderColor="border-emerald-500/30"
                 gradientFrom="from-emerald-500"
               />
-              <PaymentModeCard 
+              <PaymentModeCard
                 title="Card Collection"
                 baseAmount={data.revenue?.paymentModes?.CARD?.baseAmount ?? 0}
                 gstAmount={data.revenue?.paymentModes?.CARD?.gstAmount ?? 0}
@@ -445,7 +546,7 @@ export default function AnalysisPage() {
                 borderColor="border-sky-500/30"
                 gradientFrom="from-sky-500"
               />
-              <PaymentModeCard 
+              <PaymentModeCard
                 title="UPI Collection"
                 baseAmount={data.revenue?.paymentModes?.UPI?.baseAmount ?? 0}
                 gstAmount={data.revenue?.paymentModes?.UPI?.gstAmount ?? 0}
@@ -456,7 +557,7 @@ export default function AnalysisPage() {
                 borderColor="border-purple-500/30"
                 gradientFrom="from-purple-500"
               />
-              <PaymentModeCard 
+              <PaymentModeCard
                 title="Room Transfer"
                 baseAmount={data.revenue?.paymentModes?.ROOM_TRANSFER?.baseAmount ?? 0}
                 gstAmount={data.revenue?.paymentModes?.ROOM_TRANSFER?.gstAmount ?? 0}
@@ -474,7 +575,7 @@ export default function AnalysisPage() {
 
       {/* Waiter Analysis Section */}
       <section className="space-y-6 pt-6 border-t border-white/5">
-        <DateRangeFilter 
+        <DateRangeFilter
           title="Staff Performance"
           icon={Users}
           iconColor="text-purple-400"
@@ -514,7 +615,7 @@ export default function AnalysisPage() {
                     </tr>
                   ) : (
                     data.waiter.map((waiter, index) => (
-                      <motion.tr 
+                      <motion.tr
                         key={waiter.userId}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
