@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Printer } from 'lucide-react';
 import { getRoomTypes, RoomType, getAvailability } from '../../../lib/roomsApi';
-import { createBooking, BookingPayload, getBookings, checkInBooking, checkOutBooking, editBookingRooms } from '../../../lib/roomBookApi';
+import { createBooking, BookingPayload, getBookings, checkInBooking, checkOutBooking, editBookingRooms, cancelBooking } from '../../../lib/roomBookApi';
 import { printBookingBill } from '../../../utils/printReceipt';
 
 export default function BookRoomPage() {
@@ -35,10 +35,49 @@ export default function BookRoomPage() {
   const [activeTab, setActiveTab] = useState<'book' | 'manage'>('book');
   const [searchPhone, setSearchPhone] = useState('');
   const [managedBookings, setManagedBookings] = useState<any[]>([]);
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<'CHECKED_IN' | 'RESERVED' | 'ALL'>('CHECKED_IN');
   const [searchingBookings, setSearchingBookings] = useState(false);
   const [modalMode, setModalMode] = useState<'checkin' | 'edit'>('checkin');
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   const [checkoutBooking, setCheckoutBooking] = useState<any>(null);
+  const [roomCheckoutDiscountType, setRoomCheckoutDiscountType] = useState<'FLAT' | 'PERCENT'>('FLAT');
+  const [roomCheckoutDiscountValue, setRoomCheckoutDiscountValue] = useState<number | ''>('');
+
+  const [foodCheckoutDiscountType, setFoodCheckoutDiscountType] = useState<'FLAT' | 'PERCENT'>('FLAT');
+  const [foodCheckoutDiscountValue, setFoodCheckoutDiscountValue] = useState<number | ''>('');
+
+  const roomCheckoutBase = Number(checkoutBooking?.totalAmount || 0);
+
+  const roomCheckoutDiscountAmount = useMemo(() => {
+    if (!roomCheckoutDiscountValue || roomCheckoutBase <= 0) return 0;
+    if (roomCheckoutDiscountType === 'FLAT') {
+      return Math.min(roomCheckoutBase, Number(roomCheckoutDiscountValue));
+    } else {
+      const pct = Math.min(100, Number(roomCheckoutDiscountValue));
+      return Number(((roomCheckoutBase * pct) / 100).toFixed(2));
+    }
+  }, [roomCheckoutDiscountType, roomCheckoutDiscountValue, roomCheckoutBase]);
+
+  const foodCheckoutBase = useMemo(() => {
+    const foodOrdersArr: any[] = Array.isArray(checkoutBooking?.foodOrders) ? checkoutBooking.foodOrders : [];
+    let base = foodOrdersArr.reduce((sum, f) => sum + (Number(f.price || 0) * Number(f.quantity || 0)), 0);
+    const foodTotal = Number(checkoutBooking?.foodTotalAmount || 0);
+    if (base === 0 && foodTotal > 0) {
+      base = foodTotal / 1.05;
+    }
+    return base;
+  }, [checkoutBooking]);
+
+  const foodCheckoutDiscountAmount = useMemo(() => {
+    if (!foodCheckoutDiscountValue || foodCheckoutBase <= 0) return 0;
+    if (foodCheckoutDiscountType === 'FLAT') {
+      return Math.min(foodCheckoutBase, Number(foodCheckoutDiscountValue));
+    } else {
+      const pct = Math.min(100, Number(foodCheckoutDiscountValue));
+      return Number(((foodCheckoutBase * pct) / 100).toFixed(2));
+    }
+  }, [foodCheckoutDiscountType, foodCheckoutDiscountValue, foodCheckoutBase]);
+  const [cancelingBooking, setCancelingBooking] = useState<any>(null);
   const [openingModalBookingId, setOpeningModalBookingId] = useState<number | null>(null);
 
   const refreshRoomTypes = async () => {
@@ -53,14 +92,11 @@ export default function BookRoomPage() {
     }
   };
 
-  const handleSearchBookings = async () => {
-    if (!searchPhone.trim()) {
-      setManagedBookings([]);
-      return;
-    }
+  const handleSearchBookings = async (overrideQuery?: string) => {
+    const term = typeof overrideQuery === 'string' ? overrideQuery : searchPhone;
     setSearchingBookings(true);
     try {
-      const data = await getBookings(searchPhone.trim());
+      const data = await getBookings(term.trim() || undefined);
       setManagedBookings(data);
     } catch (error) {
       console.error('Failed to search bookings:', error);
@@ -68,6 +104,12 @@ export default function BookRoomPage() {
       setSearchingBookings(false);
     }
   };
+
+  useEffect(() => {
+    if (activeTab === 'manage') {
+      handleSearchBookings();
+    }
+  }, [activeTab]);
 
   const openAssignmentModal = async (booking: any, mode: 'checkin' | 'edit') => {
     setOpeningModalBookingId(booking.id);
@@ -128,14 +170,31 @@ export default function BookRoomPage() {
     }
   };
 
-  const handleCheckOut = async (booking: any) => {
-    setSearchingBookings(true);
+  const handleCheckoutSubmit = async () => {
+    setSubmitting(true);
     try {
-      await checkOutBooking(booking.id);
-      setFormSuccess("Checked out successfully!");
+      await checkOutBooking(checkoutBooking.id, roomCheckoutDiscountAmount, foodCheckoutDiscountAmount);
+      setFormSuccess('Booking checked out successfully');
+      setCheckoutBooking(null);
       handleSearchBookings();
     } catch (error: any) {
       setFormError(error.response?.data?.message || 'Failed to check out. Please try again.');
+      setSearchingBookings(false);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!cancelingBooking) return;
+    setSearchingBookings(true);
+    try {
+      await cancelBooking(cancelingBooking.id);
+      setFormSuccess("Booking cancelled successfully!");
+      handleSearchBookings();
+      setCancelingBooking(null);
+    } catch (error: any) {
+      setFormError(error.response?.data?.message || 'Failed to cancel booking. Please try again.');
       setSearchingBookings(false);
     }
   };
@@ -613,12 +672,54 @@ export default function BookRoomPage() {
                   />
                 </div>
                 <button
-                  onClick={handleSearchBookings}
+                  onClick={() => handleSearchBookings()}
                   disabled={searchingBookings}
                   className="bg-primary hover:bg-primary-hover px-6 py-3 rounded-xl text-white font-bold transition-all whitespace-nowrap flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:-translate-y-0.5"
                 >
                   {searchingBookings ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
                   <span>{searchingBookings ? 'Searching...' : 'Search Bookings'}</span>
+                </button>
+              </div>
+
+              {/* Status Filter Bar */}
+              <div className="flex items-center gap-2 pt-4 border-t border-white/5 overflow-x-auto">
+                <span className="text-xs font-semibold text-slate-400 mr-1 shrink-0">Filter View:</span>
+                <button
+                  type="button"
+                  onClick={() => setBookingStatusFilter('CHECKED_IN')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 border ${
+                    bookingStatusFilter === 'CHECKED_IN'
+                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm'
+                      : 'bg-white/5 text-slate-400 border-white/10 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Checked In ({managedBookings.filter(b => b.status === 'CHECKED_IN').length})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBookingStatusFilter('RESERVED')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 border ${
+                    bookingStatusFilter === 'RESERVED'
+                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/40 shadow-sm'
+                      : 'bg-white/5 text-slate-400 border-white/10 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-blue-400" />
+                  Reserved ({managedBookings.filter(b => b.status === 'RESERVED').length})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBookingStatusFilter('ALL')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 border ${
+                    bookingStatusFilter === 'ALL'
+                      ? 'bg-primary/20 text-primary border-primary/40 shadow-sm'
+                      : 'bg-white/5 text-slate-400 border-white/10 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  All Bookings ({managedBookings.length})
                 </button>
               </div>
             </div>
@@ -632,36 +733,14 @@ export default function BookRoomPage() {
                 </div>
               ) : (
                 <>
-                  {managedBookings.map(b => {
+                  {managedBookings
+                    .filter(b => {
+                      if (bookingStatusFilter === 'CHECKED_IN') return b.status === 'CHECKED_IN';
+                      if (bookingStatusFilter === 'RESERVED') return b.status === 'RESERVED';
+                      return true;
+                    })
+                    .map(b => {
                     const isPaid = b.paymentStatus === 'PAID';
-
-                    const roomSummary = (() => {
-                      const roomsArr = Array.isArray(b.rooms) ? b.rooms : [];
-                      if (roomsArr.length === 0) return 'No Rooms';
-
-                      const groups: Record<string, string[]> = {};
-                      const unassignedCounts: Record<string, number> = {};
-
-                      roomsArr.forEach((r: any) => {
-                        const code = r.roomCode || 'Room';
-                        if (r.roomNumber) {
-                          if (!groups[code]) groups[code] = [];
-                          groups[code].push(r.roomNumber);
-                        } else {
-                          unassignedCounts[code] = (unassignedCounts[code] || 0) + 1;
-                        }
-                      });
-
-                      const formatted: string[] = [];
-                      Object.keys(groups).forEach(code => {
-                        formatted.push(`${code}: ${groups[code].join(', ')}`);
-                      });
-                      Object.keys(unassignedCounts).forEach(code => {
-                        formatted.push(`${unassignedCounts[code]}x ${code}`);
-                      });
-
-                      return formatted.join(' | ') || `${roomsArr.length} Room(s)`;
-                    })();
 
                     return (
                       <div key={b.id} className="bg-surface border border-white/10 rounded-2xl p-5 sm:p-6 transition-all hover:border-white/20 shadow-lg space-y-4">
@@ -718,10 +797,11 @@ export default function BookRoomPage() {
 
                           <div className="bg-black/20 p-3 rounded-xl border border-white/5">
                             <div className="text-slate-400 mb-1 flex items-center gap-1">
-                              <Bed size={13} className="text-slate-500" /> Rooms Assigned
+                              <Users size={13} className="text-slate-500" /> Total Guests
                             </div>
-                            <div className="font-semibold text-slate-200 truncate" title={roomSummary}>
-                              {roomSummary}
+                            <div className="font-semibold text-slate-200 truncate">
+                              {b.totalAdults || 1} Adult{(b.totalAdults || 1) > 1 ? 's' : ''}
+                              {Number(b.totalChildren) > 0 ? `, ${b.totalChildren} Child${Number(b.totalChildren) > 1 ? 'ren' : ''}` : ''}
                             </div>
                           </div>
 
@@ -738,21 +818,67 @@ export default function BookRoomPage() {
                           </div>
                         </div>
 
+                        {/* Rooms Breakdown */}
+                        {Array.isArray(b.rooms) && b.rooms.length > 0 && (
+                          <div className="bg-black/30 border border-white/10 rounded-xl p-3.5 space-y-2">
+                            <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                              <span className={`flex items-center gap-1.5 uppercase tracking-wider ${
+                                b.status === 'CHECKED_IN' ? 'text-emerald-400' : 'text-blue-400'
+                              }`}>
+                                <Bed size={15} /> {b.status === 'CHECKED_IN' ? 'Checked-In Rooms' : 'Reserved Rooms'} ({b.rooms.length})
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                              {b.rooms.map((r: any, idx: number) => (
+                                <div key={idx} className="bg-surface/70 border border-white/10 rounded-lg p-2.5 flex items-center justify-between text-xs">
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-8 h-8 rounded-md font-black flex items-center justify-center text-xs border ${
+                                      b.status === 'CHECKED_IN'
+                                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                        : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                    }`}>
+                                      {r.roomNumber || `#${idx + 1}`}
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-white">{r.roomNumber ? `Room ${r.roomNumber}` : 'Room Unassigned'}</div>
+                                      <div className="text-[10px] text-slate-400">Code: <span className="font-semibold text-slate-300">{r.roomCode || 'Standard'}</span></div>
+                                    </div>
+                                  </div>
+                                  <div className="text-right text-[11px] text-slate-300">
+                                    <span className="font-bold">{r.adults ?? 1} A</span>
+                                    {Number(r.children) > 0 && <span className="text-slate-400">, {r.children} C</span>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Bottom Action Bar */}
                         <div className="pt-2 flex flex-wrap items-center justify-end gap-2.5">
                           {b.status === 'RESERVED' && (
-                            <button
-                              onClick={() => openAssignmentModal(b, 'checkin')}
-                              disabled={searchingBookings || openingModalBookingId === b.id}
-                              className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold text-xs transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
-                            >
-                              {openingModalBookingId === b.id ? (
-                                <Loader2 size={15} className="animate-spin" />
-                              ) : (
-                                <Key size={15} />
-                              )}
-                              <span>{openingModalBookingId === b.id ? 'Opening...' : 'Check In'}</span>
-                            </button>
+                            <>
+                              <button
+                                onClick={() => setCancelingBooking(b)}
+                                disabled={searchingBookings || openingModalBookingId === b.id}
+                                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 disabled:opacity-50 text-red-400 border border-red-500/20 font-bold text-xs transition-all flex items-center justify-center gap-2"
+                              >
+                                <X size={15} />
+                                <span>Cancel Booking</span>
+                              </button>
+                              <button
+                                onClick={() => openAssignmentModal(b, 'checkin')}
+                                disabled={searchingBookings || openingModalBookingId === b.id}
+                                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold text-xs transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                              >
+                                {openingModalBookingId === b.id ? (
+                                  <Loader2 size={15} className="animate-spin" />
+                                ) : (
+                                  <Key size={15} />
+                                )}
+                                <span>{openingModalBookingId === b.id ? 'Opening...' : 'Check In'}</span>
+                              </button>
+                            </>
                           )}
 
                           {b.status === 'CHECKED_IN' && (
@@ -770,11 +896,16 @@ export default function BookRoomPage() {
                                 <span>{openingModalBookingId === b.id ? 'Opening...' : 'Change Room'}</span>
                               </button>
                               <button
-                                onClick={() => setCheckoutBooking(b)}
-                                disabled={searchingBookings || openingModalBookingId === b.id}
-                                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold text-xs transition-all shadow-lg shadow-red-500/20 flex items-center justify-center gap-1.5"
+                                onClick={() => {
+                                  setCheckoutBooking(b);
+                                  setRoomCheckoutDiscountType('FLAT');
+                                  setRoomCheckoutDiscountValue('');
+                                  setFoodCheckoutDiscountType('FLAT');
+                                  setFoodCheckoutDiscountValue('');
+                                }}
+                                className="py-2.5 px-4 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold rounded-xl text-xs transition-colors border border-emerald-500/20 whitespace-nowrap"
                               >
-                                <CheckCircle size={15} /> Check Out
+                                Check Out
                               </button>
                             </>
                           )}
@@ -959,46 +1090,198 @@ export default function BookRoomPage() {
               </div>
 
               {/* Bill Details Breakdown */}
-              <div className="space-y-3 mb-6">
+              <div className="space-y-4 mb-6">
                 <div className="bg-black/30 border border-white/5 rounded-2xl p-4 space-y-3">
-                  {/* Room Charge Row */}
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-300 font-medium flex items-center gap-2">
+                  {/* Room Bill Row */}
+                  <div className="flex justify-between items-start text-sm">
+                    <span className="text-slate-300 font-medium flex items-center gap-2 mt-1">
                       <Bed size={15} className="text-slate-400" /> Room Bill
                     </span>
-                    <div className="flex items-center gap-2.5">
-                      <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border ${checkoutBooking.paymentStatus === 'PAID'
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full border ${
+                        checkoutBooking.paymentStatus === 'PAID'
                           ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                           : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                        }`}>
+                      }`}>
                         {checkoutBooking.paymentStatus}
                       </span>
-                      <span className="text-white font-bold font-mono">₹{Number(checkoutBooking.totalAmount ?? 0).toFixed(2)}</span>
+                      <span className="text-white font-bold font-mono">₹{roomCheckoutBase.toFixed(2)}</span>
                     </div>
                   </div>
 
-                  {/* Restaurant Bill Row */}
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-300 font-medium flex items-center gap-2">
-                      <Tag size={15} className="text-slate-400" /> Restaurant Bill
-                    </span>
-                    <span className="text-white font-bold font-mono">₹{Number(checkoutBooking.foodTotalAmount ?? 0).toFixed(2)}</span>
-                  </div>
+                  {/* Room Discount Controls */}
+                  {checkoutBooking.paymentStatus !== 'PAID' && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400 font-medium">Discount Mode:</span>
+                        <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/10 text-[11px] font-bold">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRoomCheckoutDiscountType('FLAT');
+                              setRoomCheckoutDiscountValue('');
+                            }}
+                            className={`px-2.5 py-0.5 rounded-md transition-all ${
+                              roomCheckoutDiscountType === 'FLAT' ? 'bg-emerald-500 text-white shadow' : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            ₹ Flat
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRoomCheckoutDiscountType('PERCENT');
+                              setRoomCheckoutDiscountValue('');
+                            }}
+                            className={`px-2.5 py-0.5 rounded-md transition-all ${
+                              roomCheckoutDiscountType === 'PERCENT' ? 'bg-emerald-500 text-white shadow' : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            % Off
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex items-center">
+                          {roomCheckoutDiscountType === 'FLAT' && (
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₹</span>
+                          )}
+                          <input 
+                            type="number" 
+                            min="0"
+                            max={roomCheckoutDiscountType === 'PERCENT' ? 100 : roomCheckoutBase}
+                            value={roomCheckoutDiscountValue}
+                            onChange={(e) => setRoomCheckoutDiscountValue(e.target.value === '' ? '' : Number(e.target.value))}
+                            placeholder="0"
+                            className={`bg-white/5 border border-white/10 rounded-xl py-1 text-xs text-white text-right focus:outline-none focus:border-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-mono ${
+                              roomCheckoutDiscountType === 'FLAT' ? 'pl-6 pr-2.5 w-24' : 'pl-2.5 pr-6 w-20'
+                            }`}
+                          />
+                          {roomCheckoutDiscountType === 'PERCENT' && (
+                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-400 text-xs font-bold">%</span>
+                          )}
+                        </div>
+
+                        {roomCheckoutDiscountAmount > 0 && (
+                          <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                            {roomCheckoutDiscountType === 'FLAT'
+                              ? `${((roomCheckoutDiscountAmount / roomCheckoutBase) * 100).toFixed(1)}% off`
+                              : `-₹${roomCheckoutDiscountAmount.toFixed(2)}`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Restaurant Bill Row & Breakdown */}
+                  {(() => {
+                    const foodGst = foodCheckoutBase * 0.05;
+                    const foodTotalIncTax = foodCheckoutBase + foodGst;
+
+                    return (
+                      <div className="pt-3 border-t border-white/5 space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-300 font-medium flex items-center gap-2">
+                            <Tag size={15} className="text-slate-400" /> Restaurant Bill
+                          </span>
+                          <span className="text-white font-bold font-mono">₹{foodTotalIncTax.toFixed(2)}</span>
+                        </div>
+
+                        {foodTotalIncTax > 0 && (
+                          <div className="bg-white/5 rounded-xl p-2.5 text-xs space-y-1 text-slate-400">
+                            <div className="flex justify-between items-center">
+                              <span>Base Amount:</span>
+                              <span className="text-slate-200 font-mono">₹{foodCheckoutBase.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span>GST (5%):</span>
+                              <span className="text-slate-200 font-mono">₹{foodGst.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {foodTotalIncTax > 0 && (
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-slate-400 font-medium">Discount Mode:</span>
+                              <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/10 text-[11px] font-bold">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setFoodCheckoutDiscountType('FLAT');
+                                    setFoodCheckoutDiscountValue('');
+                                  }}
+                                  className={`px-2.5 py-0.5 rounded-md transition-all ${
+                                    foodCheckoutDiscountType === 'FLAT' ? 'bg-emerald-500 text-white shadow' : 'text-slate-400 hover:text-white'
+                                  }`}
+                                >
+                                  ₹ Flat
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setFoodCheckoutDiscountType('PERCENT');
+                                    setFoodCheckoutDiscountValue('');
+                                  }}
+                                  className={`px-2.5 py-0.5 rounded-md transition-all ${
+                                    foodCheckoutDiscountType === 'PERCENT' ? 'bg-emerald-500 text-white shadow' : 'text-slate-400 hover:text-white'
+                                  }`}
+                                >
+                                  % Off
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <div className="relative flex items-center">
+                                {foodCheckoutDiscountType === 'FLAT' && (
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₹</span>
+                                )}
+                                <input 
+                                  type="number" 
+                                  min="0"
+                                  max={foodCheckoutDiscountType === 'PERCENT' ? 100 : foodCheckoutBase}
+                                  value={foodCheckoutDiscountValue}
+                                  onChange={(e) => setFoodCheckoutDiscountValue(e.target.value === '' ? '' : Number(e.target.value))}
+                                  placeholder="0"
+                                  className={`bg-white/5 border border-white/10 rounded-xl py-1 text-xs text-white text-right focus:outline-none focus:border-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-mono ${
+                                    foodCheckoutDiscountType === 'FLAT' ? 'pl-6 pr-2.5 w-24' : 'pl-2.5 pr-6 w-20'
+                                  }`}
+                                />
+                                {foodCheckoutDiscountType === 'PERCENT' && (
+                                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-400 text-xs font-bold">%</span>
+                                )}
+                              </div>
+
+                              {foodCheckoutDiscountAmount > 0 && (
+                                <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                                  {foodCheckoutDiscountType === 'FLAT'
+                                    ? `${((foodCheckoutDiscountAmount / foodCheckoutBase) * 100).toFixed(1)}% off base`
+                                    : `-₹${foodCheckoutDiscountAmount.toFixed(2)}`}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                {/* Total Highlight Card */}
+                {/* Final Total */}
                 <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 rounded-2xl p-4 flex justify-between items-center">
                   <div>
-                    <div className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-0.5">Total Amount Due</div>
+                    <div className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-0.5">Final Amount Due</div>
                     <div className="text-[11px] text-slate-500">
-                      {checkoutBooking.paymentStatus === 'PAID' ? 'Room bill paid (showing food balance)' : 'Includes Room + Restaurant'}
+                      {checkoutBooking.paymentStatus === 'PAID' ? 'Room bill paid' : 'Includes Room + Restaurant - Discounts'}
                     </div>
                   </div>
                   <div className="text-emerald-400 font-black text-2xl font-mono tracking-tight">
-                    ₹{(
-                      (checkoutBooking.paymentStatus !== 'PAID' ? Number(checkoutBooking.totalAmount || 0) : 0) +
-                      Number(checkoutBooking.foodTotalAmount || 0)
-                    ).toFixed(2)}
+                    ₹{Math.max(0, (
+                      (checkoutBooking.paymentStatus !== 'PAID' ? Math.max(0, roomCheckoutBase - roomCheckoutDiscountAmount) : 0) +
+                      Math.max(0, (foodCheckoutBase + foodCheckoutBase * 0.05) - foodCheckoutDiscountAmount)
+                    )).toFixed(2)}
                   </div>
                 </div>
               </div>
@@ -1014,20 +1297,100 @@ export default function BookRoomPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => printBookingBill(checkoutBooking)}
+                  onClick={() => printBookingBill(checkoutBooking, roomCheckoutDiscountAmount, foodCheckoutDiscountAmount)}
                   className="w-full sm:flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-all text-sm font-bold whitespace-nowrap"
                 >
                   <Printer size={16} /> Print Bill
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    handleCheckOut(checkoutBooking);
-                    setCheckoutBooking(null);
-                  }}
-                  className="w-full sm:flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 transition-all text-sm font-bold shadow-lg shadow-emerald-500/25 whitespace-nowrap"
+                  onClick={handleCheckoutSubmit}
+                  disabled={submitting}
+                  className="w-full sm:flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 transition-all text-sm font-bold shadow-lg shadow-emerald-500/25 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <CheckCircle size={16} /> Confirm Checkout
+                  {submitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Checking out...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={16} />
+                      <span>Confirm Checkout</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cancel Booking Modal */}
+      <AnimatePresence>
+        {cancelingBooking && (
+          <motion.div
+            className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="w-full max-w-lg p-6 sm:p-7 bg-[#16181d] border border-red-500/20 rounded-3xl shadow-2xl relative overflow-hidden"
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+            >
+              {/* Accent Line */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-75"></div>
+
+              {/* Header */}
+              <div className="flex justify-between items-start mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+                    <AlertCircle size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white tracking-tight">Cancel Booking?</h2>
+                    <p className="text-slate-400 text-xs mt-0.5">This action cannot be undone.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCancelingBooking(null)}
+                  disabled={searchingBookings}
+                  className="p-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-full transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="space-y-4 mb-6 text-center">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-5">
+                  <p className="text-slate-300 text-sm">
+                    Are you sure you want to cancel the booking for <strong className="text-white">{cancelingBooking.guestName}</strong>?
+                    <br/><br/>
+                    Canceling will release the reserved inventory back to the channel manager.
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setCancelingBooking(null)}
+                  disabled={searchingBookings}
+                  className="flex-1 py-3 px-4 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 text-sm font-semibold transition-colors disabled:opacity-50"
+                >
+                  Keep Booking
+                </button>
+                <button
+                  onClick={handleCancelBooking}
+                  disabled={searchingBookings}
+                  className="flex-1 py-3 px-4 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 transition-all disabled:opacity-50"
+                >
+                  {searchingBookings ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />}
+                  Yes, Cancel It
                 </button>
               </div>
             </motion.div>

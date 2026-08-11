@@ -141,9 +141,9 @@ export const updateOrder = createAsyncThunk(
 
 export const transferOrderToRoom = createAsyncThunk(
   'order/transferOrderToRoom',
-  async ({ id, guestPhone }: { id: number | string; guestPhone: string }, { rejectWithValue }) => {
+  async ({ id, data }: { id: number | string; data: { userRoomBookingId: number } }, { rejectWithValue }) => {
     try {
-      const response = await fetcher.transferOrderToRoom(id, guestPhone);
+      const response = await fetcher.transferOrderToRoom(id, data);
       return { id, response };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to transfer order');

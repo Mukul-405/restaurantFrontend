@@ -228,7 +228,7 @@ export const printReceipt = (order: Order) => {
   }, 300);
 };
 
-export const printBookingBill = (booking: any) => {
+export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDiscount: number = 0) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     toast.error('Please allow popups to print receipts.');
@@ -243,13 +243,29 @@ export const printBookingBill = (booking: any) => {
   const foodOrders: any[] = Array.isArray(booking.foodOrders) ? booking.foodOrders : [];
   const roomTotal = Number(booking.totalAmount || 0);
   const foodTotal = Number(booking.foodTotalAmount || 0);
-  const grandTotal = roomTotal + foodTotal;
 
-  const foodSubtotal = foodOrders.reduce((sum, f) => sum + (Number(f.price || 0) * Number(f.quantity || 0)), 0);
+  const rDiscount = roomDiscount > 0 ? roomDiscount : Number(booking.roomDiscountAmount || 0);
+  const fDiscount = foodDiscount > 0 ? foodDiscount : Number(booking.foodDiscountAmount || 0);
+
+  const roomNet = Math.max(0, roomTotal - rDiscount);
+
+  let foodSubtotal = foodOrders.reduce((sum, f) => sum + (Number(f.price || 0) * Number(f.quantity || 0)), 0);
+  let finalFoodTotal = 0;
+  if (foodSubtotal > 0) {
+    finalFoodTotal = foodTotal > 0 ? foodTotal : foodSubtotal * 1.05;
+  } else if (foodTotal > 0) {
+    finalFoodTotal = foodTotal;
+    foodSubtotal = foodTotal / 1.05;
+  }
+
   const foodCgst = foodSubtotal * 0.025;
   const foodSgst = foodSubtotal * 0.025;
-  const foodTaxAmount = foodCgst + foodSgst;
-  const finalFoodTotal = foodTotal > 0 ? foodTotal : (foodSubtotal + foodTaxAmount);
+  const foodNet = Math.max(0, finalFoodTotal - fDiscount);
+
+  const grandTotalBeforeDiscount = roomTotal + finalFoodTotal;
+  const totalDiscount = rDiscount + fDiscount;
+  const grandTotal = Math.max(0, grandTotalBeforeDiscount - totalDiscount);
+  const dueTotal = Math.max(0, (booking.paymentStatus === 'PAID' ? foodNet : grandTotal));
 
   const roomRows = rooms.map((r: any) => `
     <tr>
@@ -381,7 +397,7 @@ export const printBookingBill = (booking: any) => {
             </div>
           </div>
 
-          ${foodOrders.length > 0 ? `
+          ${finalFoodTotal > 0 ? `
           <div class="divider"></div>
           
           <!-- Food Orders -->
@@ -396,14 +412,14 @@ export const printBookingBill = (booking: any) => {
               </tr>
             </thead>
             <tbody>
-              ${foodRows}
+              ${foodRows || '<tr><td class="text-left" colspan="4">Restaurant Orders</td></tr>'}
             </tbody>
           </table>
           
           <div class="totals-wrapper">
             <div class="totals-table">
               <div class="totals-row">
-                <span>Sub Total :</span>
+                <span>Base Subtotal :</span>
                 <span>₹${foodSubtotal.toFixed(2)}</span>
               </div>
               <div class="totals-row">
@@ -414,8 +430,8 @@ export const printBookingBill = (booking: any) => {
                 <span>SGST (2.5%):</span>
                 <span>₹${foodSgst.toFixed(2)}</span>
               </div>
-              <div class="totals-row">
-                <span>Food Total :</span>
+              <div class="totals-row" style="font-weight: bold;">
+                <span>Food Total (inc. Tax) :</span>
                 <span>₹${finalFoodTotal.toFixed(2)}</span>
               </div>
             </div>
@@ -430,10 +446,18 @@ export const printBookingBill = (booking: any) => {
                 <span>Room Total :</span>
                 <span>₹${roomTotal.toFixed(2)}${booking.paymentStatus === 'PAID' ? ' (PAID)' : ''}</span>
               </div>
+              ${finalFoodTotal > 0 ? `
               <div class="totals-row">
                 <span>Restaurant Total :</span>
-                <span>₹${foodTotal.toFixed(2)}</span>
+                <span>₹${finalFoodTotal.toFixed(2)}</span>
               </div>
+              ` : ''}
+              ${totalDiscount > 0 ? `
+              <div class="totals-row" style="color: #dc2626; font-weight: 900;">
+                <span>Total Discount :</span>
+                <span>-₹${totalDiscount.toFixed(2)}</span>
+              </div>
+              ` : ''}
               <div class="total-row-main" style="margin-top: 8px;">
                 <span>Grand Total :</span>
                 <div style="text-align: right;">
@@ -444,7 +468,7 @@ export const printBookingBill = (booking: any) => {
               <div class="total-row-main" style="margin-top: 8px;">
                 <span>Due :</span>
                 <div style="text-align: right;">
-                  <div>₹${(booking.paymentStatus === 'PAID' ? foodTotal : grandTotal).toFixed(2)}</div>
+                  <div>₹${dueTotal.toFixed(2)}</div>
                   <div style="font-size: 14px;">Rs</div>
                 </div>
               </div>

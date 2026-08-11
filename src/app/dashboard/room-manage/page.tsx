@@ -216,14 +216,14 @@ export default function RoomManagePage() {
                 <div className="p-5 border-b border-white/5 relative overflow-hidden">
                   <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 bg-primary blur-2xl group-hover:opacity-20 transition-opacity" />
                   
-                  <div className="flex justify-between items-start mb-2 relative">
-                    <div>
-                      <h3 className="text-2xl font-black text-white tracking-tight">{rt.name}</h3>
-                      <div className="mt-1 flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold bg-white/10 text-slate-300 px-2.5 py-1 rounded-md tracking-wider">{rt.roomCode}</span>
+                  <div className="flex justify-between items-start mb-3 relative gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-2xl font-black text-white tracking-tight break-words leading-tight">{rt.name}</h3>
+                      <div className="mt-2 flex items-center gap-2 max-w-full">
+                        <span className="text-xs font-mono font-bold bg-white/10 text-slate-300 px-2.5 py-1 rounded-md tracking-wider break-all inline-block whitespace-normal">{rt.roomCode}</span>
                       </div>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 ${rt.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                    <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 ${rt.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${rt.isActive ? 'bg-emerald-400' : 'bg-red-400'}`} />
                       {rt.isActive ? 'Active' : 'Inactive'}
                     </span>
@@ -384,7 +384,7 @@ export default function RoomManagePage() {
 
       <RoomTypeModal isOpen={rtModalOpen} onClose={() => setRtModalOpen(false)} onSave={handleSaveRt} initialData={editingRt} />
       <AddRoomModal isOpen={addRoomModalOpen} onClose={() => setAddRoomModalOpen(false)} onSave={handleSaveRoom} roomTypes={roomTypes} />
-      <GuestDetailsModal isOpen={guestModalOpen} onClose={() => setGuestModalOpen(false)} bookingId={selectedBookingId} />
+      <GuestDetailsModal isOpen={guestModalOpen} onClose={() => setGuestModalOpen(false)} bookingId={selectedBookingId} onRefresh={() => dispatch(fetchRoomTypes())} />
       <CalculatePriceModal isOpen={calcPriceModalOpen} onClose={() => setCalcPriceModalOpen(false)} roomType={selectedRtForCalc} />
       <GenericDeleteModal
         isOpen={deleteModalOpen}

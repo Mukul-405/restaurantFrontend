@@ -225,8 +225,8 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
           isOpen={isTransferModalOpen}
           onClose={() => setIsTransferModalOpen(false)}
           orderId={selectedOrder.id}
-          onSubmit={async (guestPhone) => {
-            await dispatch(transferOrderToRoom({ id: selectedOrder.id, guestPhone })).unwrap();
+          onSubmit={async (data) => {
+            await dispatch(transferOrderToRoom({ id: selectedOrder.id, data })).unwrap();
             dispatch(fetchOrderById(selectedOrder.id));
           }}
         />

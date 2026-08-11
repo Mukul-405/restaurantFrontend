@@ -99,7 +99,8 @@ const PaymentModeCard = ({
   icon: Icon, 
   colorClass,
   badgeBg,
-  borderColor
+  borderColor,
+  gradientFrom
 }: { 
   title: string; 
   baseAmount: number; 
@@ -109,37 +110,45 @@ const PaymentModeCard = ({
   colorClass: string;
   badgeBg: string;
   borderColor: string;
+  gradientFrom: string;
 }) => (
   <motion.div
+    whileHover={{ y: -4, scale: 1.02 }}
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className={`bg-surface/40 backdrop-blur-md p-6 rounded-2xl border ${borderColor} flex flex-col justify-between space-y-4 hover:border-white/20 transition-all`}
+    className={`relative overflow-hidden bg-surface/40 backdrop-blur-md p-6 rounded-3xl border ${borderColor} flex flex-col justify-between space-y-5 hover:shadow-2xl transition-all duration-300 group`}
   >
-    <div className="flex justify-between items-start">
-      <div className="flex items-center gap-3">
-        <div className={`p-2.5 rounded-xl ${badgeBg}`}>
-          <Icon size={22} className={colorClass} />
+    {/* Subtle Background Gradient */}
+    <div className={`absolute -right-20 -top-20 w-48 h-48 bg-gradient-to-br ${gradientFrom} to-transparent opacity-10 rounded-full blur-3xl group-hover:opacity-20 transition-opacity duration-500 pointer-events-none`} />
+
+    <div className="relative z-10 flex justify-between items-start">
+      <div className="flex items-center gap-4">
+        <div className={`p-3 rounded-2xl ${badgeBg} shadow-inner`}>
+          <Icon size={24} className={colorClass} />
         </div>
         <div>
-          <h3 className="text-slate-100 font-bold text-lg">{title}</h3>
-          <span className="text-slate-400 text-xs font-medium uppercase tracking-wider">Payment Mode</span>
+          <h3 className="text-white font-bold tracking-wide">{title}</h3>
+          <span className={`${colorClass} text-[10px] font-bold uppercase tracking-widest opacity-80`}>Payment Mode</span>
         </div>
       </div>
     </div>
 
-    <div className="space-y-1">
-      <span className="text-xs text-slate-400 font-medium block">Total (Base + GST)</span>
-      <span className="text-2xl font-black text-white tracking-tight">₹{Number(totalAmount || 0).toFixed(2)}</span>
+    <div className="relative z-10 space-y-1">
+      <span className="text-xs text-slate-400 font-medium tracking-wide">Total (Base + GST)</span>
+      <div className="flex items-baseline gap-1">
+        <span className={`text-xl font-bold ${colorClass} opacity-80`}>₹</span>
+        <span className="text-4xl font-black text-white tracking-tight">{Number(totalAmount || 0).toFixed(2)}</span>
+      </div>
     </div>
 
-    <div className="pt-3 border-t border-white/10 grid grid-cols-2 gap-3 text-sm">
-      <div className="bg-black/20 p-2.5 rounded-xl border border-white/5">
-        <span className="text-slate-400 text-xs block mb-0.5">Base Amount</span>
+    <div className="relative z-10 pt-4 border-t border-white/10 grid grid-cols-2 gap-3 text-sm">
+      <div className="bg-black/30 p-3 rounded-2xl border border-white/5 group-hover:border-white/10 transition-colors">
+        <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block mb-1">Base Amount</span>
         <span className="text-slate-200 font-bold">₹{Number(baseAmount || 0).toFixed(2)}</span>
       </div>
-      <div className="bg-black/20 p-2.5 rounded-xl border border-white/5">
-        <span className="text-slate-400 text-xs block mb-0.5">GST (5%)</span>
-        <span className="text-amber-400 font-bold">₹{Number(gstAmount || 0).toFixed(2)}</span>
+      <div className="bg-black/30 p-3 rounded-2xl border border-white/5 group-hover:border-white/10 transition-colors">
+        <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block mb-1">GST (5%)</span>
+        <span className="text-amber-400/90 font-bold">₹{Number(gstAmount || 0).toFixed(2)}</span>
       </div>
     </div>
   </motion.div>
@@ -413,7 +422,7 @@ export default function AnalysisPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
               <PaymentModeCard 
                 title="Cash Collection"
                 baseAmount={data.revenue?.paymentModes?.CASH?.baseAmount ?? 0}
@@ -423,6 +432,7 @@ export default function AnalysisPage() {
                 colorClass="text-emerald-400"
                 badgeBg="bg-emerald-500/20"
                 borderColor="border-emerald-500/30"
+                gradientFrom="from-emerald-500"
               />
               <PaymentModeCard 
                 title="Card Collection"
@@ -433,6 +443,7 @@ export default function AnalysisPage() {
                 colorClass="text-sky-400"
                 badgeBg="bg-sky-500/20"
                 borderColor="border-sky-500/30"
+                gradientFrom="from-sky-500"
               />
               <PaymentModeCard 
                 title="UPI Collection"
@@ -443,6 +454,18 @@ export default function AnalysisPage() {
                 colorClass="text-purple-400"
                 badgeBg="bg-purple-500/20"
                 borderColor="border-purple-500/30"
+                gradientFrom="from-purple-500"
+              />
+              <PaymentModeCard 
+                title="Room Transfer"
+                baseAmount={data.revenue?.paymentModes?.ROOM_TRANSFER?.baseAmount ?? 0}
+                gstAmount={data.revenue?.paymentModes?.ROOM_TRANSFER?.gstAmount ?? 0}
+                totalAmount={data.revenue?.paymentModes?.ROOM_TRANSFER?.totalAmount ?? (data.revenue?.roomTransferAmount || 0)}
+                icon={Bed}
+                colorClass="text-rose-400"
+                badgeBg="bg-rose-500/20"
+                borderColor="border-rose-500/30"
+                gradientFrom="from-rose-500"
               />
             </div>
           </div>

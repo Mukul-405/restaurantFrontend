@@ -88,8 +88,8 @@ export const fetcher = {
     const { data } = await api.put(`/orders/${id}`, orderData);
     return data;
   },
-  transferOrderToRoom: async (id: number | string, guestPhone: string) => {
-    const { data } = await api.post(`/orders/${id}/transfer-to-room`, { guestPhone });
-    return data;
+  transferOrderToRoom: async (id: number | string, data: { userRoomBookingId: number }) => {
+    const response = await api.post(`/orders/${id}/transfer-to-room`, data);
+    return response.data;
   }
 };

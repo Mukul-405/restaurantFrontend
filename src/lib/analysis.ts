@@ -14,10 +14,12 @@ export interface RevenueAnalysis {
     CASH: PaymentModeBreakdown;
     CARD: PaymentModeBreakdown;
     UPI: PaymentModeBreakdown;
+    ROOM_TRANSFER: PaymentModeBreakdown;
   };
   cashAmount?: number;
   cardAmount?: number;
   upiAmount?: number;
+  roomTransferAmount?: number;
 }
 
 export interface WaiterAnalysis {
