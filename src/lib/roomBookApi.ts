@@ -25,10 +25,8 @@ export const createBooking = async (payload: BookingPayload) => {
   return data;
 };
 
-export const getBookings = async (phone?: string) => {
-  const { data } = await api.get('/bookings', {
-    params: phone ? { phone } : undefined
-  });
+export const getBookings = async (params: { phone?: string; status?: string; date?: string; page?: number; limit?: number } = {}) => {
+  const { data } = await api.get('/bookings', { params });
   return data;
 };
 

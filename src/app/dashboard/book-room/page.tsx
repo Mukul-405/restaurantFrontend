@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Printer } from 'lucide-react';
+import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Printer, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getRoomTypes, RoomType, getAvailability } from '../../../lib/roomsApi';
 import { createBooking, BookingPayload, getBookings, checkInBooking, checkOutBooking, editBookingRooms, cancelBooking } from '../../../lib/roomBookApi';
 import { printBookingBill } from '../../../utils/printReceipt';
@@ -34,8 +34,12 @@ export default function BookRoomPage() {
   // Manage Bookings State
   const [activeTab, setActiveTab] = useState<'book' | 'manage'>('book');
   const [searchPhone, setSearchPhone] = useState('');
+  const [searchDate, setSearchDate] = useState('');
   const [managedBookings, setManagedBookings] = useState<any[]>([]);
-  const [bookingStatusFilter, setBookingStatusFilter] = useState<'CHECKED_IN' | 'RESERVED' | 'ALL'>('CHECKED_IN');
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<'ALL' | 'RESERVED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED'>('CHECKED_IN');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalBookings, setTotalBookings] = useState(0);
   const [searchingBookings, setSearchingBookings] = useState(false);
   const [modalMode, setModalMode] = useState<'checkin' | 'edit'>('checkin');
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
@@ -92,12 +96,21 @@ export default function BookRoomPage() {
     }
   };
 
-  const handleSearchBookings = async (overrideQuery?: string) => {
+  const handleSearchBookings = async (overrideQuery?: string, page = currentPage, status = bookingStatusFilter, date = searchDate) => {
     const term = typeof overrideQuery === 'string' ? overrideQuery : searchPhone;
     setSearchingBookings(true);
     try {
-      const data = await getBookings(term.trim() || undefined);
-      setManagedBookings(data);
+      const response = await getBookings({
+        phone: term.trim() || undefined,
+        status: status,
+        date: date || undefined,
+        page: page,
+        limit: 6
+      });
+      setManagedBookings(response.data);
+      setCurrentPage(response.meta.page);
+      setTotalPages(response.meta.totalPages);
+      setTotalBookings(response.meta.total);
     } catch (error) {
       console.error('Failed to search bookings:', error);
     } finally {
@@ -107,9 +120,9 @@ export default function BookRoomPage() {
 
   useEffect(() => {
     if (activeTab === 'manage') {
-      handleSearchBookings();
+      handleSearchBookings(searchPhone, currentPage, bookingStatusFilter, searchDate);
     }
-  }, [activeTab]);
+  }, [activeTab, currentPage, bookingStatusFilter]);
 
   const openAssignmentModal = async (booking: any, mode: 'checkin' | 'edit') => {
     setOpeningModalBookingId(booking.id);
@@ -656,71 +669,102 @@ export default function BookRoomPage() {
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
                     <Search size={18} className="text-primary" /> Search Reservations
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Find active or past bookings by guest phone number</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Find active or past bookings by guest phone number or check-in date</p>
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="tel"
-                    value={searchPhone}
-                    onChange={e => setSearchPhone(e.target.value)}
-                    placeholder="Enter phone number (e.g. 9876543210)"
-                    className={`${inputClass} pl-10 bg-black/40`}
-                    onKeyDown={e => e.key === 'Enter' && handleSearchBookings()}
-                  />
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                <div className="sm:col-span-5 relative">
+                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                    <Phone size={13} className="text-primary" /> Guest Phone
+                  </label>
+                  <div className="relative">
+                    <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="tel"
+                      value={searchPhone}
+                      onChange={e => setSearchPhone(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (() => { setCurrentPage(1); handleSearchBookings(searchPhone, 1, bookingStatusFilter, searchDate); })()}
+                      placeholder="Enter phone number..."
+                      className="w-full bg-black/40 text-white border border-white/10 rounded-xl outline-none text-sm placeholder-slate-500 pl-10 pr-4 py-2.5 focus:border-primary/50 transition-colors"
+                    />
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleSearchBookings()}
-                  disabled={searchingBookings}
-                  className="bg-primary hover:bg-primary-hover px-6 py-3 rounded-xl text-white font-bold transition-all whitespace-nowrap flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:-translate-y-0.5"
-                >
-                  {searchingBookings ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
-                  <span>{searchingBookings ? 'Searching...' : 'Search Bookings'}</span>
-                </button>
+                <div className="sm:col-span-4 relative">
+                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                    <Calendar size={13} className="text-primary" /> Check-In Date
+                  </label>
+                  <div className="relative">
+                    <Calendar size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="date"
+                      value={searchDate}
+                      onChange={e => {
+                        setSearchDate(e.target.value);
+                        setCurrentPage(1);
+                        handleSearchBookings(searchPhone, 1, bookingStatusFilter, e.target.value);
+                      }}
+                      className="w-full bg-black/40 text-white border border-white/10 rounded-xl outline-none text-sm pl-10 pr-8 py-2.5 focus:border-primary/50 transition-colors"
+                      style={{ colorScheme: 'dark' }}
+                    />
+                    {searchDate && (
+                      <button
+                        onClick={() => {
+                          setSearchDate('');
+                          setCurrentPage(1);
+                          handleSearchBookings(searchPhone, 1, bookingStatusFilter, '');
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="sm:col-span-3">
+                  <button
+                    onClick={() => { setCurrentPage(1); handleSearchBookings(searchPhone, 1, bookingStatusFilter, searchDate); }}
+                    disabled={searchingBookings}
+                    className="w-full bg-primary hover:bg-primary-hover py-2.5 rounded-xl text-white font-bold transition-all whitespace-nowrap flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:-translate-y-0.5"
+                  >
+                    {searchingBookings ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                    <span>{searchingBookings ? 'Searching...' : 'Search'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Status Filter Bar */}
-              <div className="flex items-center gap-2 pt-4 border-t border-white/5 overflow-x-auto">
-                <span className="text-xs font-semibold text-slate-400 mr-1 shrink-0">Filter View:</span>
-                <button
-                  type="button"
-                  onClick={() => setBookingStatusFilter('CHECKED_IN')}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 border ${
-                    bookingStatusFilter === 'CHECKED_IN'
-                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm'
-                      : 'bg-white/5 text-slate-400 border-white/10 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Checked In ({managedBookings.filter(b => b.status === 'CHECKED_IN').length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setBookingStatusFilter('RESERVED')}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 border ${
-                    bookingStatusFilter === 'RESERVED'
-                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/40 shadow-sm'
-                      : 'bg-white/5 text-slate-400 border-white/10 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  <span className="w-2 h-2 rounded-full bg-blue-400" />
-                  Reserved ({managedBookings.filter(b => b.status === 'RESERVED').length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setBookingStatusFilter('ALL')}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 border ${
-                    bookingStatusFilter === 'ALL'
-                      ? 'bg-primary/20 text-primary border-primary/40 shadow-sm'
-                      : 'bg-white/5 text-slate-400 border-white/10 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  All Bookings ({managedBookings.length})
-                </button>
+              <div className="pt-4 border-t border-white/5 space-y-2">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Filter View
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap">
+                  {['ALL', 'RESERVED', 'CHECKED_IN', 'CHECKED_OUT', 'CANCELLED'].map((status) => {
+                    const isActive = bookingStatusFilter === status;
+                    const labels: any = {
+                      'ALL': 'All Bookings',
+                      'RESERVED': 'Reserved',
+                      'CHECKED_IN': 'Checked In',
+                      'CHECKED_OUT': 'Checked Out',
+                      'CANCELLED': 'Cancelled',
+                    };
+                    
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => { setBookingStatusFilter(status as any); setCurrentPage(1); }}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 border whitespace-nowrap ${
+                          isActive
+                            ? 'bg-primary/20 text-primary border-primary/40 shadow-sm'
+                            : 'bg-white/5 text-slate-400 border-white/10 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        {isActive && <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />}
+                        {labels[status]}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -733,148 +777,174 @@ export default function BookRoomPage() {
                 </div>
               ) : (
                 <>
-                  {managedBookings
-                    .filter(b => {
-                      if (bookingStatusFilter === 'CHECKED_IN') return b.status === 'CHECKED_IN';
-                      if (bookingStatusFilter === 'RESERVED') return b.status === 'RESERVED';
-                      return true;
-                    })
-                    .map(b => {
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {managedBookings.map(b => {
                     const isPaid = b.paymentStatus === 'PAID';
 
                     return (
-                      <div key={b.id} className="bg-surface border border-white/10 rounded-2xl p-5 sm:p-6 transition-all hover:border-white/20 shadow-lg space-y-4">
-                        {/* Top Row: Guest Info & Status Badge */}
-                        <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-white/5">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-lg">
-                              {(b.guestName || 'G').charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">{b.guestName || 'Guest'}</h3>
-                              <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-                                <Phone size={13} className="text-slate-500" /> {b.guestPhone}
-                              </p>
-                            </div>
-                          </div>
+                      <div key={b.id} className="bg-[#15171e]/90 hover:bg-[#181a22] border border-white/10 hover:border-primary/40 rounded-3xl p-4 sm:p-5 shadow-2xl transition-all duration-300 space-y-4 relative overflow-hidden group backdrop-blur-xl flex flex-col justify-between">
+                        {/* Top subtle glow line */}
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                          {/* Status Badges */}
-                          <div className="flex items-center gap-2">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${b.status === 'CHECKED_IN'
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        <div className="space-y-4">
+                          {/* Top Row: Guest Info & Status Badge */}
+                          <div className="flex items-start justify-between gap-2 pb-3 border-b border-white/10">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/30 to-indigo-600/30 border border-primary/40 text-primary-light font-black text-sm flex items-center justify-center shadow-lg shadow-primary/10 shrink-0">
+                                {(b.guestName || 'G').charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <h3 className="text-sm font-extrabold text-white tracking-tight truncate">
+                                  {b.guestName || 'Guest'}
+                                </h3>
+                                <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1 mt-0.5 truncate">
+                                  <Phone size={12} className="text-slate-500 shrink-0" /> {b.guestPhone}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Status Badges */}
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold tracking-wide border flex items-center gap-1.5 shrink-0 shadow-sm ${
+                              b.status === 'CHECKED_IN'
+                                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shadow-emerald-500/10'
                                 : b.status === 'RESERVED'
-                                  ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                  ? 'bg-sky-500/15 text-sky-400 border-sky-500/30 shadow-sky-500/10'
                                   : b.status === 'CHECKED_OUT'
-                                    ? 'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                                    : 'bg-red-500/10 text-red-400 border-red-500/20'
-                              }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${b.status === 'CHECKED_IN' ? 'bg-emerald-400 animate-pulse' : b.status === 'RESERVED' ? 'bg-blue-400' : 'bg-slate-400'
-                                }`} />
+                                    ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                                    : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                b.status === 'CHECKED_IN'
+                                  ? 'bg-emerald-400 animate-pulse'
+                                  : b.status === 'RESERVED'
+                                    ? 'bg-sky-400'
+                                    : b.status === 'CHECKED_OUT'
+                                      ? 'bg-indigo-400'
+                                      : 'bg-rose-400'
+                              }`} />
                               {b.status.replace('_', ' ')}
                             </span>
                           </div>
-                        </div>
 
-                        {/* Middle Details Grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                          <div className="bg-black/20 p-3 rounded-xl border border-white/5">
-                            <div className="text-slate-400 mb-1 flex items-center gap-1">
-                              <Calendar size={13} className="text-slate-500" /> Check In
+                          {/* Middle Details Grid (2x2) */}
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="bg-white/[0.03] hover:bg-white/[0.06] p-2.5 rounded-xl border border-white/10 transition-all duration-200">
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
+                                <Calendar size={12} className="text-emerald-400" /> Check In
+                              </div>
+                              <div className="font-extrabold text-white text-xs tracking-tight">
+                                {new Date(b.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </div>
                             </div>
-                            <div className="font-semibold text-slate-200">
-                              {new Date(b.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+
+                            <div className="bg-white/[0.03] hover:bg-white/[0.06] p-2.5 rounded-xl border border-white/10 transition-all duration-200">
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
+                                <Calendar size={12} className="text-rose-400" /> Check Out
+                              </div>
+                              <div className="font-extrabold text-white text-xs tracking-tight">
+                                {new Date(b.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </div>
+                            </div>
+
+                            <div className="bg-white/[0.03] hover:bg-white/[0.06] p-2.5 rounded-xl border border-white/10 transition-all duration-200">
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
+                                <Users size={12} className="text-indigo-400" /> Guests
+                              </div>
+                              <div className="font-extrabold text-white text-xs tracking-tight truncate">
+                                {b.totalAdults || 1} Adult{(b.totalAdults || 1) > 1 ? 's' : ''}
+                                {Number(b.totalChildren) > 0 ? `, ${b.totalChildren} C` : ''}
+                              </div>
+                            </div>
+
+                            <div className="bg-white/[0.03] hover:bg-white/[0.06] p-2.5 rounded-xl border border-white/10 transition-all duration-200">
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
+                                <CreditCard size={12} className="text-amber-400" /> Payment
+                              </div>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-white font-mono font-black text-xs">₹{Number(b.totalAmount || 0).toFixed(0)}</span>
+                                <span className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold uppercase tracking-wide border ${
+                                  isPaid
+                                    ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30'
+                                    : 'text-amber-400 bg-amber-500/15 border-amber-500/30'
+                                }`}>
+                                  {b.paymentStatus}
+                                </span>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="bg-black/20 p-3 rounded-xl border border-white/5">
-                            <div className="text-slate-400 mb-1 flex items-center gap-1">
-                              <Calendar size={13} className="text-slate-500" /> Check Out
-                            </div>
-                            <div className="font-semibold text-slate-200">
-                              {new Date(b.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </div>
-                          </div>
-
-                          <div className="bg-black/20 p-3 rounded-xl border border-white/5">
-                            <div className="text-slate-400 mb-1 flex items-center gap-1">
-                              <Users size={13} className="text-slate-500" /> Total Guests
-                            </div>
-                            <div className="font-semibold text-slate-200 truncate">
-                              {b.totalAdults || 1} Adult{(b.totalAdults || 1) > 1 ? 's' : ''}
-                              {Number(b.totalChildren) > 0 ? `, ${b.totalChildren} Child${Number(b.totalChildren) > 1 ? 'ren' : ''}` : ''}
-                            </div>
-                          </div>
-
-                          <div className="bg-black/20 p-3 rounded-xl border border-white/5">
-                            <div className="text-slate-400 mb-1 flex items-center gap-1">
-                              <CreditCard size={13} className="text-slate-500" /> Payment
-                            </div>
-                            <div className="flex items-center gap-1.5 font-semibold">
-                              <span className="text-white font-mono">₹{Number(b.totalAmount || 0).toFixed(0)}</span>
-                              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${isPaid ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'}`}>
-                                {b.paymentStatus}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Rooms Breakdown */}
-                        {Array.isArray(b.rooms) && b.rooms.length > 0 && (
-                          <div className="bg-black/30 border border-white/10 rounded-xl p-3.5 space-y-2">
-                            <div className="flex items-center justify-between text-xs font-bold text-slate-300">
-                              <span className={`flex items-center gap-1.5 uppercase tracking-wider ${
-                                b.status === 'CHECKED_IN' ? 'text-emerald-400' : 'text-blue-400'
-                              }`}>
-                                <Bed size={15} /> {b.status === 'CHECKED_IN' ? 'Checked-In Rooms' : 'Reserved Rooms'} ({b.rooms.length})
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                              {b.rooms.map((r: any, idx: number) => (
-                                <div key={idx} className="bg-surface/70 border border-white/10 rounded-lg p-2.5 flex items-center justify-between text-xs">
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-md font-black flex items-center justify-center text-xs border ${
-                                      b.status === 'CHECKED_IN'
-                                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                                        : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                    }`}>
-                                      {r.roomNumber || `#${idx + 1}`}
+                          {/* Rooms Breakdown */}
+                          {Array.isArray(b.rooms) && b.rooms.length > 0 && (
+                            <div className="bg-black/40 border border-white/10 rounded-xl p-3 space-y-2 backdrop-blur-sm">
+                              <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider">
+                                <span className={`flex items-center gap-1.5 ${
+                                  b.status === 'CHECKED_IN'
+                                    ? 'text-emerald-400'
+                                    : b.status === 'RESERVED'
+                                      ? 'text-sky-400'
+                                      : 'text-indigo-300'
+                                }`}>
+                                  <Bed size={14} /> 
+                                  {b.status === 'CHECKED_IN'
+                                    ? 'Checked-In Rooms'
+                                    : b.status === 'RESERVED'
+                                      ? 'Reserved Rooms'
+                                      : 'Allocated Rooms'} ({b.rooms.length})
+                                </span>
+                              </div>
+                              <div className="space-y-2 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+                                {b.rooms.map((r: any, idx: number) => (
+                                  <div key={idx} className="bg-gradient-to-r from-[#1c1f28] to-[#171922] border border-white/10 rounded-lg p-2 flex items-center justify-between transition-all duration-200">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className={`w-7 h-7 rounded-lg font-black text-xs flex items-center justify-center border shrink-0 ${
+                                        r.roomNumber
+                                          ? b.status === 'CHECKED_IN'
+                                            ? 'bg-gradient-to-br from-emerald-500/30 to-teal-600/30 text-emerald-300 border-emerald-500/40'
+                                            : 'bg-gradient-to-br from-sky-500/30 to-blue-600/30 text-sky-300 border-sky-500/40'
+                                          : 'bg-slate-800/60 text-slate-400 border-slate-700'
+                                      }`}>
+                                        {r.roomNumber || `#${idx + 1}`}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="font-bold text-white text-xs tracking-tight truncate">
+                                          {r.roomNumber ? `Room ${r.roomNumber}` : 'Unassigned'}
+                                        </div>
+                                        <div className="text-[9px] text-slate-400 flex items-center gap-1 truncate">
+                                          Code: <span className="font-mono font-semibold text-slate-300 bg-white/5 border border-white/10 px-1 py-0.2 rounded">{r.roomCode || 'Standard'}</span>
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div>
-                                      <div className="font-bold text-white">{r.roomNumber ? `Room ${r.roomNumber}` : 'Room Unassigned'}</div>
-                                      <div className="text-[10px] text-slate-400">Code: <span className="font-semibold text-slate-300">{r.roomCode || 'Standard'}</span></div>
+                                    <div className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] font-semibold text-slate-300 shrink-0">
+                                      {r.adults ?? 1}A{Number(r.children) > 0 ? `, ${r.children}C` : ''}
                                     </div>
                                   </div>
-                                  <div className="text-right text-[11px] text-slate-300">
-                                    <span className="font-bold">{r.adults ?? 1} A</span>
-                                    {Number(r.children) > 0 && <span className="text-slate-400">, {r.children} C</span>}
-                                  </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
 
                         {/* Bottom Action Bar */}
-                        <div className="pt-2 flex flex-wrap items-center justify-end gap-2.5">
+                        <div className="pt-3 flex flex-wrap items-center justify-end gap-2 border-t border-white/5 mt-2">
                           {b.status === 'RESERVED' && (
                             <>
                               <button
                                 onClick={() => setCancelingBooking(b)}
                                 disabled={searchingBookings || openingModalBookingId === b.id}
-                                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 disabled:opacity-50 text-red-400 border border-red-500/20 font-bold text-xs transition-all flex items-center justify-center gap-2"
+                                className="flex-1 px-3 py-2 rounded-xl bg-gradient-to-r from-rose-500/10 to-pink-500/10 hover:from-rose-500/20 hover:to-pink-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs transition-all flex items-center justify-center gap-1.5 hover:-translate-y-0.5"
                               >
-                                <X size={15} />
-                                <span>Cancel Booking</span>
+                                <X size={14} />
+                                <span>Cancel</span>
                               </button>
                               <button
                                 onClick={() => openAssignmentModal(b, 'checkin')}
                                 disabled={searchingBookings || openingModalBookingId === b.id}
-                                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold text-xs transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                                className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-xs transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-1.5 hover:-translate-y-0.5 active:translate-y-0"
                               >
                                 {openingModalBookingId === b.id ? (
-                                  <Loader2 size={15} className="animate-spin" />
+                                  <Loader2 size={14} className="animate-spin" />
                                 ) : (
-                                  <Key size={15} />
+                                  <Key size={14} />
                                 )}
                                 <span>{openingModalBookingId === b.id ? 'Opening...' : 'Check In'}</span>
                               </button>
@@ -886,12 +956,12 @@ export default function BookRoomPage() {
                               <button
                                 onClick={() => openAssignmentModal(b, 'edit')}
                                 disabled={searchingBookings || openingModalBookingId === b.id}
-                                className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 disabled:opacity-50 text-blue-400 border border-blue-500/20 font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                                className="flex-1 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-blue-500/20 hover:from-blue-500/30 hover:to-indigo-500/30 text-blue-300 border border-blue-500/40 font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/10 hover:-translate-y-0.5 active:translate-y-0"
                               >
                                 {openingModalBookingId === b.id ? (
-                                  <Loader2 size={15} className="animate-spin" />
+                                  <Loader2 size={14} className="animate-spin" />
                                 ) : (
-                                  <Bed size={15} />
+                                  <Bed size={14} />
                                 )}
                                 <span>{openingModalBookingId === b.id ? 'Opening...' : 'Change Room'}</span>
                               </button>
@@ -903,7 +973,7 @@ export default function BookRoomPage() {
                                   setFoodCheckoutDiscountType('FLAT');
                                   setFoodCheckoutDiscountValue('');
                                 }}
-                                className="py-2.5 px-4 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold rounded-xl text-xs transition-colors border border-emerald-500/20 whitespace-nowrap"
+                                className="flex-1 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/40 font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/10 hover:-translate-y-0.5 active:translate-y-0"
                               >
                                 Check Out
                               </button>
@@ -913,7 +983,7 @@ export default function BookRoomPage() {
                           {b.status === 'CHECKED_OUT' && (
                             <button
                               onClick={() => printBookingBill(b)}
-                              className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                              className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-emerald-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-300 border border-emerald-500/40 font-extrabold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 hover:-translate-y-0.5 active:translate-y-0"
                             >
                               <Printer size={15} /> Print Bill
                             </button>
@@ -922,6 +992,7 @@ export default function BookRoomPage() {
                       </div>
                     );
                   })}
+                </div>
 
                   {managedBookings.length === 0 && !searchingBookings && (
                     <div className="text-center py-14 px-4 text-slate-400 bg-surface/40 border border-white/5 rounded-2xl space-y-2">
@@ -929,6 +1000,59 @@ export default function BookRoomPage() {
                       <div className="text-slate-300 font-semibold">No Bookings Found</div>
                       <div className="text-xs text-slate-500 max-w-sm mx-auto">
                         Enter a guest phone number above to search and manage room assignments, check-ins, or check-outs.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/5">
+                      <div className="text-xs text-slate-400 font-medium bg-surface/60 border border-white/10 px-3.5 py-2 rounded-xl backdrop-blur-md">
+                        Showing <span className="text-white font-bold">{managedBookings.length}</span> of <span className="text-white font-bold">{totalBookings}</span> bookings
+                      </div>
+
+                      {/* Center Page Number Buttons */}
+                      <div className="flex items-center gap-1.5 bg-surface/60 border border-white/10 p-1.5 rounded-2xl backdrop-blur-md shadow-lg">
+                        <button
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1 || searchingBookings}
+                          className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 text-slate-300 font-medium text-xs transition-all flex items-center gap-1"
+                        >
+                          <ChevronLeft size={14} /> Prev
+                        </button>
+
+                        <div className="flex items-center gap-1 px-1">
+                          {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                            .map((p, idx, arr) => {
+                              const prev = arr[idx - 1];
+                              const showEllipsis = prev && p - prev > 1;
+
+                              return (
+                                <React.Fragment key={p}>
+                                  {showEllipsis && <span className="text-slate-600 px-1 text-xs">...</span>}
+                                  <button
+                                    onClick={() => setCurrentPage(p)}
+                                    className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${
+                                      currentPage === p
+                                        ? 'bg-primary text-white shadow-lg shadow-primary/30 scale-105'
+                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                    }`}
+                                  >
+                                    {p}
+                                  </button>
+                                </React.Fragment>
+                              );
+                            })}
+                        </div>
+
+                        <button
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages || searchingBookings}
+                          className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 text-slate-300 font-medium text-xs transition-all flex items-center gap-1"
+                        >
+                          Next <ChevronRight size={14} />
+                        </button>
                       </div>
                     </div>
                   )}

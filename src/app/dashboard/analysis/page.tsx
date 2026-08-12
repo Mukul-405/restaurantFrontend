@@ -10,20 +10,30 @@ import autoTable from 'jspdf-autotable';
 
 const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#f43f5e', '#6366f1'];
 
-const DateRangeFilter = ({
+const DateRangeFilter = ({ 
   title, icon: Icon, color, iconColor,
   startDate, setStartDate, endDate, setEndDate,
-  onGenerate, loading, setDateRangeType, error, onDownload, onPrint, hasData
+  onGenerate, loading, setDateRangeType, error, onDownload, onPrint, hasData,
+  dateNote
 }: any) => (
   <div className="space-y-4">
     <div className="flex items-center justify-between flex-wrap gap-4 bg-surface/30 p-4 rounded-xl border border-white/5">
       <div className="flex items-center gap-3">
         <Icon className={iconColor} size={24} />
-        <h2 className="text-xl font-semibold text-slate-200">{title}</h2>
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl font-semibold text-slate-200">{title}</h2>
+            {dateNote && (
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                Filtered by {dateNote}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-2">
-          <label className="text-sm text-slate-400">Start:</label>
+          <label className="text-xs text-slate-400 font-medium">Start:</label>
           <input
             type="date"
             value={startDate}
@@ -33,7 +43,7 @@ const DateRangeFilter = ({
           />
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-sm text-slate-400">End:</label>
+          <label className="text-xs text-slate-400 font-medium">End:</label>
           <input
             type="date"
             value={endDate}
@@ -287,8 +297,8 @@ export default function AnalysisPage() {
     const doc = new jsPDF();
     doc.setFontSize(18);
     doc.text(`Hotel Bookings & Occupancy Report`, 14, 22);
-    doc.setFontSize(11);
-    doc.text(`Period: ${dateRanges.booking.start} to ${dateRanges.booking.end}`, 14, 30);
+    doc.setFontSize(10);
+    doc.text(`Filtered by Check-Out Date | Period: ${dateRanges.booking.start} to ${dateRanges.booking.end}`, 14, 30);
 
     autoTable(doc, {
       startY: 40,
@@ -366,6 +376,7 @@ export default function AnalysisPage() {
       <section className="space-y-6">
         <DateRangeFilter
           title="Hotel Bookings & Occupancy"
+          dateNote="Check-Out Date"
           icon={Bed}
           iconColor="text-amber-400"
           color={{ bgLight: 'bg-amber-500/20', text: 'text-amber-400', bgHover: 'bg-amber-500/30', border: 'border-amber-500/50' }}
@@ -414,6 +425,7 @@ export default function AnalysisPage() {
       <section className="space-y-6 pt-6 border-t border-white/5">
         <DateRangeFilter
           title="Channel Breakdown"
+          dateNote="Check-Out Date"
           icon={Building2}
           iconColor="text-sky-400"
           color={{ bgLight: 'bg-sky-500/20', text: 'text-sky-400', bgHover: 'bg-sky-500/30', border: 'border-sky-500/50' }}
