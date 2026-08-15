@@ -23,7 +23,6 @@ export default function OrdersPage() {
   const [orderToCancel, setOrderToCancel] = useState<number | null>(null);
   const [orderToComplete, setOrderToComplete] = useState<Order | null>(null);
   
-  const [phoneFilter, setPhoneFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
@@ -58,7 +57,6 @@ export default function OrdersPage() {
     const params: any = {};
     if (statusFilter !== 'ALL') params.status = statusFilter;
     if (waiterFilter !== 'ALL') params.userId = waiterFilter;
-    if (phoneFilter) params.phoneNumber = phoneFilter;
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
     params.page = page;
@@ -82,7 +80,6 @@ export default function OrdersPage() {
   };
 
   const handleResetFilters = () => {
-    setPhoneFilter('');
     setStartDate('');
     setEndDate('');
     setWaiterFilter('ALL');
@@ -185,21 +182,7 @@ export default function OrdersPage() {
       </div>
 
       <div className={`bg-black/20 border border-white/10 rounded-xl p-4 flex-col md:flex-row gap-4 items-end ${showMobileFilters ? 'flex' : 'hidden md:flex'}`}>
-        <div className="w-full md:flex-1">
-          <label className="block text-sm text-slate-400 mb-1">Phone Number</label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input 
-              type="text" 
-              placeholder="Filter by phone..." 
-              className="w-full bg-surface/50 border border-white/10 text-slate-200 pl-10 pr-3 py-2 rounded-lg font-sans text-sm outline-none focus:border-primary"
-              value={phoneFilter}
-              onChange={(e) => setPhoneFilter(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="flex w-full md:flex-[2] gap-3">
+        <div className="flex w-full md:flex-1 gap-3">
           <div className="flex-1 w-full">
             <label className="block text-sm text-slate-400 mb-1">Start Date</label>
             <input 
@@ -288,10 +271,6 @@ export default function OrdersPage() {
                         <span className="text-slate-200 font-bold">{order.paymentMode || '-'}</span>
                       </div>
                     )}
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Customer:</span>
-                      <span className="text-slate-200">{order.phoneNumber}</span>
-                    </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">Table:</span>
                       <span className="text-slate-200 font-bold">{order.tableNumber || '-'}</span>
@@ -388,7 +367,6 @@ export default function OrdersPage() {
                     <div className="px-4 pb-4">
                       <div className="bg-surface/50 border border-white/5 rounded-xl p-4">
                         <div className="space-y-2 text-sm mb-4">
-                          <div className="text-slate-400">CUSTOMER: <span className="text-slate-200">{order.phoneNumber}</span></div>
                           <div className="text-slate-400">PAYMENT MODE: <span className="text-slate-200">{order.paymentMode || '-'}</span></div>
                           <div className="text-slate-400">TABLE: <span className="text-slate-200 font-bold">{order.tableNumber || '-'}</span></div>
                           <div className="text-slate-400">WAITER: <span className="text-slate-200">{order.user?.name || '-'}</span></div>

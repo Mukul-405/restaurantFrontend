@@ -16,7 +16,6 @@ export interface OrderItem {
 
 export interface Order {
   id: number;
-  phoneNumber: string;
   baseAmount: number;
   gstAmount: number;
   discountAmount: number;

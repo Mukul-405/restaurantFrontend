@@ -316,22 +316,170 @@ export default function AnalysisPage() {
     if (!data.revenue) return null;
     const doc = new jsPDF();
     const rev = data.revenue;
-    doc.setFontSize(18);
-    doc.text(`Revenue Analysis Report`, 14, 22);
-    doc.setFontSize(11);
-    doc.text(`Period: ${dateRanges.revenue.start} to ${dateRanges.revenue.end}`, 14, 30);
+    const cash = rev.paymentModes?.CASH || { count: 0, baseAmount: 0, gstAmount: 0, totalAmount: 0 };
+    const card = rev.paymentModes?.CARD || { count: 0, baseAmount: 0, gstAmount: 0, totalAmount: 0 };
+    const upi = rev.paymentModes?.UPI || { count: 0, baseAmount: 0, gstAmount: 0, totalAmount: 0 };
+    const roomTransfer = rev.paymentModes?.ROOM_TRANSFER || { count: 0, baseAmount: 0, gstAmount: 0, totalAmount: 0 };
+
+    const totalOrders = rev.totalOrders || 0;
+    const dineInCount = totalOrders - roomTransfer.count;
+    const dineInBase = rev.totalBaseAmount - roomTransfer.baseAmount;
+    const dineInTax = rev.totalGstAmount - roomTransfer.gstAmount;
+    const dineInTotal = rev.totalFinalDiscountedAmount - roomTransfer.totalAmount;
+
+    const totalPaymentsBase = cash.baseAmount + card.baseAmount + upi.baseAmount;
+    const totalPaymentsTax = cash.gstAmount + card.gstAmount + upi.gstAmount;
+    const totalPaymentsTotal = cash.totalAmount + card.totalAmount + upi.totalAmount;
+    const totalPaymentsCount = cash.count + card.count + upi.count;
+
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(30, 41, 59);
+    doc.text('Sales & Revenue Summary Report', 14, 20);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Period: ${dateRanges.revenue.start} to ${dateRanges.revenue.end}`, 14, 28);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 34);
+
+    let currentY = 40;
+
+    // 1. Overall Sales Summary
+    doc.setFontSize(13);
+    doc.setTextColor(30, 41, 59);
+    doc.text('1. Sales Summary', 14, currentY);
+    currentY += 4;
 
     autoTable(doc, {
-      startY: 40,
-      head: [['Metric', 'Base Amount (INR)', 'GST Amount (INR)', 'Total Amount (INR)']],
+      startY: currentY,
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 3 },
+      head: [['Metric', 'Amount (INR)']],
       body: [
-        ['Overall Revenue', rev.totalBaseAmount.toFixed(2), rev.totalGstAmount.toFixed(2), rev.totalFinalDiscountedAmount.toFixed(2)],
-        ['Cash', (rev.paymentModes?.CASH?.baseAmount || 0).toFixed(2), (rev.paymentModes?.CASH?.gstAmount || 0).toFixed(2), (rev.paymentModes?.CASH?.totalAmount || 0).toFixed(2)],
-        ['Card', (rev.paymentModes?.CARD?.baseAmount || 0).toFixed(2), (rev.paymentModes?.CARD?.gstAmount || 0).toFixed(2), (rev.paymentModes?.CARD?.totalAmount || 0).toFixed(2)],
-        ['UPI', (rev.paymentModes?.UPI?.baseAmount || 0).toFixed(2), (rev.paymentModes?.UPI?.gstAmount || 0).toFixed(2), (rev.paymentModes?.UPI?.totalAmount || 0).toFixed(2)],
-        ['Room Transfer', (rev.paymentModes?.ROOM_TRANSFER?.baseAmount || 0).toFixed(2), (rev.paymentModes?.ROOM_TRANSFER?.gstAmount || 0).toFixed(2), (rev.paymentModes?.ROOM_TRANSFER?.totalAmount || 0).toFixed(2)]
-      ]
+        ['Total Orders Completed', totalOrders.toString()],
+        ['Total Discount', `INR ${Number(rev.totalDiscountAmount || 0).toFixed(2)}`],
+        ['Net Sales (Base Amount)', `INR ${Number(rev.totalBaseAmount || 0).toFixed(2)}`],
+        ['Total Tax (5% GST)', `INR ${Number(rev.totalGstAmount || 0).toFixed(2)}`],
+        ['Total Settled Sales', `INR ${Number(rev.totalFinalDiscountedAmount || 0).toFixed(2)}`],
+      ],
     });
+
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+
+    // 2. Order Type Breakdown
+    doc.setFontSize(13);
+    doc.setTextColor(30, 41, 59);
+    doc.text('2. Order Type Breakdown', 14, currentY);
+    currentY += 4;
+
+    autoTable(doc, {
+      startY: currentY,
+      theme: 'striped',
+      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 3 },
+      head: [['Order Type', 'Base Amount (INR)', 'CGST (2.5%)', 'SGST (2.5%)', 'Total Amount (INR)']],
+      body: [
+        [
+          `DINE IN (${dineInCount})`,
+          Number(dineInBase).toFixed(2),
+          Number(dineInTax / 2).toFixed(2),
+          Number(dineInTax / 2).toFixed(2),
+          Number(dineInTotal).toFixed(2)
+        ],
+        [
+          `ROOM SERVICE (${roomTransfer.count})`,
+          Number(roomTransfer.baseAmount).toFixed(2),
+          Number(roomTransfer.gstAmount / 2).toFixed(2),
+          Number(roomTransfer.gstAmount / 2).toFixed(2),
+          Number(roomTransfer.totalAmount).toFixed(2)
+        ]
+      ],
+      foot: [
+        [
+          `Total (${totalOrders})`,
+          Number(rev.totalBaseAmount).toFixed(2),
+          Number(rev.totalGstAmount / 2).toFixed(2),
+          Number(rev.totalGstAmount / 2).toFixed(2),
+          Number(rev.totalFinalDiscountedAmount).toFixed(2)
+        ]
+      ],
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+
+    // 3. Tax Summary
+    doc.setFontSize(13);
+    doc.setTextColor(30, 41, 59);
+    doc.text('3. Tax Summary', 14, currentY);
+    currentY += 4;
+
+    autoTable(doc, {
+      startY: currentY,
+      theme: 'grid',
+      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 3 },
+      head: [['Tax Component', 'Rate', 'Amount (INR)']],
+      body: [
+        ['CGST', '2.5%', `INR ${Number(rev.totalGstAmount / 2).toFixed(2)}`],
+        ['SGST', '2.5%', `INR ${Number(rev.totalGstAmount / 2).toFixed(2)}`],
+      ],
+      foot: [
+        ['Total Tax (5%)', '5.0%', `INR ${Number(rev.totalGstAmount).toFixed(2)}`]
+      ],
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+
+    // 4. Payment Summary
+    doc.setFontSize(13);
+    doc.setTextColor(30, 41, 59);
+    doc.text('4. Payment Summary', 14, currentY);
+    currentY += 4;
+
+    autoTable(doc, {
+      startY: currentY,
+      theme: 'striped',
+      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 3 },
+      head: [['Payment Mode', 'Base Amount (INR)', 'CGST (2.5%)', 'SGST (2.5%)', 'Total Amount (INR)']],
+      body: [
+        [
+          `Cash (${cash.count})`,
+          Number(cash.baseAmount).toFixed(2),
+          Number(cash.gstAmount / 2).toFixed(2),
+          Number(cash.gstAmount / 2).toFixed(2),
+          Number(cash.totalAmount).toFixed(2)
+        ],
+        [
+          `Card (${card.count})`,
+          Number(card.baseAmount).toFixed(2),
+          Number(card.gstAmount / 2).toFixed(2),
+          Number(card.gstAmount / 2).toFixed(2),
+          Number(card.totalAmount).toFixed(2)
+        ],
+        [
+          `UPI (${upi.count})`,
+          Number(upi.baseAmount).toFixed(2),
+          Number(upi.gstAmount / 2).toFixed(2),
+          Number(upi.gstAmount / 2).toFixed(2),
+          Number(upi.totalAmount).toFixed(2)
+        ]
+      ],
+      foot: [
+        [
+          `Total (${totalPaymentsCount})`,
+          Number(totalPaymentsBase).toFixed(2),
+          Number(totalPaymentsTax / 2).toFixed(2),
+          Number(totalPaymentsTax / 2).toFixed(2),
+          Number(totalPaymentsTotal).toFixed(2)
+        ]
+      ],
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
+    });
+
     return doc;
   };
 

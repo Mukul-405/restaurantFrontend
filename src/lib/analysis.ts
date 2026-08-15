@@ -1,6 +1,7 @@
 import api from './api';
 
 export interface PaymentModeBreakdown {
+  count: number;
   baseAmount: number;
   gstAmount: number;
   totalAmount: number;
@@ -9,7 +10,9 @@ export interface PaymentModeBreakdown {
 export interface RevenueAnalysis {
   totalBaseAmount: number;
   totalGstAmount: number;
+  totalDiscountAmount: number;
   totalFinalDiscountedAmount: number;
+  totalOrders: number;
   paymentModes?: {
     CASH: PaymentModeBreakdown;
     CARD: PaymentModeBreakdown;

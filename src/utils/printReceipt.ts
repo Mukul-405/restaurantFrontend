@@ -136,7 +136,6 @@ export const printReceipt = (order: Order) => {
           <div class="table-guest">
             <div>Table No:</div>
             <div style="font-size: 15px;">${order.tableNumber ? `TABLE-${escapeHtml(order.tableNumber)}` : 'WALK-IN'}</div>
-            <div style="margin-top: 4px; font-size: 15px;">Guest : ${escapeHtml(order.phoneNumber) || 'CASH'}</div>
           </div>
           
           <div class="divider-thick" style="margin-bottom: 0;"></div>
@@ -499,3 +498,4 @@ export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDis
     printWindow.close();
   }, 300);
 };
+
