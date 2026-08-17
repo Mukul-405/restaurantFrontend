@@ -327,6 +327,8 @@ export default function BookRoomPage() {
   const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (submitting || loading || checkingAvail) return;
+
     if (!formData.checkIn || !formData.checkOut) {
       setFormError("Please select check-in and check-out dates.");
       return;
@@ -646,17 +648,18 @@ export default function BookRoomPage() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors text-sm flex items-center justify-center gap-2"
+                disabled={submitting}
+                className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <RefreshCw size={16} /> Reset
               </button>
               <button
                 type="submit"
-                disabled={loading || checkingAvail}
-                className={`px-8 py-3 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all text-sm ${(loading || checkingAvail) ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20 hover:-translate-y-0.5'}`}
+                disabled={loading || checkingAvail || submitting}
+                className={`px-8 py-3 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all text-sm ${(loading || checkingAvail || submitting) ? 'bg-primary/50 cursor-not-allowed' : 'bg-primary hover:bg-primary-hover shadow-lg shadow-primary/20 hover:-translate-y-0.5'}`}
               >
-                {checkingAvail ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}
-                {checkingAvail ? 'Checking Availability...' : 'Continue to Assignment'}
+                {(checkingAvail || submitting) ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}
+                {submitting ? 'Creating Booking...' : checkingAvail ? 'Checking Availability...' : 'Continue to Assignment'}
               </button>
             </div>
           </motion.form>
