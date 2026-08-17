@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchCMInventory, fetchCMRates, fetchCMReservations, pushCMInventory, pushCMRates } from '../../../lib/cmApi';
 import { getRoomTypes } from '../../../lib/roomsApi';
-import { Calendar as CalendarIcon, RefreshCw, Home, IndianRupee, Users, Upload, Download, Plus, Trash2, CheckSquare, Square, Info } from 'lucide-react';
+import { Calendar as CalendarIcon, RefreshCw, Home, IndianRupee, Users, Upload, Download, Plus, Trash2, CheckSquare, Square, Info, BedDouble } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const RestrictionsEditor = ({ restrictions, onChange }: { restrictions: any, onChange: (newRest: any) => void }) => {
@@ -251,6 +251,99 @@ export default function ChannelManagerPage() {
     if (mode === 'fetch' && (activeTab === 'inventoryRestrictions' || activeTab === 'rateRestrictions')) {
       setActiveTab('inventory');
     }
+  };
+
+  const formatHeaderDate = (dateStr: string) => {
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      if (!y || !m || !d) return { dayOfWeek: '', dayMonth: dateStr, year: '' };
+      const date = new Date(y, m - 1, d);
+      const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const dayMonth = date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+      return { dayOfWeek, dayMonth, year: String(y) };
+    } catch {
+      return { dayOfWeek: '', dayMonth: dateStr, year: '' };
+    }
+  };
+
+  const getRoomDisplayName = (roomCode: string) => {
+    const matched = roomTypes.find(rt => rt.roomCode === roomCode);
+    if (matched?.name) return matched.name;
+    return roomCode
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // Process inventory matrix data
+  const inventoryDates: string[] = fetchedData?.updates?.map((u: any) => u.startDate) || [];
+  const inventoryRoomCodes: string[] = Array.from(
+    new Set(fetchedData?.updates?.flatMap((u: any) => u.rooms?.map((r: any) => r.roomCode) || []) || [])
+  ) as string[];
+
+  const inventoryMap: Record<string, Record<string, number | null>> = {};
+  const dateTotals: Record<string, number> = {};
+
+  inventoryRoomCodes.forEach(code => {
+    inventoryMap[code] = {};
+  });
+
+  fetchedData?.updates?.forEach((update: any) => {
+    const d = update.startDate;
+    dateTotals[d] = 0;
+    update.rooms?.forEach((room: any) => {
+      if (inventoryMap[room.roomCode]) {
+        inventoryMap[room.roomCode][d] = room.available;
+      }
+      dateTotals[d] = (dateTotals[d] || 0) + (Number(room.available) || 0);
+    });
+  });
+
+  // Process rates matrix data grouped by Room Type
+  const rateDates: string[] = fetchedData?.updates?.map((u: any) => u.startDate) || [];
+  const ratesByRoomMap: Record<string, Record<string, Record<string, number>>> = {};
+
+  fetchedData?.updates?.forEach((update: any) => {
+    const d = update.startDate;
+    update.rates?.forEach((rate: any) => {
+      if (!ratesByRoomMap[rate.roomCode]) {
+        ratesByRoomMap[rate.roomCode] = {};
+      }
+      if (!ratesByRoomMap[rate.roomCode][rate.rateplanCode]) {
+        ratesByRoomMap[rate.roomCode][rate.rateplanCode] = {};
+      }
+      ratesByRoomMap[rate.roomCode][rate.rateplanCode][d] = Number(rate.rate);
+    });
+  });
+
+  const formatRatePlanName = (rateplanCode: string, roomCode: string) => {
+    let suffix = rateplanCode;
+    if (rateplanCode.startsWith(roomCode + '-')) {
+      suffix = rateplanCode.slice(roomCode.length + 1);
+    }
+    const map: Record<string, string> = {
+      's-ep': 'Single Occupancy (EP)',
+      'd-ep': 'Double Occupancy (EP)',
+      't-ep': 'Triple Occupancy (EP)',
+      'q-ep': 'Quad Occupancy (EP)',
+      's-cp': 'Single Occupancy (CP)',
+      'd-cp': 'Double Occupancy (CP)',
+      't-cp': 'Triple Occupancy (CP)',
+      's-map': 'Single Occupancy (MAP)',
+      'd-map': 'Double Occupancy (MAP)',
+      't-map': 'Triple Occupancy (MAP)',
+      's-ap': 'Single Occupancy (AP)',
+      'd-ap': 'Double Occupancy (AP)',
+      't-ap': 'Triple Occupancy (AP)',
+      'ep': 'Room Only (EP)',
+      'cp': 'Bed & Breakfast (CP)',
+      'map': 'Half Board (MAP)',
+      'ap': 'Full Board (AP)',
+    };
+    if (map[suffix.toLowerCase()]) {
+      return map[suffix.toLowerCase()];
+    }
+    return suffix.toUpperCase();
   };
 
   return (
@@ -662,32 +755,108 @@ export default function ChannelManagerPage() {
 
         {fetchedData && syncMode === 'fetch' ? (
           <>
+            {/* Header info banner when data is loaded */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-surface/50 border border-white/10 rounded-2xl">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold">
+                  {activeTab === 'inventory' ? <BedDouble size={18} /> : activeTab === 'rates' ? <IndianRupee size={18} /> : <Users size={18} />}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-white text-sm capitalize">
+                    Live {activeTab === 'inventory' ? 'Inventory Matrix' : activeTab === 'rates' ? 'Rates Matrix' : 'Reservations'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {startDate} &rarr; {endDate} ({activeTab === 'inventory' ? `${inventoryDates.length} Days` : activeTab === 'rates' ? `${rateDates.length} Days` : `${Array.isArray(fetchedData) ? fetchedData.length : 0} Bookings`})
+                  </p>
+                </div>
+              </div>
+              {activeTab === 'inventory' && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="flex items-center gap-1 text-emerald-400 font-semibold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Available
+                  </span>
+                  <span className="flex items-center gap-1 text-amber-300 font-semibold bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-300"></span> Low (&le;2)
+                  </span>
+                  <span className="flex items-center gap-1 text-red-400 font-semibold bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-lg">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span> Sold Out
+                  </span>
+                </div>
+              )}
+            </div>
+
             {/* Desktop Table View */}
             <div className="hidden md:block bg-surface/40 backdrop-blur-xl border border-white/5 rounded-3xl shadow-2xl overflow-x-auto w-full">
               <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
                 {activeTab === 'inventory' && (
                   <>
                     <thead>
-                      <tr className="bg-black/20 text-slate-400 uppercase text-xs tracking-wider border-b border-white/5">
-                        <th className="p-4 font-semibold">Room Code</th>
-                        <th className="p-4 font-semibold">Date</th>
-                        <th className="p-4 font-semibold text-right">Available</th>
+                      <tr className="bg-black/40 text-slate-400 text-xs tracking-wider border-b border-white/10">
+                        <th className="p-4 font-bold text-white uppercase min-w-[240px] sticky left-0 bg-[#16171d] z-10 shadow-[2px_0_10px_rgba(0,0,0,0.5)]">
+                          <div className="flex items-center gap-2">
+                            <BedDouble size={16} className="text-primary" />
+                            <span>Room Type</span>
+                          </div>
+                        </th>
+                        {inventoryDates.map((dateStr) => {
+                          const { dayOfWeek, dayMonth } = formatHeaderDate(dateStr);
+                          return (
+                            <th key={dateStr} className="p-3.5 text-center font-semibold min-w-[110px] border-l border-white/5">
+                              <div className="text-[11px] font-bold text-primary uppercase tracking-wider">{dayOfWeek}</div>
+                              <div className="text-sm font-extrabold text-white mt-0.5">{dayMonth}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">{dateStr}</div>
+                            </th>
+                          );
+                        })}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {fetchedData?.updates?.flatMap((update: any, idx1: number) =>
-                        update.rooms?.map((inv: any, idx2: number) => (
-                          <tr key={`${idx1}-${idx2}`} className="hover:bg-white/5 transition-colors group">
-                            <td className="p-4 font-bold text-white">{inv.roomCode}</td>
-                            <td className="p-4 text-slate-300">{update.startDate}</td>
-                            <td className="p-4 text-right">
-                              <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-bold inline-block">
-                                {inv.available} left
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
+                      {inventoryRoomCodes.map((roomCode) => (
+                        <tr key={roomCode} className="hover:bg-white/[0.03] transition-colors group">
+                          <td className="p-4 sticky left-0 bg-[#16171d] group-hover:bg-[#1c1d25] transition-colors z-10 shadow-[2px_0_10px_rgba(0,0,0,0.5)] border-r border-white/5">
+                            <div className="font-bold text-white text-sm">{getRoomDisplayName(roomCode)}</div>
+                            <div className="text-xs text-slate-400 font-mono mt-0.5">{roomCode}</div>
+                          </td>
+                          {inventoryDates.map((dateStr) => {
+                            const count = inventoryMap[roomCode]?.[dateStr];
+                            if (count === undefined || count === null) {
+                              return (
+                                <td key={dateStr} className="p-3 text-center text-slate-600 border-l border-white/5 text-sm">
+                                  -
+                                </td>
+                              );
+                            }
+                            const isSoldOut = count === 0;
+                            const isLow = count > 0 && count <= 2;
+                            return (
+                              <td key={dateStr} className="p-3 text-center border-l border-white/5">
+                                <span
+                                  className={`inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                                    isSoldOut
+                                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                      : isLow
+                                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                  }`}
+                                >
+                                  {isSoldOut ? 'Sold Out' : `${count} left`}
+                                </span>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                      {/* Summary Total Row */}
+                      <tr className="bg-black/30 font-bold border-t-2 border-white/10">
+                        <td className="p-4 sticky left-0 bg-[#14151b] z-10 text-xs uppercase tracking-wider text-slate-400 shadow-[2px_0_10px_rgba(0,0,0,0.5)] border-r border-white/5">
+                          Total Available
+                        </td>
+                        {inventoryDates.map((dateStr) => (
+                          <td key={dateStr} className="p-3 text-center border-l border-white/5 text-sm font-extrabold text-primary">
+                            {dateTotals[dateStr] ?? 0}
+                          </td>
+                        ))}
+                      </tr>
                     </tbody>
                   </>
                 )}
@@ -695,24 +864,79 @@ export default function ChannelManagerPage() {
                 {activeTab === 'rates' && (
                   <>
                     <thead>
-                      <tr className="bg-black/20 text-slate-400 uppercase text-xs tracking-wider border-b border-white/5">
-                        <th className="p-4 font-semibold">Room Code</th>
-                        <th className="p-4 font-semibold">Rate Plan</th>
-                        <th className="p-4 font-semibold">Date</th>
-                        <th className="p-4 font-semibold text-right">Rate</th>
+                      <tr className="bg-black/40 text-slate-400 text-xs tracking-wider border-b border-white/10">
+                        <th className="p-4 font-bold text-white uppercase min-w-[280px] sticky left-0 bg-[#16171d] z-10 shadow-[2px_0_10px_rgba(0,0,0,0.5)]">
+                          <div className="flex items-center gap-2">
+                            <IndianRupee size={16} className="text-primary" />
+                            <span>Room Type & Rate Plan</span>
+                          </div>
+                        </th>
+                        {rateDates.map((dateStr) => {
+                          const { dayOfWeek, dayMonth } = formatHeaderDate(dateStr);
+                          return (
+                            <th key={dateStr} className="p-3.5 text-center font-semibold min-w-[120px] border-l border-white/5">
+                              <div className="text-[11px] font-bold text-primary uppercase tracking-wider">{dayOfWeek}</div>
+                              <div className="text-sm font-extrabold text-white mt-0.5">{dayMonth}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">{dateStr}</div>
+                            </th>
+                          );
+                        })}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {fetchedData?.updates?.flatMap((update: any, idx1: number) =>
-                        update.rates?.map((rate: any, idx2: number) => (
-                          <tr key={`${idx1}-${idx2}`} className="hover:bg-white/5 transition-colors group">
-                            <td className="p-4 font-bold text-white">{rate.roomCode}</td>
-                            <td className="p-4 text-slate-300">{rate.rateplanCode}</td>
-                            <td className="p-4 text-slate-300">{update.startDate}</td>
-                            <td className="p-4 text-slate-300 font-medium text-right">₹{rate.rate}</td>
+                      {Object.entries(ratesByRoomMap).map(([roomCode, plans]) => (
+                        <React.Fragment key={roomCode}>
+                          {/* Room Category Header Row */}
+                          <tr className="bg-white/[0.04] border-t border-b border-white/10">
+                            <td
+                              colSpan={rateDates.length + 1}
+                              className="p-3 pl-4 sticky left-0 bg-[#1a1b23] z-10 font-extrabold text-sm text-white"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className="p-1 rounded-lg bg-primary/20 text-primary">
+                                  <BedDouble size={14} />
+                                </span>
+                                <span>{getRoomDisplayName(roomCode)}</span>
+                                <span className="text-xs text-slate-400 font-mono font-normal">({roomCode})</span>
+                                <span className="text-[10px] text-slate-400 font-semibold ml-auto px-2.5 py-0.5 bg-black/40 rounded-full border border-white/5">
+                                  {Object.keys(plans).length} Rate Plan{Object.keys(plans).length > 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            </td>
                           </tr>
-                        ))
-                      )}
+
+                          {/* Individual Rate Plan Rows */}
+                          {Object.entries(plans).map(([rateplanCode, dateRates]) => (
+                            <tr key={`${roomCode}-${rateplanCode}`} className="hover:bg-white/[0.02] transition-colors group">
+                              <td className="p-3.5 pl-8 sticky left-0 bg-[#16171d] group-hover:bg-[#1c1d25] transition-colors z-10 shadow-[2px_0_10px_rgba(0,0,0,0.5)] border-r border-white/5">
+                                <div className="font-bold text-slate-200 text-xs">
+                                  {formatRatePlanName(rateplanCode, roomCode)}
+                                </div>
+                                <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                                  {rateplanCode}
+                                </div>
+                              </td>
+                              {rateDates.map((dateStr) => {
+                                const rate = dateRates[dateStr];
+                                if (rate === undefined || rate === null) {
+                                  return (
+                                    <td key={dateStr} className="p-3 text-center text-slate-600 border-l border-white/5 text-sm">
+                                      -
+                                    </td>
+                                  );
+                                }
+                                return (
+                                  <td key={dateStr} className="p-3 text-center border-l border-white/5">
+                                    <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-white font-extrabold text-xs shadow-sm group-hover:border-primary/40 group-hover:text-primary transition-all">
+                                      ₹{Number(rate).toLocaleString('en-IN')}
+                                    </span>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      ))}
                     </tbody>
                   </>
                 )}
@@ -768,41 +992,86 @@ export default function ChannelManagerPage() {
 
             {/* Mobile Card View */}
             <div className="md:hidden flex flex-col gap-4">
-              {activeTab === 'inventory' && fetchedData?.updates?.flatMap((update: any, idx1: number) =>
-                update.rooms?.map((inv: any, idx2: number) => (
-                  <div key={`${idx1}-${idx2}`} className="bg-surface/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="font-bold text-white text-lg">{inv.roomCode}</div>
-                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-bold">
-                        {inv.available} left
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-400 text-sm">
-                      <CalendarIcon size={14} />
-                      <span>{update.startDate}</span>
+              {activeTab === 'inventory' && inventoryRoomCodes.map((roomCode) => (
+                <div key={roomCode} className="bg-surface/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-bold text-white text-base">{getRoomDisplayName(roomCode)}</h4>
+                      <span className="text-xs text-slate-400 font-mono">{roomCode}</span>
                     </div>
                   </div>
-                ))
-              )}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-white/5">
+                    {inventoryDates.map((dateStr) => {
+                      const { dayOfWeek, dayMonth } = formatHeaderDate(dateStr);
+                      const count = inventoryMap[roomCode]?.[dateStr];
+                      const isSoldOut = count === 0;
+                      const isLow = count !== undefined && count !== null && count > 0 && count <= 2;
+                      return (
+                        <div key={dateStr} className="bg-black/30 border border-white/5 rounded-xl p-2.5 flex flex-col gap-1 items-center text-center">
+                          <span className="text-[10px] uppercase font-bold text-slate-400">{dayOfWeek}, {dayMonth}</span>
+                          {count === undefined || count === null ? (
+                            <span className="text-xs text-slate-600 font-bold">-</span>
+                          ) : (
+                            <span
+                              className={`px-2 py-0.5 rounded-lg text-xs font-extrabold ${
+                                isSoldOut
+                                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                  : isLow
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                              }`}
+                            >
+                              {isSoldOut ? 'Sold Out' : `${count} left`}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
 
-              {activeTab === 'rates' && fetchedData?.updates?.flatMap((update: any, idx1: number) =>
-                update.rates?.map((rate: any, idx2: number) => (
-                  <div key={`${idx1}-${idx2}`} className="bg-surface/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-white text-lg">{rate.roomCode}</span>
-                        <span className="text-xs text-slate-400 font-mono mt-0.5 px-2 py-0.5 bg-black/20 rounded border border-white/5 w-fit">{rate.rateplanCode}</span>
-                      </div>
-                      <div className="font-bold text-primary text-xl">₹{rate.rate}</div>
+              {activeTab === 'rates' && Object.entries(ratesByRoomMap).map(([roomCode, plans]) => (
+                <div key={roomCode} className="bg-surface/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg flex flex-col gap-4">
+                  <div className="flex justify-between items-start border-b border-white/5 pb-3">
+                    <div>
+                      <h4 className="font-bold text-white text-base flex items-center gap-2">
+                        <BedDouble size={16} className="text-primary" />
+                        <span>{getRoomDisplayName(roomCode)}</span>
+                      </h4>
+                      <span className="text-xs text-slate-400 font-mono">{roomCode}</span>
                     </div>
-                    <div className="h-px w-full bg-white/5"></div>
-                    <div className="flex items-center gap-2 text-slate-400 text-sm">
-                      <CalendarIcon size={14} />
-                      <span>{update.startDate}</span>
-                    </div>
+                    <span className="text-[10px] text-slate-400 font-semibold px-2.5 py-0.5 bg-black/40 rounded-full border border-white/5">
+                      {Object.keys(plans).length} Plan{Object.keys(plans).length > 1 ? 's' : ''}
+                    </span>
                   </div>
-                ))
-              )}
+
+                  <div className="flex flex-col gap-3">
+                    {Object.entries(plans).map(([rateplanCode, dateRates]) => (
+                      <div key={rateplanCode} className="bg-black/30 border border-white/5 rounded-xl p-3 flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-slate-200">{formatRatePlanName(rateplanCode, roomCode)}</span>
+                          <span className="text-[10px] font-mono text-slate-500">{rateplanCode}</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 border-t border-white/5">
+                          {rateDates.map((dateStr) => {
+                            const { dayOfWeek, dayMonth } = formatHeaderDate(dateStr);
+                            const rate = dateRates[dateStr];
+                            return (
+                              <div key={dateStr} className="bg-white/5 rounded-lg p-2 flex flex-col items-center text-center">
+                                <span className="text-[10px] uppercase font-bold text-slate-400">{dayOfWeek}, {dayMonth}</span>
+                                <span className="text-xs font-extrabold text-white mt-0.5">
+                                  {rate !== undefined && rate !== null ? `₹${Number(rate).toLocaleString('en-IN')}` : '-'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
 
               {activeTab === 'reservations' && Array.isArray(fetchedData) && fetchedData.map((res: any, idx: number) => (
                 <div key={idx} className="bg-surface/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg flex flex-col gap-4">
