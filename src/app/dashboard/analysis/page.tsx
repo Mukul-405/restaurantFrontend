@@ -14,6 +14,8 @@ import {
 } from '../../../lib/analysis';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { printHtml } from '../../../utils/printReceipt';
+import { escapeHtml } from '../../../utils/escapeHtml';
 
 const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#f43f5e', '#6366f1'];
 
@@ -588,11 +590,39 @@ export default function AnalysisPage() {
   };
 
   const printBookingReport = () => {
-    const doc = generateBookingPDF();
-    if (doc) {
-      doc.autoPrint();
-      window.open(doc.output('bloburl'), '_blank');
-    }
+    if (!data.booking) return;
+    const b = data.booking;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Hotel Bookings & Occupancy Report</title>
+          <style>
+            @page { margin: 15mm; size: A4 portrait; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; font-size: 13px; }
+            .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 20px; }
+            .title { font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
+            .subtitle { color: #64748b; font-size: 12px; margin: 0; }
+            .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+            .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; }
+            .card-title { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+            .card-val { font-size: 18px; font-weight: 800; color: #0f172a; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 class="title">Sunrise Resorts - Hotel Bookings & Occupancy Report</h1>
+            <p class="subtitle">Filtered by Check-Out Date | Period: ${dateRanges.booking.start} to ${dateRanges.booking.end} | Generated: ${new Date().toLocaleString()}</p>
+          </div>
+          <div class="grid">
+            <div class="card"><div class="card-title">Total Room Revenue</div><div class="card-val">INR ${Number(b.totalRoomRevenue || 0).toFixed(2)}</div></div>
+            <div class="card"><div class="card-title">Total Bookings</div><div class="card-val">${b.totalBookings || 0}</div></div>
+            <div class="card"><div class="card-title">Rooms Sold (Occupancy)</div><div class="card-val">${b.totalRoomsSold || 0}</div></div>
+          </div>
+        </body>
+      </html>
+    `;
+    printHtml(html);
   };
 
   const downloadRevenueReport = () => {
@@ -601,11 +631,87 @@ export default function AnalysisPage() {
   };
 
   const printRevenueReport = () => {
-    const doc = generateRevenuePDF();
-    if (doc) {
-      doc.autoPrint();
-      window.open(doc.output('bloburl'), '_blank');
-    }
+    if (!data.revenue) return;
+    const rev = data.revenue;
+    const cash = rev.paymentModes?.CASH || { count: 0, baseAmount: 0, gstAmount: 0, totalAmount: 0 };
+    const card = rev.paymentModes?.CARD || { count: 0, baseAmount: 0, gstAmount: 0, totalAmount: 0 };
+    const upi = rev.paymentModes?.UPI || { count: 0, baseAmount: 0, gstAmount: 0, totalAmount: 0 };
+    const roomTransfer = rev.paymentModes?.ROOM_TRANSFER || { count: 0, baseAmount: 0, gstAmount: 0, totalAmount: 0 };
+
+    const totalOrders = rev.totalOrders || 0;
+    const dineInCount = totalOrders - roomTransfer.count;
+    const dineInBase = rev.totalBaseAmount - roomTransfer.baseAmount;
+    const dineInTax = rev.totalGstAmount - roomTransfer.gstAmount;
+    const dineInTotal = rev.totalFinalDiscountedAmount - roomTransfer.totalAmount;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Sales & Revenue Summary Report</title>
+          <style>
+            @page { margin: 15mm; size: A4 portrait; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; font-size: 12px; }
+            .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; }
+            .title { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
+            .subtitle { color: #64748b; font-size: 11px; margin: 0; }
+            .section-title { font-size: 13px; font-weight: 800; color: #0f172a; margin: 16px 0 6px 0; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+            th { background: #f1f5f9; text-align: left; padding: 6px 10px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; }
+            td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
+            .text-right { text-align: right; }
+            .font-bold { font-weight: 700; }
+            tfoot tr td { font-weight: 800; background: #f8fafc; border-top: 1px solid #cbd5e1; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 class="title">Sunrise Resorts - Sales & Revenue Summary Report</h1>
+            <p class="subtitle">Period: ${dateRanges.revenue.start} to ${dateRanges.revenue.end} | Generated: ${new Date().toLocaleString()}</p>
+          </div>
+
+          <div class="section-title">1. Overall Sales Summary</div>
+          <table>
+            <thead><tr><th>Metric</th><th class="text-right">Amount (INR)</th></tr></thead>
+            <tbody>
+              <tr><td>Total Orders Completed</td><td class="text-right font-bold">${totalOrders}</td></tr>
+              <tr><td>Total Discount</td><td class="text-right font-bold">INR ${Number(rev.totalDiscountAmount || 0).toFixed(2)}</td></tr>
+              <tr><td>Net Sales (Base Amount)</td><td class="text-right font-bold">INR ${Number(rev.totalBaseAmount || 0).toFixed(2)}</td></tr>
+              <tr><td>Total Tax (5% GST)</td><td class="text-right font-bold">INR ${Number(rev.totalGstAmount || 0).toFixed(2)}</td></tr>
+              <tr><td class="font-bold">Total Settled Sales</td><td class="text-right font-bold">INR ${Number(rev.totalFinalDiscountedAmount || 0).toFixed(2)}</td></tr>
+            </tbody>
+          </table>
+
+          <div class="section-title">2. Order Type Breakdown</div>
+          <table>
+            <thead>
+              <tr><th>Order Type</th><th class="text-right">Base Amount</th><th class="text-right">CGST (2.5%)</th><th class="text-right">SGST (2.5%)</th><th class="text-right">Total Amount</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>DINE IN (${dineInCount})</td><td class="text-right">${dineInBase.toFixed(2)}</td><td class="text-right">${(dineInTax/2).toFixed(2)}</td><td class="text-right">${(dineInTax/2).toFixed(2)}</td><td class="text-right font-bold">${dineInTotal.toFixed(2)}</td></tr>
+              <tr><td>ROOM SERVICE (${roomTransfer.count})</td><td class="text-right">${roomTransfer.baseAmount.toFixed(2)}</td><td class="text-right">${(roomTransfer.gstAmount/2).toFixed(2)}</td><td class="text-right">${(roomTransfer.gstAmount/2).toFixed(2)}</td><td class="text-right font-bold">${roomTransfer.totalAmount.toFixed(2)}</td></tr>
+            </tbody>
+            <tfoot>
+              <tr><td>Total (${totalOrders})</td><td class="text-right">${rev.totalBaseAmount.toFixed(2)}</td><td class="text-right">${(rev.totalGstAmount/2).toFixed(2)}</td><td class="text-right">${(rev.totalGstAmount/2).toFixed(2)}</td><td class="text-right">${rev.totalFinalDiscountedAmount.toFixed(2)}</td></tr>
+            </tfoot>
+          </table>
+
+          <div class="section-title">3. Payment Mode Collections</div>
+          <table>
+            <thead>
+              <tr><th>Payment Mode</th><th class="text-right">Count</th><th class="text-right">Base Amount</th><th class="text-right">CGST (2.5%)</th><th class="text-right">SGST (2.5%)</th><th class="text-right">Total Amount</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>CASH</td><td class="text-right">${cash.count}</td><td class="text-right">${cash.baseAmount.toFixed(2)}</td><td class="text-right">${(cash.gstAmount/2).toFixed(2)}</td><td class="text-right">${(cash.gstAmount/2).toFixed(2)}</td><td class="text-right font-bold">${cash.totalAmount.toFixed(2)}</td></tr>
+              <tr><td>CARD</td><td class="text-right">${card.count}</td><td class="text-right">${card.baseAmount.toFixed(2)}</td><td class="text-right">${(card.gstAmount/2).toFixed(2)}</td><td class="text-right">${(card.gstAmount/2).toFixed(2)}</td><td class="text-right font-bold">${card.totalAmount.toFixed(2)}</td></tr>
+              <tr><td>UPI</td><td class="text-right">${upi.count}</td><td class="text-right">${upi.baseAmount.toFixed(2)}</td><td class="text-right">${(upi.gstAmount/2).toFixed(2)}</td><td class="text-right">${(upi.gstAmount/2).toFixed(2)}</td><td class="text-right font-bold">${upi.totalAmount.toFixed(2)}</td></tr>
+              <tr><td>ROOM TRANSFER</td><td class="text-right">${roomTransfer.count}</td><td class="text-right">${roomTransfer.baseAmount.toFixed(2)}</td><td class="text-right">${(roomTransfer.gstAmount/2).toFixed(2)}</td><td class="text-right">${(roomTransfer.gstAmount/2).toFixed(2)}</td><td class="text-right font-bold">${roomTransfer.totalAmount.toFixed(2)}</td></tr>
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    printHtml(html);
   };
 
   const downloadOrderItemReport = () => {
@@ -614,11 +720,76 @@ export default function AnalysisPage() {
   };
 
   const printOrderItemReport = () => {
-    const doc = generateOrderItemPDF();
-    if (doc) {
-      doc.autoPrint();
-      window.open(doc.output('bloburl'), '_blank');
-    }
+    if (!data.orderItem) return;
+    const oi = data.orderItem;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Restaurant Order Items Analysis Report (Excl. GST)</title>
+          <style>
+            @page { margin: 15mm; size: A4 portrait; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; font-size: 12px; }
+            .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; }
+            .title { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
+            .subtitle { color: #64748b; font-size: 11px; margin: 0; }
+            .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+            .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; }
+            .card-title { font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 3px; }
+            .card-val { font-size: 16px; font-weight: 800; color: #0f172a; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th { background: #f1f5f9; text-align: left; padding: 6px 10px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; }
+            td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .font-bold { font-weight: 700; }
+            tfoot tr td { font-weight: 800; background: #f8fafc; border-top: 1.5px solid #cbd5e1; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 class="title">Sunrise Resorts - Restaurant Order Items Report (Excl. GST)</h1>
+            <p class="subtitle">Period: ${dateRanges.orderItem.start} to ${dateRanges.orderItem.end} | Generated: ${new Date().toLocaleString()}</p>
+          </div>
+          <div class="grid">
+            <div class="card"><div class="card-title">Total Items Sold</div><div class="card-val">${oi.totalItemsSold} pcs</div></div>
+            <div class="card"><div class="card-title">Unique Dishes Ordered</div><div class="card-val">${oi.totalUniqueItems} dishes</div></div>
+            <div class="card"><div class="card-title">Total Base Amount (Excl. GST)</div><div class="card-val">INR ${Number(oi.totalAmountExcludingGst || 0).toFixed(2)}</div></div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th class="text-center" style="width: 40px;">#</th>
+                <th>Item Name</th>
+                <th class="text-center">Qty Sold</th>
+                <th class="text-right">Unit Price (Excl. GST)</th>
+                <th class="text-right">Total Base Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${oi.items.map((item, idx) => `
+                <tr>
+                  <td class="text-center">${idx + 1}</td>
+                  <td class="font-bold">${escapeHtml(item.name)}</td>
+                  <td class="text-center">${item.totalQuantity} pcs</td>
+                  <td class="text-right">INR ${Number(item.price || 0).toFixed(2)}</td>
+                  <td class="text-right font-bold">INR ${Number(item.totalAmount || 0).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2">Total (${oi.totalUniqueItems} Unique Dishes)</td>
+                <td class="text-center">${oi.totalItemsSold} pcs</td>
+                <td class="text-right">-</td>
+                <td class="text-right">INR ${Number(oi.totalAmountExcludingGst || 0).toFixed(2)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </body>
+      </html>
+    `;
+    printHtml(html);
   };
 
   // Filtered & sorted order items
@@ -1028,7 +1199,7 @@ export default function AnalysisPage() {
                       </div>
                     ) : (
                       <>
-                        <div className="space-y-2.5">
+                        <div className="max-h-[460px] overflow-y-auto custom-scrollbar space-y-2.5 pr-1">
                           {filteredOrderItems.map((item, index) => {
                             const maxQty = Math.max(...data.orderItem!.items.map(i => i.totalQuantity), 1);
                             const progressPercent = Math.round((item.totalQuantity / maxQty) * 100);
@@ -1110,9 +1281,9 @@ export default function AnalysisPage() {
 
                   {/* ===== DESKTOP TABLE VIEW (hidden md:block) ===== */}
                   <div className="hidden md:block bg-surface/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-xl">
-                    <div className="overflow-x-auto custom-scrollbar">
-                      <table className="w-full text-sm text-left text-slate-300 min-w-[650px]">
-                        <thead className="text-xs text-slate-400 uppercase bg-black/30 border-b border-white/5">
+                    <div className="max-h-[520px] overflow-y-auto overflow-x-auto custom-scrollbar">
+                      <table className="w-full text-sm text-left text-slate-300 min-w-[650px] relative">
+                        <thead className="text-xs text-slate-400 uppercase bg-black/70 backdrop-blur-md border-b border-white/10 sticky top-0 z-10">
                           <tr>
                             <th scope="col" className="px-6 py-4 w-16 text-center">#</th>
                             <th scope="col" className="px-6 py-4">Item Name</th>
@@ -1180,7 +1351,7 @@ export default function AnalysisPage() {
                           )}
                         </tbody>
                         {filteredOrderItems.length > 0 && (
-                          <tfoot className="bg-black/40 border-t border-white/10 font-semibold text-white">
+                          <tfoot className="bg-black/80 backdrop-blur-md border-t border-white/10 font-semibold text-white sticky bottom-0 z-10">
                             <tr>
                               <td colSpan={3} className="px-6 py-4 text-slate-300 font-bold uppercase tracking-wider text-xs">
                                 Grand Total ({data.orderItem?.totalUniqueItems || 0} Unique Items)
@@ -1231,41 +1402,43 @@ export default function AnalysisPage() {
                         No waiter data found for the selected date range.
                       </div>
                     ) : (
-                      data.waiter.map((waiter, index) => (
-                        <motion.div
-                          key={waiter.userId}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          className="bg-surface/40 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 flex items-center justify-between gap-3 shadow-md"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm shrink-0">
-                              {waiter.waiterName.charAt(0).toUpperCase()}
+                      <div className="max-h-[380px] overflow-y-auto custom-scrollbar space-y-2.5 pr-1">
+                        {data.waiter.map((waiter, index) => (
+                          <motion.div
+                            key={waiter.userId}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="bg-surface/40 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 flex items-center justify-between gap-3 shadow-md"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-9 h-9 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm shrink-0">
+                                {waiter.waiterName.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-white text-sm truncate">{waiter.waiterName}</h4>
+                                <p className="text-xs text-slate-400">{waiter.phoneNumber}</p>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <h4 className="font-bold text-white text-sm truncate">{waiter.waiterName}</h4>
-                              <p className="text-xs text-slate-400">{waiter.phoneNumber}</p>
+                            <div className="text-right shrink-0">
+                              <span className="text-emerald-400 font-bold text-sm font-mono block">
+                                ₹{Number(waiter.totalRevenue || 0).toFixed(2)}
+                              </span>
+                              <span className="bg-white/10 text-white px-2 py-0.5 rounded-full text-[10px] font-medium inline-block mt-0.5">
+                                {waiter.totalOrders} orders
+                              </span>
                             </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <span className="text-emerald-400 font-bold text-sm font-mono block">
-                              ₹{Number(waiter.totalRevenue || 0).toFixed(2)}
-                            </span>
-                            <span className="bg-white/10 text-white px-2 py-0.5 rounded-full text-[10px] font-medium inline-block mt-0.5">
-                              {waiter.totalOrders} orders
-                            </span>
-                          </div>
-                        </motion.div>
-                      ))
+                          </motion.div>
+                        ))}
+                      </div>
                     )}
                   </div>
 
                   {/* Desktop View for Waiter */}
                   <div className="hidden md:block bg-surface/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-xl">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm text-left text-slate-300 min-w-[500px]">
-                        <thead className="text-xs text-slate-400 uppercase bg-black/20">
+                    <div className="max-h-[380px] overflow-y-auto custom-scrollbar">
+                      <table className="w-full text-sm text-left text-slate-300 min-w-[500px] relative">
+                        <thead className="text-xs text-slate-400 uppercase bg-black/70 backdrop-blur-md sticky top-0 z-10 border-b border-white/10">
                           <tr>
                             <th scope="col" className="px-6 py-4">Waiter Name</th>
                             <th scope="col" className="px-6 py-4">Phone Number</th>

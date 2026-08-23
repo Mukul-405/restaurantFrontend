@@ -9,6 +9,7 @@ import { fetchKots, updateOrder, Kot } from '../../../store/slices/orderSlice';
 import { useAuth } from '../../../context/AuthContext';
 import { ConfirmPrintModal } from '../../../components/modals/ConfirmPrintModal';
 import { escapeHtml } from '../../../utils/escapeHtml';
+import { printHtml } from '../../../utils/printReceipt';
 
 const PAGE_SIZE = 20;
 
@@ -37,11 +38,6 @@ export default function KOTPage() {
       const itemsToPrint = order.kotHistory || [];
       if (itemsToPrint.length === 0) return;
 
-      // Generate a temporary iframe to print the KOT
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
-
       const itemsHtml = itemsToPrint.map((item: any) => {
         const qty = item.qty ?? item.quantity ?? 1;
         return `
@@ -53,6 +49,7 @@ export default function KOTPage() {
       }).join('');
 
       const printContent = `
+        <!DOCTYPE html>
         <html>
           <head>
             <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
@@ -93,26 +90,12 @@ export default function KOTPage() {
         </html>
       `;
 
-      if (iframe.contentDocument) {
-        const doc = iframe.contentDocument;
-        doc.open();
-        doc.write(printContent);
-        doc.close();
-      }
-      
-      if (iframe.contentWindow) {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-      }
-
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 1000);
+      printHtml(printContent);
 
       // Open the custom confirm modal instead of window.confirm
       setConfirmModal({ isOpen: true, orderId: order.id });
     } catch (err) {
-      console.error('Failed to clear KOT status', err);
+      console.error('Failed to print KOT', err);
       toast.error('Failed to print KOT.');
     } finally {
       setPrintingId(null);

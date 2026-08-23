@@ -2,13 +2,68 @@ import { Order } from '../store/slices/orderSlice';
 import toast from 'react-hot-toast';
 import { escapeHtml } from './escapeHtml';
 
-export const printReceipt = (order: Order) => {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    toast.error('Please allow popups to print receipts.');
-    return;
-  }
+/**
+ * Ultra-lightweight, non-blocking print utility using a hidden iframe.
+ * Avoids opening heavy blank popup windows that lock the UI thread and trigger
+ * "Page is not responding" on low-end machines.
+ */
+export const printHtml = (htmlContent: string) => {
+  try {
+    // Remove any existing print iframe
+    const existingIframe = document.getElementById('app-print-frame');
+    if (existingIframe && existingIframe.parentNode) {
+      existingIframe.parentNode.removeChild(existingIframe);
+    }
 
+    const iframe = document.createElement('iframe');
+    iframe.id = 'app-print-frame';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    iframe.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (!doc || !iframe.contentWindow) {
+      toast.error('Unable to initialize printer frame.');
+      return;
+    }
+
+    doc.open();
+    doc.write(htmlContent);
+    doc.close();
+
+    const triggerPrint = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.error('Print execution error:', e);
+      } finally {
+        setTimeout(() => {
+          if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
+        }, 2000);
+      }
+    };
+
+    if (doc.readyState === 'complete') {
+      setTimeout(triggerPrint, 50);
+    } else {
+      iframe.onload = () => setTimeout(triggerPrint, 50);
+    }
+  } catch (error) {
+    console.error('Error during printing:', error);
+    toast.error('Failed to start print process.');
+  }
+};
+
+export const printReceipt = (order: Order) => {
   const totalQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
   
   // Format Date (e.g., 2026-05-03)
@@ -143,7 +198,7 @@ export const printReceipt = (order: Order) => {
               width: 100%; 
               padding: 6mm; 
               box-shadow: none; 
-              margin: 0 auto;
+              margin: 0 auto; 
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
@@ -292,22 +347,10 @@ export const printReceipt = (order: Order) => {
     </html>
   `;
 
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => {
-    printWindow.print();
-    printWindow.close();
-  }, 300);
+  printHtml(html);
 };
 
 export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDiscount: number = 0) => {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    toast.error('Please allow popups to print receipts.');
-    return;
-  }
-
   const now = new Date();
   const formattedDate = now.toISOString().split('T')[0];
   const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
@@ -319,8 +362,6 @@ export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDis
 
   const rDiscount = roomDiscount > 0 ? roomDiscount : Number(booking.roomDiscountAmount || 0);
   const fDiscount = foodDiscount > 0 ? foodDiscount : Number(booking.foodDiscountAmount || 0);
-
-  const roomNet = Math.max(0, roomTotal - rDiscount);
 
   let foodSubtotal = foodOrders.reduce((sum, f) => sum + (Number(f.price || 0) * Number(f.quantity || 0)), 0);
   let finalFoodTotal = 0;
@@ -648,11 +689,5 @@ export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDis
     </html>
   `;
 
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => {
-    printWindow.print();
-    printWindow.close();
-  }, 300);
+  printHtml(html);
 };
