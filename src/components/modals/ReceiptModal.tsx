@@ -53,8 +53,8 @@ export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: Rece
     discountAmount = Math.min(Math.max(parsedValue, 0), baseAmount);
   }
 
-  // Final total = Base Amount - Discount + Fixed GST
-  const finalTotal = Math.max(baseAmount + gstAmount - discountAmount, 0);
+  // Final total = Base Amount - Discount + Fixed GST (rounded to integer: <.5 round down, >=.5 round up)
+  const finalTotal = Math.max(Math.round(baseAmount + gstAmount - discountAmount), 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +66,7 @@ export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: Rece
         baseAmount: Number(baseAmount.toFixed(2)),
         gstAmount: Number(gstAmount.toFixed(2)),
         discountAmount: Number(discountAmount.toFixed(2)),
-        finalDiscountedAmount: Number(finalTotal.toFixed(2)),
+        finalDiscountedAmount: Math.round(finalTotal),
         paymentMode
       });
       onClose();
@@ -211,9 +211,21 @@ export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: Rece
                     <span>GST (5%)</span>
                     <span>₹{gstAmount.toFixed(2)}</span>
                   </div>
+                  {(() => {
+                    const raw = baseAmount + gstAmount - discountAmount;
+                    const roundOff = Number((finalTotal - raw).toFixed(2));
+                    return (
+                      <div className="flex justify-between text-slate-400">
+                        <span>Round Off</span>
+                        <span className={roundOff !== 0 ? "text-amber-400 font-mono" : "text-slate-400 font-mono"}>
+                          {roundOff > 0 ? `+₹${roundOff.toFixed(2)}` : roundOff < 0 ? `-₹${Math.abs(roundOff).toFixed(2)}` : '₹0.00'}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <div className="flex justify-between items-center text-emerald-400 pt-3 border-t border-white/5 mt-2">
                     <span className="font-bold uppercase tracking-wider text-sm">Grand Total</span>
-                    <span className="text-2xl font-black tracking-tight">₹{finalTotal.toFixed(2)}</span>
+                    <span className="text-2xl font-black tracking-tight">₹{Math.round(finalTotal)}</span>
                   </div>
                 </div>
               </div>

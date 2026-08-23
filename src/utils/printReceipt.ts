@@ -88,6 +88,44 @@ export const printReceipt = (order: Order) => {
           .totals-table { width: 70%; }
           .totals-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
           
+          .discount-highlight-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #dc2626;
+            font-weight: 900;
+            font-size: 13px;
+            background: #fef2f2;
+            border: 1px dashed #dc2626;
+            padding: 4px 6px;
+            border-radius: 4px;
+            margin: 4px -6px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          
+          .discount-banner {
+            margin: 12px 0 6px 0;
+            padding: 6px 8px;
+            background: #fef2f2;
+            border: 1.5px dashed #dc2626;
+            border-radius: 4px;
+            text-align: center;
+            color: #dc2626;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .discount-banner-title {
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+          }
+          .discount-banner-sub {
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 2px;
+          }
+          
           .total-row-main { display: flex; justify-content: space-between; align-items: flex-start; font-size: 16px; font-weight: 900; margin: 4px 0; }
           
           .footer-msg { text-align: center; font-weight: 900; font-size: 14px; margin-top: 15px; }
@@ -98,12 +136,30 @@ export const printReceipt = (order: Order) => {
               background: #fff; 
               padding: 0; 
               display: block; 
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
             .receipt { 
               width: 100%; 
-              padding: 6mm;
+              padding: 6mm; 
               box-shadow: none; 
               margin: 0 auto;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .discount-highlight-row {
+              color: #dc2626 !important;
+              background: #fef2f2 !important;
+              border: 1px dashed #dc2626 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .discount-banner {
+              color: #dc2626 !important;
+              background: #fef2f2 !important;
+              border: 1.5px dashed #dc2626 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
           }
         </style>
@@ -179,15 +235,26 @@ export const printReceipt = (order: Order) => {
                 <span>${(Number(order.gstAmount) / 2).toFixed(2)}</span>
               </div>
               ${Number(order.discountAmount) > 0 ? `
-              <div class="totals-row">
+              <div class="discount-highlight-row">
                 <span>Discount :</span>
                 <span>-${Number(order.discountAmount).toFixed(2)}</span>
               </div>` : ''}
+              ${(() => {
+                const rawTotal = Number(order.baseAmount) + Number(order.gstAmount) - Number(order.discountAmount || 0);
+                const finalTotalInt = Math.round(Number(order.finalDiscountedAmount || rawTotal));
+                const roundOffVal = Number((finalTotalInt - rawTotal).toFixed(2));
+                const roundOffFormatted = roundOffVal > 0 ? `+${roundOffVal.toFixed(2)}` : roundOffVal < 0 ? `-${Math.abs(roundOffVal).toFixed(2)}` : `0.00`;
+                return `
+                <div class="totals-row">
+                  <span>Round Off :</span>
+                  <span>${roundOffFormatted}</span>
+                </div>`;
+              })()}
               
               <div class="total-row-main" style="margin-top: 8px;">
                 <span>Total :</span>
                 <div style="text-align: right;">
-                  <div>${Number(order.finalDiscountedAmount).toFixed(2)}</div>
+                  <div>${Math.round(Number(order.finalDiscountedAmount || 0))}</div>
                   <div style="font-size: 14px;">Rs</div>
                 </div>
               </div>
@@ -195,12 +262,19 @@ export const printReceipt = (order: Order) => {
               <div class="total-row-main" style="margin-top: 8px;">
                 <span>Due :</span>
                 <div style="text-align: right;">
-                  <div>${Number(order.finalDiscountedAmount).toFixed(2)}</div>
+                  <div>${Math.round(Number(order.finalDiscountedAmount || 0))}</div>
                   <div style="font-size: 14px;">Rs</div>
                 </div>
               </div>
             </div>
           </div>
+          
+          ${Number(order.discountAmount) > 0 ? `
+          <div class="discount-banner">
+            <div class="discount-banner-title">&#9733; DISCOUNT SAVINGS: -Rs ${Number(order.discountAmount).toFixed(2)} &#9733;</div>
+            <div class="discount-banner-sub">Special Discount &bull; You Saved Rs ${Number(order.discountAmount).toFixed(2)}</div>
+          </div>
+          ` : ''}
           
           <div class="divider-thick" style="margin-top: 15px;"></div>
           
@@ -296,7 +370,7 @@ export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDis
             margin: 0; padding: 20px; background: #f5f5f5;
             display: flex; justify-content: center;
           }
-          .receipt {
+          .receipt { 
             width: 80mm; background: #fff; padding: 10mm; 
             box-sizing: border-box; color: #000; line-height: 1.25;
             font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -327,6 +401,45 @@ export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDis
           .totals-wrapper { display: flex; justify-content: flex-end; margin-top: 5px; font-weight: bold; font-size: 13px; }
           .totals-table { width: 70%; }
           .totals-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+          
+          .discount-highlight-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #dc2626;
+            font-weight: 900;
+            font-size: 13px;
+            background: #fef2f2;
+            border: 1px dashed #dc2626;
+            padding: 4px 6px;
+            border-radius: 4px;
+            margin: 4px -6px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          
+          .discount-banner {
+            margin: 12px 0 6px 0;
+            padding: 6px 8px;
+            background: #fef2f2;
+            border: 1.5px dashed #dc2626;
+            border-radius: 4px;
+            text-align: center;
+            color: #dc2626;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .discount-banner-title {
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+          }
+          .discount-banner-sub {
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 2px;
+          }
+          
           .total-row-main { display: flex; justify-content: space-between; align-items: flex-start; font-size: 16px; font-weight: 900; margin: 4px 0; }
           .section-title { font-weight: 900; font-size: 14px; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: 1px; }
           .paid-badge { display: inline-block; background: #e6f9f0; color: #059669; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 900; margin-left: 8px; }
@@ -334,8 +447,35 @@ export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDis
           .footer-msg { text-align: center; font-weight: 900; font-size: 14px; margin-top: 15px; }
           .cashier { font-size: 13px; margin-top: 20px; font-weight: normal; display: flex; align-items: center; }
           @media print {
-            body { background: #fff; padding: 0; display: block; }
-            .receipt { width: 100%; padding: 6mm; box-shadow: none; margin: 0 auto; }
+            body { 
+              background: #fff; 
+              padding: 0; 
+              display: block; 
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .receipt { 
+              width: 100%; 
+              padding: 6mm; 
+              box-shadow: none; 
+              margin: 0 auto; 
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .discount-highlight-row {
+              color: #dc2626 !important;
+              background: #fef2f2 !important;
+              border: 1px dashed #dc2626 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .discount-banner {
+              color: #dc2626 !important;
+              background: #fef2f2 !important;
+              border: 1.5px dashed #dc2626 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
           }
         </style>
       </head>
@@ -452,27 +592,45 @@ export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDis
               </div>
               ` : ''}
               ${totalDiscount > 0 ? `
-              <div class="totals-row" style="color: #dc2626; font-weight: 900;">
+              <div class="discount-highlight-row">
                 <span>Total Discount :</span>
                 <span>-₹${totalDiscount.toFixed(2)}</span>
               </div>
               ` : ''}
+              ${(() => {
+                const rawGrand = Number(roomTotal) + Number(finalFoodTotal) - Number(totalDiscount);
+                const roundedGrand = Math.round(grandTotal);
+                const diff = Number((roundedGrand - rawGrand).toFixed(2));
+                const diffStr = diff > 0 ? `+₹${diff.toFixed(2)}` : diff < 0 ? `-₹${Math.abs(diff).toFixed(2)}` : `₹0.00`;
+                return `
+                <div class="totals-row">
+                  <span>Round Off :</span>
+                  <span>${diffStr}</span>
+                </div>`;
+              })()}
               <div class="total-row-main" style="margin-top: 8px;">
                 <span>Grand Total :</span>
                 <div style="text-align: right;">
-                  <div>₹${grandTotal.toFixed(2)}</div>
+                  <div>₹${Math.round(grandTotal)}</div>
                   <div style="font-size: 14px;">Rs</div>
                 </div>
               </div>
               <div class="total-row-main" style="margin-top: 8px;">
                 <span>Due :</span>
                 <div style="text-align: right;">
-                  <div>₹${dueTotal.toFixed(2)}</div>
+                  <div>₹${Math.round(dueTotal)}</div>
                   <div style="font-size: 14px;">Rs</div>
                 </div>
               </div>
             </div>
           </div>
+          
+          ${totalDiscount > 0 ? `
+          <div class="discount-banner">
+            <div class="discount-banner-title">&#9733; TOTAL DISCOUNT: -₹${totalDiscount.toFixed(2)} &#9733;</div>
+            <div class="discount-banner-sub">Special Discount &bull; You Saved ₹${totalDiscount.toFixed(2)} on this booking</div>
+          </div>
+          ` : ''}
           
           <div class="divider-thick" style="margin-top: 15px;"></div>
           
@@ -498,4 +656,3 @@ export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDis
     printWindow.close();
   }, 300);
 };
-

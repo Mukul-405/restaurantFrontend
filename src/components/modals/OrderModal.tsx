@@ -114,7 +114,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
 
   const baseAmount = Number(selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2));
   const gstAmount = Number((baseAmount * 0.05).toFixed(2));
-  const calculatedTotalAmount = Number((baseAmount + gstAmount).toFixed(2));
+  const calculatedTotalAmount = Math.round(baseAmount + gstAmount);
   const discountAmount = 0;
   const finalDiscountedAmount = calculatedTotalAmount;
 
@@ -371,9 +371,21 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                       <div className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Tax (5%)</div>
                       <div className="text-emerald-400 font-bold text-lg">₹{gstAmount.toFixed(2)}</div>
                     </div>
+                    {(() => {
+                      const raw = baseAmount + gstAmount;
+                      const roundOff = Number((calculatedTotalAmount - raw).toFixed(2));
+                      return (
+                        <div className="text-center">
+                          <div className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Round Off</div>
+                          <div className={`font-bold text-lg ${roundOff !== 0 ? "text-amber-400 font-mono" : "text-slate-300 font-mono"}`}>
+                            {roundOff > 0 ? `+₹${roundOff.toFixed(2)}` : roundOff < 0 ? `-₹${Math.abs(roundOff).toFixed(2)}` : '₹0.00'}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <div className="text-center">
                       <div className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Total</div>
-                      <div className="text-emerald-400 font-black text-xl">₹{calculatedTotalAmount.toFixed(2)}</div>
+                      <div className="text-emerald-400 font-black text-xl">₹{calculatedTotalAmount}</div>
                     </div>
                   </div>
                   

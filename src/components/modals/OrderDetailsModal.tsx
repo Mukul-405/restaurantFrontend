@@ -188,9 +188,22 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
                         <div className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Disc</div>
                         <div className="text-emerald-400 font-bold text-base">-₹{selectedOrder.discountAmount ?? 0}</div>
                       </div>
+                      {(() => {
+                        const raw = Number(selectedOrder.baseAmount || 0) + Number(selectedOrder.gstAmount || 0) - Number(selectedOrder.discountAmount || 0);
+                        const rounded = Math.round(Number(selectedOrder.finalDiscountedAmount ?? raw));
+                        const roundOff = Number((rounded - raw).toFixed(2));
+                        return (
+                          <div className="text-center">
+                            <div className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Round Off</div>
+                            <div className={`font-bold text-base ${roundOff !== 0 ? "text-amber-400 font-mono" : "text-slate-300 font-mono"}`}>
+                              {roundOff > 0 ? `+₹${roundOff.toFixed(2)}` : roundOff < 0 ? `-₹${Math.abs(roundOff).toFixed(2)}` : '₹0.00'}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       <div className="text-center">
                         <div className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Total</div>
-                        <div className="text-emerald-400 font-black text-xl">₹{selectedOrder.finalDiscountedAmount ?? 0}</div>
+                        <div className="text-emerald-400 font-black text-xl">₹{Math.round(Number(selectedOrder.finalDiscountedAmount ?? 0))}</div>
                       </div>
                     </div>
                   </div>

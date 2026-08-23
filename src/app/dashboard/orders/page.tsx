@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, RefreshCw, Plus, Search, Eye, Edit2, ChevronDown, ChevronUp, X, CheckCircle, Filter } from 'lucide-react';
+import { Loader2, RefreshCw, Plus, Search, Eye, Edit2, ChevronDown, ChevronUp, X, CheckCircle, Filter, Printer } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchOrders, Order, updateOrder } from '../../../store/slices/orderSlice';
 import { fetcher } from '../../../lib/fetcher';
@@ -10,6 +10,7 @@ import OrderModal from '../../../components/modals/OrderModal';
 import OrderDetailsModal from '../../../components/modals/OrderDetailsModal';
 import CancelOrderModal from '../../../components/modals/CancelOrderModal';
 import ReceiptModal from '../../../components/modals/ReceiptModal';
+import { printReceipt } from '../../../utils/printReceipt';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function OrdersPage() {
@@ -292,13 +293,28 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">Discount:</span>
-                      <span className="text-slate-200">-₹{order.discountAmount ?? 0}</span>
+                      <span className={Number(order.discountAmount) > 0 ? "text-emerald-400 font-bold" : "text-slate-200"}>
+                        {Number(order.discountAmount) > 0 ? `-₹${order.discountAmount}` : '₹0'}
+                      </span>
                     </div>
+                    {(() => {
+                      const raw = Number(order.baseAmount || 0) + Number(order.gstAmount || 0) - Number(order.discountAmount || 0);
+                      const rounded = Math.round(Number(order.finalDiscountedAmount ?? raw));
+                      const roundOff = Number((rounded - raw).toFixed(2));
+                      return (
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400">Round Off:</span>
+                          <span className={roundOff !== 0 ? "text-amber-400 font-medium font-mono" : "text-slate-400 font-mono"}>
+                            {roundOff > 0 ? `+₹${roundOff.toFixed(2)}` : roundOff < 0 ? `-₹${Math.abs(roundOff).toFixed(2)}` : '₹0.00'}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="flex justify-between items-center mb-5 mt-auto">
                     <span className="text-slate-200 font-bold tracking-wider">TOTAL:</span>
-                    <span className="text-2xl font-bold text-emerald-400">₹{order.finalDiscountedAmount ?? 0}</span>
+                    <span className="text-2xl font-bold text-emerald-400">₹{Math.round(Number(order.finalDiscountedAmount ?? 0))}</span>
                   </div>
 
                   <div className="flex items-center gap-2 mt-2">
@@ -316,6 +332,16 @@ export default function OrdersPage() {
                     >
                       View
                     </button>
+                    {order.status === 'COMPLETED' && (
+                      <button
+                        onClick={() => printReceipt(order)}
+                        className="px-3 py-2 text-xs font-semibold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-lg transition-colors flex items-center gap-1.5"
+                        title="Print Bill"
+                      >
+                        <Printer size={14} />
+                        <span>Print</span>
+                      </button>
+                    )}
                     
                     <div className="flex-1"></div>
                     
@@ -354,7 +380,7 @@ export default function OrdersPage() {
                       {renderStatusBadge(order.status)}
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-slate-200 font-semibold tracking-wide">₹{order.finalDiscountedAmount ?? 0}</span>
+                      <span className="text-slate-200 font-semibold tracking-wide">₹{Math.round(Number(order.finalDiscountedAmount ?? 0))}</span>
                       {expandedOrderId === order.id ? (
                         <ChevronUp size={18} className="text-slate-400" />
                       ) : (
@@ -376,7 +402,23 @@ export default function OrdersPage() {
                         <div className="border-t border-white/5 pt-4 space-y-1.5 text-sm mb-5">
                           <div className="text-slate-400">Base: <span className="text-slate-200">₹{order.baseAmount ?? 0}</span></div>
                           <div className="text-slate-400">GST: <span className="text-slate-200">₹{order.gstAmount ?? 0}</span></div>
-                          <div className="text-slate-400">Disc: <span className="text-slate-200">-₹{order.discountAmount ?? 0}</span></div>
+                          <div className="text-slate-400">
+                            Disc: <span className={Number(order.discountAmount) > 0 ? "text-emerald-400 font-bold" : "text-slate-200"}>
+                              {Number(order.discountAmount) > 0 ? `-₹${order.discountAmount}` : '₹0'}
+                            </span>
+                          </div>
+                          {(() => {
+                            const raw = Number(order.baseAmount || 0) + Number(order.gstAmount || 0) - Number(order.discountAmount || 0);
+                            const rounded = Math.round(Number(order.finalDiscountedAmount ?? raw));
+                            const roundOff = Number((rounded - raw).toFixed(2));
+                            return (
+                              <div className="text-slate-400">
+                                Round Off: <span className={roundOff !== 0 ? "text-amber-400 font-medium font-mono" : "text-slate-400 font-mono"}>
+                                  {roundOff > 0 ? `+₹${roundOff.toFixed(2)}` : roundOff < 0 ? `-₹${Math.abs(roundOff).toFixed(2)}` : '₹0.00'}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -409,6 +451,16 @@ export default function OrdersPage() {
                             <Eye size={18} />
                             {order.status !== 'PENDING' && <span className="ml-2 font-semibold text-sm">View Details</span>}
                           </button>
+                          {order.status === 'COMPLETED' && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); printReceipt(order); }}
+                              className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-semibold text-sm rounded-lg transition-colors shadow-sm"
+                              title="Print Bill"
+                            >
+                              <Printer size={16} />
+                              <span>Print</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
