@@ -54,3 +54,8 @@ export const editBookingRooms = async (id: number, rooms: { roomCode: string, ro
   const { data } = await api.patch(`/bookings/${id}/edit-rooms`, { rooms });
   return data;
 };
+
+export const extendCheckoutBooking = async (id: number, newCheckOut: string) => {
+  const { data } = await api.patch(`/bookings/${id}/extend-checkout`, { newCheckOut });
+  return data;
+};

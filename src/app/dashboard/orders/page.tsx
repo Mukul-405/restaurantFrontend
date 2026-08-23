@@ -42,12 +42,8 @@ export default function OrdersPage() {
   };
 
   useEffect(() => {
-    // Only admins see the waiter filter dropdown, so only they need this list.
-    // Everyone else calling it would 403 anyway — /users requires MANAGE_MEMBERS.
-    if (user?.role === 'ADMIN' || user?.role === 'SUPERADMIN') {
-      fetcher.getUsers().then(data => setWaiters(data)).catch(console.error);
-    }
-  }, [user?.role]);
+    fetcher.getUsers().then(data => setWaiters(data)).catch(console.error);
+  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -161,18 +157,16 @@ export default function OrdersPage() {
         </div>
         
         <div className="flex w-full lg:w-auto gap-2">
-          {(user?.role === 'ADMIN' || user?.role === 'SUPERADMIN') && (
-            <select
-              value={waiterFilter}
-              onChange={(e) => setWaiterFilter(e.target.value)}
-              className="bg-surface/50 border border-white/10 text-slate-200 px-4 py-2 rounded-xl font-sans text-sm outline-none focus:border-primary flex-1 lg:flex-none"
-            >
-              <option value="ALL">All Waiters</option>
-              {waiters.map((waiter, index) => (
-                <option key={waiter.id || `waiter-${index}`} value={waiter.id}>{waiter.name}</option>
-              ))}
-            </select>
-          )}
+          <select
+            value={waiterFilter}
+            onChange={(e) => setWaiterFilter(e.target.value)}
+            className="bg-surface/50 border border-white/10 text-slate-200 px-4 py-2 rounded-xl font-sans text-sm outline-none focus:border-primary flex-1 lg:flex-none"
+          >
+            <option value="ALL">All Waiters</option>
+            {waiters.map((waiter, index) => (
+              <option key={waiter.id || `waiter-${index}`} value={waiter.id}>{waiter.name}</option>
+            ))}
+          </select>
           <button 
             onClick={() => setShowMobileFilters(!showMobileFilters)}
             className={`md:hidden px-4 py-2 border rounded-xl flex items-center justify-center gap-2 transition-colors ${showMobileFilters ? 'bg-primary border-primary text-white' : 'bg-surface/50 border-white/10 text-slate-200 hover:bg-white/5'}`}

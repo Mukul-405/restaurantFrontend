@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Printer, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getRoomTypes, RoomType, getAvailability } from '../../../lib/roomsApi';
-import { createBooking, BookingPayload, getBookings, checkInBooking, checkOutBooking, editBookingRooms, cancelBooking } from '../../../lib/roomBookApi';
+import { createBooking, BookingPayload, getBookings, checkInBooking, checkOutBooking, editBookingRooms, cancelBooking, extendCheckoutBooking } from '../../../lib/roomBookApi';
 import { printBookingBill } from '../../../utils/printReceipt';
 
 export default function BookRoomPage() {
@@ -49,6 +49,12 @@ export default function BookRoomPage() {
 
   const [foodCheckoutDiscountType, setFoodCheckoutDiscountType] = useState<'FLAT' | 'PERCENT'>('FLAT');
   const [foodCheckoutDiscountValue, setFoodCheckoutDiscountValue] = useState<number | ''>('');
+
+  const [extendBookingModalOpen, setExtendBookingModalOpen] = useState(false);
+  const [extendBookingId, setExtendBookingId] = useState<number | null>(null);
+  const [extendBookingCurrentCheckOut, setExtendBookingCurrentCheckOut] = useState<string>('');
+  const [newCheckOutDate, setNewCheckOutDate] = useState('');
+  const [extendingCheckout, setExtendingCheckout] = useState(false);
 
   const roomCheckoutBase = Number(checkoutBooking?.totalAmount || 0);
 
@@ -209,6 +215,21 @@ export default function BookRoomPage() {
     } catch (error: any) {
       setFormError(error.response?.data?.message || 'Failed to cancel booking. Please try again.');
       setSearchingBookings(false);
+    }
+  };
+
+  const handleExtendCheckout = async () => {
+    if (!extendBookingId || !newCheckOutDate) return;
+    setExtendingCheckout(true);
+    try {
+      await extendCheckoutBooking(extendBookingId, newCheckOutDate);
+      setFormSuccess("Checkout date extended successfully!");
+      setExtendBookingModalOpen(false);
+      handleSearchBookings();
+    } catch (error: any) {
+      setFormError(error.response?.data?.message || 'Failed to extend checkout. Please try again.');
+    } finally {
+      setExtendingCheckout(false);
     }
   };
 
@@ -928,47 +949,68 @@ export default function BookRoomPage() {
                         </div>
 
                         {/* Bottom Action Bar */}
-                        <div className="pt-3 flex flex-wrap items-center justify-end gap-2 border-t border-white/5 mt-2">
+                        <div className="pt-3 border-t border-white/5 mt-2">
                           {b.status === 'RESERVED' && (
-                            <>
+                            <div className="grid grid-cols-2 gap-2 w-full">
                               <button
+                                type="button"
                                 onClick={() => setCancelingBooking(b)}
                                 disabled={searchingBookings || openingModalBookingId === b.id}
-                                className="flex-1 px-3 py-2 rounded-xl bg-gradient-to-r from-rose-500/10 to-pink-500/10 hover:from-rose-500/20 hover:to-pink-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs transition-all flex items-center justify-center gap-1.5 hover:-translate-y-0.5"
+                                className="h-10 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 active:scale-[0.98] text-rose-400 border border-rose-500/25 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                               >
-                                <X size={14} />
+                                <X size={14} className="shrink-0" />
                                 <span>Cancel</span>
                               </button>
                               <button
+                                type="button"
                                 onClick={() => openAssignmentModal(b, 'checkin')}
                                 disabled={searchingBookings || openingModalBookingId === b.id}
-                                className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-xs transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-1.5 hover:-translate-y-0.5 active:translate-y-0"
+                                className="h-10 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-[0.98] text-white font-bold text-xs transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 disabled:opacity-50"
                               >
                                 {openingModalBookingId === b.id ? (
-                                  <Loader2 size={14} className="animate-spin" />
+                                  <Loader2 size={14} className="animate-spin shrink-0" />
                                 ) : (
-                                  <Key size={14} />
+                                  <Key size={14} className="shrink-0" />
                                 )}
-                                <span>{openingModalBookingId === b.id ? 'Opening...' : 'Check In'}</span>
+                                <span className="truncate">{openingModalBookingId === b.id ? 'Opening...' : 'Check In'}</span>
                               </button>
-                            </>
+                            </div>
                           )}
 
                           {b.status === 'CHECKED_IN' && (
-                            <>
+                            <div className="grid grid-cols-2 gap-2 w-full">
                               <button
+                                type="button"
                                 onClick={() => openAssignmentModal(b, 'edit')}
                                 disabled={searchingBookings || openingModalBookingId === b.id}
-                                className="flex-1 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-blue-500/20 hover:from-blue-500/30 hover:to-indigo-500/30 text-blue-300 border border-blue-500/40 font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/10 hover:-translate-y-0.5 active:translate-y-0"
+                                className="h-10 px-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 active:scale-[0.98] text-blue-400 border border-blue-500/25 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
                               >
                                 {openingModalBookingId === b.id ? (
-                                  <Loader2 size={14} className="animate-spin" />
+                                  <Loader2 size={14} className="animate-spin shrink-0" />
                                 ) : (
-                                  <Bed size={14} />
+                                  <Bed size={14} className="shrink-0" />
                                 )}
-                                <span>{openingModalBookingId === b.id ? 'Opening...' : 'Change Room'}</span>
+                                <span>Change Room</span>
                               </button>
                               <button
+                                type="button"
+                                onClick={() => {
+                                  setExtendBookingId(b.id);
+                                  setExtendBookingCurrentCheckOut(b.checkOut);
+                                  
+                                  const d = new Date(b.checkOut);
+                                  d.setDate(d.getDate() + 1);
+                                  setNewCheckOutDate(d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }));
+                                  setExtendBookingModalOpen(true);
+                                }}
+                                disabled={searchingBookings || openingModalBookingId === b.id}
+                                className="h-10 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 active:scale-[0.98] text-purple-400 border border-purple-500/25 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                              >
+                                <Calendar size={14} className="shrink-0" />
+                                <span>Extend Stay</span>
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => {
                                   setCheckoutBooking(b);
                                   setRoomCheckoutDiscountType('FLAT');
@@ -976,17 +1018,20 @@ export default function BookRoomPage() {
                                   setFoodCheckoutDiscountType('FLAT');
                                   setFoodCheckoutDiscountValue('');
                                 }}
-                                className="flex-1 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/40 font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/10 hover:-translate-y-0.5 active:translate-y-0"
+                                disabled={searchingBookings || openingModalBookingId === b.id}
+                                className="col-span-2 h-10 px-4 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-orange-500/30 active:scale-[0.98] text-amber-300 border border-amber-500/30 font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm shadow-amber-500/10 disabled:opacity-50"
                               >
-                                Check Out
+                                <CheckCircle size={15} className="shrink-0" />
+                                <span>Check Out</span>
                               </button>
-                            </>
+                            </div>
                           )}
 
                           {b.status === 'CHECKED_OUT' && (
                             <button
+                              type="button"
                               onClick={() => printBookingBill(b)}
-                              className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-emerald-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-300 border border-emerald-500/40 font-extrabold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 hover:-translate-y-0.5 active:translate-y-0"
+                              className="w-full h-10 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-[0.98] text-emerald-400 border border-emerald-500/25 font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
                             >
                               <Printer size={15} /> Print Bill
                             </button>
@@ -1518,6 +1563,186 @@ export default function BookRoomPage() {
                 >
                   {searchingBookings ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />}
                   Yes, Cancel It
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Extend Checkout Modal */}
+      <AnimatePresence>
+        {extendBookingModalOpen && (
+          <motion.div
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => !extendingCheckout && setExtendBookingModalOpen(false)}
+          >
+            <motion.div
+              className="w-full max-w-md p-6 sm:p-7 bg-[#16181d] border border-white/10 rounded-3xl shadow-2xl relative overflow-hidden"
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Accent Line */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent opacity-75"></div>
+
+              {/* Header */}
+              <div className="flex justify-between items-start mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                    <Calendar size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white tracking-tight">Extend Checkout</h2>
+                    <p className="text-slate-400 text-xs mt-0.5">Select a new checkout date for this guest.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExtendBookingModalOpen(false)}
+                  disabled={extendingCheckout}
+                  className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors disabled:opacity-50"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="space-y-4 mb-6">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Current Checkout Date
+                  </label>
+                  <div className="px-4 py-3 bg-white/5 rounded-xl border border-white/10 text-slate-300 text-sm flex items-center justify-between font-medium">
+                    <span>
+                      {extendBookingCurrentCheckOut
+                        ? `${new Date(extendBookingCurrentCheckOut).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })} at 11:00 AM`
+                        : '-'}
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide bg-black/40 px-2 py-0.5 rounded-md border border-white/5">
+                      Current
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    New Checkout Date
+                  </label>
+                  <div
+                    className="relative group cursor-pointer"
+                    onClick={(e) => {
+                      const input = e.currentTarget.querySelector('input');
+                      if (input && typeof (input as any).showPicker === 'function') {
+                        try {
+                          (input as any).showPicker();
+                        } catch (_) {}
+                      }
+                    }}
+                  >
+                    <Calendar
+                      size={17}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none transition-colors"
+                    />
+                    <input
+                      type="date"
+                      min={(() => {
+                        if (!extendBookingCurrentCheckOut) return '';
+                        const d = new Date(extendBookingCurrentCheckOut);
+                        d.setDate(d.getDate() + 1);
+                        return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+                      })()}
+                      value={newCheckOutDate}
+                      onChange={(e) => setNewCheckOutDate(e.target.value)}
+                      onClick={(e) => {
+                        if (typeof (e.currentTarget as any).showPicker === 'function') {
+                          try {
+                            (e.currentTarget as any).showPicker();
+                          } catch (_) {}
+                        }
+                      }}
+                      onFocus={(e) => {
+                        if (typeof (e.currentTarget as any).showPicker === 'function') {
+                          try {
+                            (e.currentTarget as any).showPicker();
+                          } catch (_) {}
+                        }
+                      }}
+                      required
+                      disabled={extendingCheckout}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 pl-11 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all cursor-pointer [color-scheme:dark]"
+                    />
+                  </div>
+                </div>
+
+                {newCheckOutDate && (
+                  <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-3.5 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 flex items-center gap-1.5 font-medium">
+                        <Calendar size={13} className="text-purple-400" /> Expected Checkout:
+                      </span>
+                      <span className="text-purple-300 font-bold">
+                        {new Date(newCheckOutDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} at 11:00 AM
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1.5 border-t border-purple-500/15 text-[11px]">
+                      <span className="text-slate-400">Last Night of Stay:</span>
+                      <span className="text-slate-300 font-medium">
+                        {(() => {
+                          const prev = new Date(newCheckOutDate);
+                          prev.setDate(prev.getDate() - 1);
+                          return prev.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                        })()}
+                      </span>
+                    </div>
+                    {extendBookingCurrentCheckOut && (
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400">Extension Duration:</span>
+                        <span className="text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                          +{Math.max(0, Math.round((new Date(newCheckOutDate).getTime() - new Date(extendBookingCurrentCheckOut).getTime()) / (1000 * 60 * 60 * 24)))} Extra {Math.max(0, Math.round((new Date(newCheckOutDate).getTime() - new Date(extendBookingCurrentCheckOut).getTime()) / (1000 * 60 * 60 * 24))) === 1 ? 'Night' : 'Nights'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setExtendBookingModalOpen(false)}
+                  disabled={extendingCheckout}
+                  className="h-11 px-4 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5 hover:text-white text-sm font-semibold transition-all flex items-center justify-center disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExtendCheckout}
+                  disabled={extendingCheckout || !newCheckOutDate}
+                  className="h-11 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-[0.98] text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-purple-600/25 transition-all disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {extendingCheckout ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Extending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Calendar size={16} />
+                      <span>Confirm Extension</span>
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>
