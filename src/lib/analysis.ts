@@ -62,3 +62,24 @@ export const getChannelAnalysis = async (startDate: string, endDate: string): Pr
   const { data } = await api.get('/analysis/channel', { params: { startDate, endDate } });
   return data;
 };
+
+export interface OrderItemStat {
+  menuItemId?: number;
+  name: string;
+  totalQuantity: number;
+  price: number;
+  totalAmount: number;
+  orderCount: number;
+}
+
+export interface OrderItemAnalysis {
+  totalItemsSold: number;
+  totalUniqueItems: number;
+  totalAmountExcludingGst: number;
+  items: OrderItemStat[];
+}
+
+export const getOrderItemAnalysis = async (startDate: string, endDate: string): Promise<OrderItemAnalysis> => {
+  const { data } = await api.get('/analysis/order-items', { params: { startDate, endDate } });
+  return data;
+};

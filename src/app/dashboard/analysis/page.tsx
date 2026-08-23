@@ -1,97 +1,112 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { IndianRupee, Receipt, TrendingUp, Users, Bed, Building2, Calendar, AlertCircle, Banknote, CreditCard, QrCode, Download, Printer } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  IndianRupee, Receipt, TrendingUp, Users, Bed, Building2, Calendar, 
+  AlertCircle, Banknote, CreditCard, QrCode, Download, Printer, 
+  UtensilsCrossed, ShoppingBag, Search, ArrowUpDown, Sparkles, Hotel
+} from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { getRevenueAnalysis, getWaiterAnalysis, getBookingAnalysis, getChannelAnalysis, RevenueAnalysis, WaiterAnalysis, BookingAnalysis, ChannelAnalysis } from '../../../lib/analysis';
+import { 
+  getRevenueAnalysis, getWaiterAnalysis, getBookingAnalysis, getChannelAnalysis, getOrderItemAnalysis,
+  RevenueAnalysis, WaiterAnalysis, BookingAnalysis, ChannelAnalysis, OrderItemAnalysis 
+} from '../../../lib/analysis';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#f43f5e', '#6366f1'];
 
-const DateRangeFilter = ({ 
+const DateRangeFilter = ({
   title, icon: Icon, color, iconColor,
   startDate, setStartDate, endDate, setEndDate,
   onGenerate, loading, setDateRangeType, error, onDownload, onPrint, hasData,
   dateNote
 }: any) => (
   <div className="space-y-4">
-    <div className="flex items-center justify-between flex-wrap gap-4 bg-surface/30 p-4 rounded-xl border border-white/5">
+    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface/30 p-4 sm:p-5 rounded-2xl border border-white/5 shadow-md">
       <div className="flex items-center gap-3">
-        <Icon className={iconColor} size={24} />
+        <div className={`p-2.5 rounded-xl ${color.bgLight} ${iconColor} border ${color.border} shrink-0`}>
+          <Icon size={20} className="sm:w-5 sm:h-5" />
+        </div>
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-xl font-semibold text-slate-200">{title}</h2>
+            <h2 className="text-base sm:text-xl font-bold text-slate-100">{title}</h2>
             {dateNote && (
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                Filtered by {dateNote}
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                {dateNote}
               </span>
             )}
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-400 font-medium">Start:</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            onClick={(e) => (e.target as any).showPicker?.()}
-            className="bg-surface/50 border border-white/10 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 transition-all outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-400 font-medium">End:</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            onClick={(e) => (e.target as any).showPicker?.()}
-            className="bg-surface/50 border border-white/10 text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 transition-all outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50"
-          />
-        </div>
-        {hasData && (
-          <div className="flex items-center gap-2">
-            {onPrint && (
-              <button
-                onClick={onPrint}
-                className="flex items-center gap-2 px-4 py-2 bg-white/5 text-white hover:bg-white/10 border border-white/10 rounded-lg text-sm font-medium transition-all"
-                title="Print Report"
-              >
-                <Printer size={16} />
-                Print
-              </button>
-            )}
-            {onDownload && (
-              <button
-                onClick={onDownload}
-                className="flex items-center gap-2 px-4 py-2 bg-white/5 text-white hover:bg-white/10 border border-white/10 rounded-lg text-sm font-medium transition-all"
-                title="Download PDF"
-              >
-                <Download size={16} />
-                PDF
-              </button>
-            )}
+
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5">
+            <label className="text-[11px] sm:text-xs text-slate-400 font-medium">Start:</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              onClick={(e) => (e.target as any).showPicker?.()}
+              className="w-full sm:w-auto bg-surface/50 border border-white/10 text-white text-xs sm:text-sm rounded-lg focus:ring-primary focus:border-primary p-2 sm:p-2.5 transition-all outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50"
+            />
           </div>
-        )}
-        <button
-          onClick={onGenerate}
-          disabled={loading}
-          className={`px-4 py-2 ${color.bgLight} ${color.text} hover:${color.bgHover} border ${color.border} rounded-lg text-sm font-medium transition-all disabled:opacity-50`}
-        >
-          Generate
-        </button>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5">
+            <label className="text-[11px] sm:text-xs text-slate-400 font-medium">End:</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              onClick={(e) => (e.target as any).showPicker?.()}
+              className="w-full sm:w-auto bg-surface/50 border border-white/10 text-white text-xs sm:text-sm rounded-lg focus:ring-primary focus:border-primary p-2 sm:p-2.5 transition-all outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap pt-1 sm:pt-0">
+          {hasData && (
+            <>
+              {onPrint && (
+                <button
+                  onClick={onPrint}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-white/5 text-white hover:bg-white/10 border border-white/10 rounded-lg text-xs sm:text-sm font-medium transition-all"
+                  title="Print Report"
+                >
+                  <Printer size={15} />
+                  <span>Print</span>
+                </button>
+              )}
+              {onDownload && (
+                <button
+                  onClick={onDownload}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-white/5 text-white hover:bg-white/10 border border-white/10 rounded-lg text-xs sm:text-sm font-medium transition-all"
+                  title="Download PDF"
+                >
+                  <Download size={15} />
+                  <span>PDF</span>
+                </button>
+              )}
+            </>
+          )}
+          <button
+            onClick={onGenerate}
+            disabled={loading}
+            className={`w-full sm:w-auto px-5 py-2 ${color.bgLight} ${color.text} hover:${color.bgHover} border ${color.border} rounded-lg text-xs sm:text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center shadow-sm`}
+          >
+            {loading ? 'Loading...' : 'Generate'}
+          </button>
+        </div>
       </div>
     </div>
 
-    <div className="flex items-center justify-between gap-2 flex-wrap -mt-2">
-      <div className="flex items-center gap-2 flex-wrap">
-        <button onClick={() => setDateRangeType('today')} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">Today</button>
-        <button onClick={() => setDateRangeType('yesterday')} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">Yesterday</button>
-        <button onClick={() => setDateRangeType('7days')} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">Last 7 Days</button>
-        <button onClick={() => setDateRangeType('month')} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10">This Month</button>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 -mt-2">
+      <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5 sm:gap-2">
+        <button onClick={() => setDateRangeType('today')} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10 text-center">Today</button>
+        <button onClick={() => setDateRangeType('yesterday')} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10 text-center">Yesterday</button>
+        <button onClick={() => setDateRangeType('7days')} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10 text-center">Last 7 Days</button>
+        <button onClick={() => setDateRangeType('month')} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/10 text-center">This Month</button>
       </div>
 
       {error && (
@@ -100,7 +115,7 @@ const DateRangeFilter = ({
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-2 text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-medium"
         >
-          <AlertCircle size={14} />
+          <AlertCircle size={14} className="shrink-0" />
           <span>{error}</span>
         </motion.div>
       )}
@@ -112,16 +127,16 @@ const StatCard = ({ title, value, icon: Icon, color }: { title: string, value: s
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className={`relative overflow-hidden bg-surface/40 backdrop-blur-md p-6 rounded-2xl border border-white/10`}
+    className="relative overflow-hidden bg-surface/40 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-white/10 shadow-lg"
   >
-    <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 ${color} blur-2xl`} />
-    <div className="flex justify-between items-start mb-4">
-      <h3 className="text-slate-400 font-medium">{title}</h3>
+    <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 ${color} blur-2xl pointer-events-none`} />
+    <div className="flex justify-between items-start mb-3 sm:mb-4">
+      <h3 className="text-slate-400 font-medium text-xs sm:text-sm">{title}</h3>
       <div className={`p-2 rounded-xl bg-surface/50 ${color.replace('bg-', 'text-')}`}>
-        <Icon size={20} />
+        <Icon size={18} className="sm:w-5 sm:h-5" />
       </div>
     </div>
-    <div className="text-3xl font-bold text-white tracking-tight">
+    <div className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
       {value}
     </div>
   </motion.div>
@@ -149,42 +164,41 @@ const PaymentModeCard = ({
   gradientFrom: string;
 }) => (
   <motion.div
-    whileHover={{ y: -4, scale: 1.02 }}
+    whileHover={{ y: -4, scale: 1.01 }}
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className={`relative overflow-hidden bg-surface/40 backdrop-blur-md p-6 rounded-3xl border ${borderColor} flex flex-col justify-between space-y-5 hover:shadow-2xl transition-all duration-300 group`}
+    className={`relative overflow-hidden bg-surface/40 backdrop-blur-md p-4 sm:p-6 rounded-2xl sm:rounded-3xl border ${borderColor} flex flex-col justify-between space-y-4 sm:space-y-5 hover:shadow-2xl transition-all duration-300 group`}
   >
-    {/* Subtle Background Gradient */}
     <div className={`absolute -right-20 -top-20 w-48 h-48 bg-gradient-to-br ${gradientFrom} to-transparent opacity-10 rounded-full blur-3xl group-hover:opacity-20 transition-opacity duration-500 pointer-events-none`} />
 
     <div className="relative z-10 flex justify-between items-start">
-      <div className="flex items-center gap-4">
-        <div className={`p-3 rounded-2xl ${badgeBg} shadow-inner`}>
-          <Icon size={24} className={colorClass} />
+      <div className="flex items-center gap-3">
+        <div className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl ${badgeBg} shadow-inner`}>
+          <Icon size={20} className={`${colorClass} sm:w-6 sm:h-6`} />
         </div>
         <div>
-          <h3 className="text-white font-bold tracking-wide">{title}</h3>
-          <span className={`${colorClass} text-[10px] font-bold uppercase tracking-widest opacity-80`}>Payment Mode</span>
+          <h3 className="text-white font-bold text-sm sm:text-base tracking-wide">{title}</h3>
+          <span className={`${colorClass} text-[9px] sm:text-[10px] font-bold uppercase tracking-widest opacity-80`}>Payment Mode</span>
         </div>
       </div>
     </div>
 
-    <div className="relative z-10 space-y-1">
-      <span className="text-xs text-slate-400 font-medium tracking-wide">Total (Base + GST)</span>
+    <div className="relative z-10 space-y-0.5">
+      <span className="text-[11px] sm:text-xs text-slate-400 font-medium tracking-wide">Total (Base + GST)</span>
       <div className="flex items-baseline gap-1">
-        <span className={`text-xl font-bold ${colorClass} opacity-80`}>₹</span>
-        <span className="text-4xl font-black text-white tracking-tight">{Number(totalAmount || 0).toFixed(2)}</span>
+        <span className={`text-lg sm:text-xl font-bold ${colorClass} opacity-80`}>₹</span>
+        <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">{Number(totalAmount || 0).toFixed(2)}</span>
       </div>
     </div>
 
-    <div className="relative z-10 pt-4 border-t border-white/10 grid grid-cols-2 gap-3 text-sm">
-      <div className="bg-black/30 p-3 rounded-2xl border border-white/5 group-hover:border-white/10 transition-colors">
-        <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block mb-1">Base Amount</span>
-        <span className="text-slate-200 font-bold">₹{Number(baseAmount || 0).toFixed(2)}</span>
+    <div className="relative z-10 pt-3 sm:pt-4 border-t border-white/10 grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
+      <div className="bg-black/30 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/5 group-hover:border-white/10 transition-colors">
+        <span className="text-slate-500 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider block mb-0.5 sm:mb-1">Base Amount</span>
+        <span className="text-slate-200 font-bold text-xs sm:text-sm">₹{Number(baseAmount || 0).toFixed(2)}</span>
       </div>
-      <div className="bg-black/30 p-3 rounded-2xl border border-white/5 group-hover:border-white/10 transition-colors">
-        <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider block mb-1">GST (5%)</span>
-        <span className="text-amber-400/90 font-bold">₹{Number(gstAmount || 0).toFixed(2)}</span>
+      <div className="bg-black/30 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-white/5 group-hover:border-white/10 transition-colors">
+        <span className="text-slate-500 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider block mb-0.5 sm:mb-1">GST (5%)</span>
+        <span className="text-amber-400/90 font-bold text-xs sm:text-sm">₹{Number(gstAmount || 0).toFixed(2)}</span>
       </div>
     </div>
   </motion.div>
@@ -198,10 +212,13 @@ const getLocalDateString = (d: Date) => {
 };
 
 export default function AnalysisPage() {
+  const [activeCategory, setActiveCategory] = useState<'HOTEL' | 'RESTAURANT'>('HOTEL');
+
   const [dateRanges, setDateRanges] = useState({
     booking: { start: getLocalDateString(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)), end: getLocalDateString(new Date()) },
     channel: { start: getLocalDateString(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)), end: getLocalDateString(new Date()) },
     revenue: { start: getLocalDateString(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)), end: getLocalDateString(new Date()) },
+    orderItem: { start: getLocalDateString(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)), end: getLocalDateString(new Date()) },
     waiter: { start: getLocalDateString(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)), end: getLocalDateString(new Date()) },
   });
 
@@ -210,10 +227,11 @@ export default function AnalysisPage() {
     waiter: [] as WaiterAnalysis[],
     booking: null as BookingAnalysis | null,
     channel: null as ChannelAnalysis | null,
+    orderItem: null as OrderItemAnalysis | null,
   });
 
   const [loading, setLoading] = useState({
-    revenue: false, waiter: false, booking: false, channel: false
+    revenue: false, waiter: false, booking: false, channel: false, orderItem: false
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string | null }>({
@@ -221,7 +239,12 @@ export default function AnalysisPage() {
     channel: null,
     revenue: null,
     waiter: null,
+    orderItem: null,
   });
+
+  // Local filter & sorting for Order Items table
+  const [itemSearchQuery, setItemSearchQuery] = useState('');
+  const [itemSortBy, setItemSortBy] = useState<'quantity' | 'amount' | 'name'>('quantity');
 
   const updateDateRange = (section: keyof typeof dateRanges, field: 'start' | 'end', value: string) => {
     setDateRanges(prev => ({ ...prev, [section]: { ...prev[section], [field]: value } }));
@@ -290,6 +313,7 @@ export default function AnalysisPage() {
   const fetchBookingAnalysis = () => fetchData('booking', getBookingAnalysis);
   const fetchChannelAnalysis = () => fetchData('channel', getChannelAnalysis);
   const fetchRevenueAnalysis = () => fetchData('revenue', getRevenueAnalysis);
+  const fetchOrderItemAnalysis = () => fetchData('orderItem', getOrderItemAnalysis);
   const fetchWaiterAnalysis = () => fetchData('waiter', getWaiterAnalysis);
 
   const generateBookingPDF = () => {
@@ -404,39 +428,130 @@ export default function AnalysisPage() {
           Number(rev.totalFinalDiscountedAmount).toFixed(2)
         ]
       ],
-      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
     });
 
     currentY = (doc as any).lastAutoTable.finalY + 10;
 
-    // 3. Tax Summary
+    // 3. Payment Mode Collection Breakdown
     doc.setFontSize(13);
     doc.setTextColor(30, 41, 59);
-    doc.text('3. Tax Summary', 14, currentY);
+    doc.text('3. Payment Mode Collection Summary', 14, currentY);
+    currentY += 4;
+
+    autoTable(doc, {
+      startY: currentY,
+      theme: 'striped',
+      headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 3 },
+      head: [['Payment Mode', 'Count', 'Base Amount (INR)', 'CGST (2.5%)', 'SGST (2.5%)', 'Total Amount (INR)']],
+      body: [
+        [
+          'CASH',
+          cash.count.toString(),
+          Number(cash.baseAmount).toFixed(2),
+          Number(cash.gstAmount / 2).toFixed(2),
+          Number(cash.gstAmount / 2).toFixed(2),
+          Number(cash.totalAmount).toFixed(2)
+        ],
+        [
+          'CARD',
+          card.count.toString(),
+          Number(card.baseAmount).toFixed(2),
+          Number(card.gstAmount / 2).toFixed(2),
+          Number(card.gstAmount / 2).toFixed(2),
+          Number(card.totalAmount).toFixed(2)
+        ],
+        [
+          'UPI',
+          upi.count.toString(),
+          Number(upi.baseAmount).toFixed(2),
+          Number(upi.gstAmount / 2).toFixed(2),
+          Number(upi.gstAmount / 2).toFixed(2),
+          Number(upi.totalAmount).toFixed(2)
+        ],
+      ],
+      foot: [
+        [
+          'Total Direct Payments',
+          totalPaymentsCount.toString(),
+          Number(totalPaymentsBase).toFixed(2),
+          Number(totalPaymentsTax / 2).toFixed(2),
+          Number(totalPaymentsTax / 2).toFixed(2),
+          Number(totalPaymentsTotal).toFixed(2)
+        ]
+      ],
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+
+    // 4. Room Transfers (Unsettled / Settled at Checkout)
+    doc.setFontSize(13);
+    doc.setTextColor(30, 41, 59);
+    doc.text('4. Transferred to Room (To Be Settled at Hotel Checkout)', 14, currentY);
+    currentY += 4;
+
+    autoTable(doc, {
+      startY: currentY,
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [244, 63, 94], textColor: [255, 255, 255], fontStyle: 'bold' },
+      head: [['Category', 'Count', 'Base Amount (INR)', 'CGST (2.5%)', 'SGST (2.5%)', 'Total Amount (INR)']],
+      body: [
+        [
+          'ROOM TRANSFER',
+          roomTransfer.count.toString(),
+          Number(roomTransfer.baseAmount).toFixed(2),
+          Number(roomTransfer.gstAmount / 2).toFixed(2),
+          Number(roomTransfer.gstAmount / 2).toFixed(2),
+          Number(roomTransfer.totalAmount).toFixed(2)
+        ]
+      ],
+    });
+
+    return doc;
+  };
+
+  const generateOrderItemPDF = () => {
+    if (!data.orderItem) return null;
+    const doc = new jsPDF();
+    const oi = data.orderItem;
+
+    doc.setFontSize(20);
+    doc.setTextColor(30, 41, 59);
+    doc.text('Restaurant Order Items Analysis Report (Excl. GST)', 14, 20);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Period: ${dateRanges.orderItem.start} to ${dateRanges.orderItem.end}`, 14, 28);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 34);
+
+    let currentY = 42;
+
+    doc.setFontSize(13);
+    doc.setTextColor(30, 41, 59);
+    doc.text('1. Executive Summary (Excl. GST)', 14, currentY);
     currentY += 4;
 
     autoTable(doc, {
       startY: currentY,
       theme: 'grid',
-      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+      headStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold' },
       styles: { fontSize: 9, cellPadding: 3 },
-      head: [['Tax Component', 'Rate', 'Amount (INR)']],
+      head: [['Metric', 'Value']],
       body: [
-        ['CGST', '2.5%', `INR ${Number(rev.totalGstAmount / 2).toFixed(2)}`],
-        ['SGST', '2.5%', `INR ${Number(rev.totalGstAmount / 2).toFixed(2)}`],
+        ['Total Items Sold (Qty)', oi.totalItemsSold.toString()],
+        ['Total Unique Dishes Ordered', oi.totalUniqueItems.toString()],
+        ['Total Base Amount (Excl. GST)', `INR ${Number(oi.totalAmountExcludingGst || 0).toFixed(2)}`],
       ],
-      foot: [
-        ['Total Tax (5%)', '5.0%', `INR ${Number(rev.totalGstAmount).toFixed(2)}`]
-      ],
-      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
     });
 
     currentY = (doc as any).lastAutoTable.finalY + 10;
 
-    // 4. Payment Summary
     doc.setFontSize(13);
     doc.setTextColor(30, 41, 59);
-    doc.text('4. Payment Summary', 14, currentY);
+    doc.text('2. Ordered Items Breakdown', 14, currentY);
     currentY += 4;
 
     autoTable(doc, {
@@ -444,40 +559,24 @@ export default function AnalysisPage() {
       theme: 'striped',
       headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
       styles: { fontSize: 9, cellPadding: 3 },
-      head: [['Payment Mode', 'Base Amount (INR)', 'CGST (2.5%)', 'SGST (2.5%)', 'Total Amount (INR)']],
-      body: [
-        [
-          `Cash (${cash.count})`,
-          Number(cash.baseAmount).toFixed(2),
-          Number(cash.gstAmount / 2).toFixed(2),
-          Number(cash.gstAmount / 2).toFixed(2),
-          Number(cash.totalAmount).toFixed(2)
-        ],
-        [
-          `Card (${card.count})`,
-          Number(card.baseAmount).toFixed(2),
-          Number(card.gstAmount / 2).toFixed(2),
-          Number(card.gstAmount / 2).toFixed(2),
-          Number(card.totalAmount).toFixed(2)
-        ],
-        [
-          `UPI (${upi.count})`,
-          Number(upi.baseAmount).toFixed(2),
-          Number(upi.gstAmount / 2).toFixed(2),
-          Number(upi.gstAmount / 2).toFixed(2),
-          Number(upi.totalAmount).toFixed(2)
-        ]
-      ],
+      head: [['#', 'Item Name', 'Qty Sold', 'Unit Price (Excl. GST)', 'Total Base Amount (INR)']],
+      body: oi.items.map((item, idx) => [
+        (idx + 1).toString(),
+        item.name,
+        item.totalQuantity.toString(),
+        `INR ${Number(item.price || 0).toFixed(2)}`,
+        `INR ${Number(item.totalAmount || 0).toFixed(2)}`,
+      ]),
       foot: [
         [
-          `Total (${totalPaymentsCount})`,
-          Number(totalPaymentsBase).toFixed(2),
-          Number(totalPaymentsTax / 2).toFixed(2),
-          Number(totalPaymentsTax / 2).toFixed(2),
-          Number(totalPaymentsTotal).toFixed(2)
-        ]
+          'Total',
+          `${oi.totalUniqueItems} Unique Items`,
+          oi.totalItemsSold.toString(),
+          '-',
+          `INR ${Number(oi.totalAmountExcludingGst || 0).toFixed(2)}`,
+        ],
       ],
-      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
     });
 
     return doc;
@@ -485,7 +584,7 @@ export default function AnalysisPage() {
 
   const downloadBookingReport = () => {
     const doc = generateBookingPDF();
-    if (doc) doc.save(`hotel-bookings-${dateRanges.booking.start}-to-${dateRanges.booking.end}.pdf`);
+    if (doc) doc.save(`bookings-${dateRanges.booking.start}-to-${dateRanges.booking.end}.pdf`);
   };
 
   const printBookingReport = () => {
@@ -509,305 +608,717 @@ export default function AnalysisPage() {
     }
   };
 
-  // Intentionally not fetching data on mount. Data should only be fetched when explicitly requested.
+  const downloadOrderItemReport = () => {
+    const doc = generateOrderItemPDF();
+    if (doc) doc.save(`order-items-${dateRanges.orderItem.start}-to-${dateRanges.orderItem.end}.pdf`);
+  };
+
+  const printOrderItemReport = () => {
+    const doc = generateOrderItemPDF();
+    if (doc) {
+      doc.autoPrint();
+      window.open(doc.output('bloburl'), '_blank');
+    }
+  };
+
+  // Filtered & sorted order items
+  const filteredOrderItems = useMemo(() => {
+    if (!data.orderItem?.items) return [];
+    let list = [...data.orderItem.items];
+
+    if (itemSearchQuery.trim()) {
+      const q = itemSearchQuery.toLowerCase();
+      list = list.filter(i => i.name.toLowerCase().includes(q));
+    }
+
+    if (itemSortBy === 'quantity') {
+      list.sort((a, b) => b.totalQuantity - a.totalQuantity);
+    } else if (itemSortBy === 'amount') {
+      list.sort((a, b) => b.totalAmount - a.totalAmount);
+    } else if (itemSortBy === 'name') {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return list;
+  }, [data.orderItem, itemSearchQuery, itemSortBy]);
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-12">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">
-          Analytics Dashboard
-        </h1>
-        <p className="text-slate-400">Gain insights into your revenue and staff performance.</p>
+    <div className="space-y-6 sm:space-y-8 max-w-7xl mx-auto pb-12 px-1 sm:px-0">
+      {/* Header & Section Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-white/5">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">
+            Analytics Dashboard
+          </h1>
+          <p className="text-slate-400 text-xs sm:text-sm">
+            {activeCategory === 'HOTEL' 
+              ? 'Gain insights into hotel room revenue, bookings, and channel breakdown.'
+              : 'Gain insights into restaurant revenue, ordered items sales, and staff performance.'}
+          </p>
+        </div>
+
+        {/* Category Option Selector */}
+        <div className="grid grid-cols-2 w-full sm:w-auto bg-surface/50 p-1.5 rounded-2xl border border-white/10 shadow-lg backdrop-blur-md shrink-0">
+          <button
+            onClick={() => setActiveCategory('HOTEL')}
+            className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
+              activeCategory === 'HOTEL'
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/25'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <Hotel size={16} className="shrink-0" />
+            <span className="truncate">Hotel Analytics</span>
+          </button>
+          <button
+            onClick={() => setActiveCategory('RESTAURANT')}
+            className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
+              activeCategory === 'RESTAURANT'
+                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <UtensilsCrossed size={16} className="shrink-0" />
+            <span className="truncate">Restaurant Analytics</span>
+          </button>
+        </div>
       </div>
 
-      {/* Booking Analysis Section */}
-      <section className="space-y-6">
-        <DateRangeFilter
-          title="Hotel Bookings & Occupancy"
-          dateNote="Check-Out Date"
-          icon={Bed}
-          iconColor="text-amber-400"
-          color={{ bgLight: 'bg-amber-500/20', text: 'text-amber-400', bgHover: 'bg-amber-500/30', border: 'border-amber-500/50' }}
-          startDate={dateRanges.booking.start}
-          setStartDate={(v: string) => updateDateRange('booking', 'start', v)}
-          endDate={dateRanges.booking.end}
-          setEndDate={(v: string) => updateDateRange('booking', 'end', v)}
-          onGenerate={fetchBookingAnalysis}
-          loading={loading.booking}
-          setDateRangeType={(type: string) => setPresetDateRange(type, 'booking', getBookingAnalysis)}
-          error={errors.booking}
-          onDownload={downloadBookingReport}
-          onPrint={printBookingReport}
-          hasData={!!data.booking}
-        />
-
-        {loading.booking ? (
-          <div className="h-32 flex items-center justify-center">
-            <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard
-              title="Total Room Revenue"
-              value={`₹${Number(data.booking?.totalRoomRevenue || 0).toFixed(2)}`}
-              icon={IndianRupee}
-              color="bg-amber-500"
-            />
-            <StatCard
-              title="Total Bookings"
-              value={`${data.booking?.totalBookings || 0}`}
-              icon={Calendar}
-              color="bg-emerald-500"
-            />
-            <StatCard
-              title="Rooms Sold (Occupancy)"
-              value={`${data.booking?.totalRoomsSold || 0}`}
-              icon={Building2}
-              color="bg-blue-500"
-            />
-          </div>
-        )}
-      </section>
-
-      {/* Channel Breakdown Section */}
-      <section className="space-y-6 pt-6 border-t border-white/5">
-        <DateRangeFilter
-          title="Channel Breakdown"
-          dateNote="Check-Out Date"
-          icon={Building2}
-          iconColor="text-sky-400"
-          color={{ bgLight: 'bg-sky-500/20', text: 'text-sky-400', bgHover: 'bg-sky-500/30', border: 'border-sky-500/50' }}
-          startDate={dateRanges.channel.start}
-          setStartDate={(v: string) => updateDateRange('channel', 'start', v)}
-          endDate={dateRanges.channel.end}
-          setEndDate={(v: string) => updateDateRange('channel', 'end', v)}
-          onGenerate={fetchChannelAnalysis}
-          loading={loading.channel}
-          setDateRangeType={(type: string) => setPresetDateRange(type, 'channel', getChannelAnalysis)}
-          error={errors.channel}
-        />
-
-        {loading.channel ? (
-          <div className="h-32 flex items-center justify-center">
-            <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {Object.keys(data.channel?.channelBreakdown || {}).length > 0 && (
-              <>
-                <div className="bg-surface/40 backdrop-blur-md border border-white/10 p-6 rounded-2xl h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={Object.entries(data.channel!.channelBreakdown).map(([name, value]) => ({ name, value }))}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {Object.entries(data.channel!.channelBreakdown).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
-                        itemStyle={{ color: '#fff' }}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="grid grid-cols-2 gap-4 content-start">
-                  {Object.entries(data.channel!.channelBreakdown).map(([channel, count], index) => (
-                    <div key={channel} className="bg-surface/40 backdrop-blur-md border border-white/10 p-4 rounded-xl flex flex-col justify-center">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                        <span className="text-slate-400 font-medium text-sm">{channel}</span>
-                      </div>
-                      <span className="text-white font-bold text-2xl">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* Revenue Section */}
-      <section className="space-y-6 pt-6 border-t border-white/5">
-        <DateRangeFilter
-          title="Revenue Analysis"
-          icon={TrendingUp}
-          iconColor="text-primary"
-          color={{ bgLight: 'bg-primary/20', text: 'text-primary', bgHover: 'bg-primary/30', border: 'border-primary/50' }}
-          startDate={dateRanges.revenue.start}
-          setStartDate={(v: string) => updateDateRange('revenue', 'start', v)}
-          endDate={dateRanges.revenue.end}
-          setEndDate={(v: string) => updateDateRange('revenue', 'end', v)}
-          onGenerate={fetchRevenueAnalysis}
-          loading={loading.revenue}
-          setDateRangeType={(type: string) => setPresetDateRange(type, 'revenue', getRevenueAnalysis)}
-          error={errors.revenue}
-          onDownload={downloadRevenueReport}
-          onPrint={printRevenueReport}
-          hasData={!!data.revenue}
-        />
-
-        {loading.revenue ? (
-          <div className="h-32 flex items-center justify-center">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <StatCard
-                title="Total Base Amount"
-                value={`₹${Number(data.revenue?.totalBaseAmount || 0).toFixed(2)}`}
-                icon={Receipt}
-                color="bg-blue-500"
-              />
-              <StatCard
-                title="Total GST Amount"
-                value={`₹${Number(data.revenue?.totalGstAmount || 0).toFixed(2)}`}
-                icon={Receipt}
-                color="bg-orange-500"
-              />
-              <StatCard
-                title="Final Discounted Amount"
-                value={`₹${Number(data.revenue?.totalFinalDiscountedAmount || 0).toFixed(2)}`}
-                icon={IndianRupee}
-                color="bg-emerald-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-              <PaymentModeCard
-                title="Cash Collection"
-                baseAmount={data.revenue?.paymentModes?.CASH?.baseAmount ?? 0}
-                gstAmount={data.revenue?.paymentModes?.CASH?.gstAmount ?? 0}
-                totalAmount={data.revenue?.paymentModes?.CASH?.totalAmount ?? (data.revenue?.cashAmount || 0)}
-                icon={Banknote}
-                colorClass="text-emerald-400"
-                badgeBg="bg-emerald-500/20"
-                borderColor="border-emerald-500/30"
-                gradientFrom="from-emerald-500"
-              />
-              <PaymentModeCard
-                title="Card Collection"
-                baseAmount={data.revenue?.paymentModes?.CARD?.baseAmount ?? 0}
-                gstAmount={data.revenue?.paymentModes?.CARD?.gstAmount ?? 0}
-                totalAmount={data.revenue?.paymentModes?.CARD?.totalAmount ?? (data.revenue?.cardAmount || 0)}
-                icon={CreditCard}
-                colorClass="text-sky-400"
-                badgeBg="bg-sky-500/20"
-                borderColor="border-sky-500/30"
-                gradientFrom="from-sky-500"
-              />
-              <PaymentModeCard
-                title="UPI Collection"
-                baseAmount={data.revenue?.paymentModes?.UPI?.baseAmount ?? 0}
-                gstAmount={data.revenue?.paymentModes?.UPI?.gstAmount ?? 0}
-                totalAmount={data.revenue?.paymentModes?.UPI?.totalAmount ?? (data.revenue?.upiAmount || 0)}
-                icon={QrCode}
-                colorClass="text-purple-400"
-                badgeBg="bg-purple-500/20"
-                borderColor="border-purple-500/30"
-                gradientFrom="from-purple-500"
-              />
-              <PaymentModeCard
-                title="Room Transfer"
-                baseAmount={data.revenue?.paymentModes?.ROOM_TRANSFER?.baseAmount ?? 0}
-                gstAmount={data.revenue?.paymentModes?.ROOM_TRANSFER?.gstAmount ?? 0}
-                totalAmount={data.revenue?.paymentModes?.ROOM_TRANSFER?.totalAmount ?? (data.revenue?.roomTransferAmount || 0)}
+      <AnimatePresence mode="wait">
+        {/* ===================== HOTEL ANALYTICS SECTION ===================== */}
+        {activeCategory === 'HOTEL' && (
+          <motion.div
+            key="hotel-analytics-tab"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6 sm:space-y-8"
+          >
+            {/* Booking Analysis Section */}
+            <section className="space-y-4 sm:space-y-6">
+              <DateRangeFilter
+                title="Hotel Bookings & Occupancy"
+                dateNote="Check-Out Date"
                 icon={Bed}
-                colorClass="text-rose-400"
-                badgeBg="bg-rose-500/20"
-                borderColor="border-rose-500/30"
-                gradientFrom="from-rose-500"
+                iconColor="text-amber-400"
+                color={{ bgLight: 'bg-amber-500/20', text: 'text-amber-400', bgHover: 'bg-amber-500/30', border: 'border-amber-500/50' }}
+                startDate={dateRanges.booking.start}
+                setStartDate={(v: string) => updateDateRange('booking', 'start', v)}
+                endDate={dateRanges.booking.end}
+                setEndDate={(v: string) => updateDateRange('booking', 'end', v)}
+                onGenerate={fetchBookingAnalysis}
+                loading={loading.booking}
+                setDateRangeType={(type: string) => setPresetDateRange(type, 'booking', getBookingAnalysis)}
+                error={errors.booking}
+                onDownload={downloadBookingReport}
+                onPrint={printBookingReport}
+                hasData={!!data.booking}
               />
-            </div>
-          </div>
-        )}
-      </section>
 
-      {/* Waiter Analysis Section */}
-      <section className="space-y-6 pt-6 border-t border-white/5">
-        <DateRangeFilter
-          title="Staff Performance"
-          icon={Users}
-          iconColor="text-purple-400"
-          color={{ bgLight: 'bg-purple-500/20', text: 'text-purple-400', bgHover: 'bg-purple-500/30', border: 'border-purple-500/50' }}
-          startDate={dateRanges.waiter.start}
-          setStartDate={(v: string) => updateDateRange('waiter', 'start', v)}
-          endDate={dateRanges.waiter.end}
-          setEndDate={(v: string) => updateDateRange('waiter', 'end', v)}
-          onGenerate={fetchWaiterAnalysis}
-          loading={loading.waiter}
-          setDateRangeType={(type: string) => setPresetDateRange(type, 'waiter', getWaiterAnalysis)}
-          error={errors.waiter}
-        />
+              {loading.booking ? (
+                <div className="h-32 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+                  <StatCard
+                    title="Total Room Revenue"
+                    value={`₹${Number(data.booking?.totalRoomRevenue || 0).toFixed(2)}`}
+                    icon={IndianRupee}
+                    color="bg-amber-500"
+                  />
+                  <StatCard
+                    title="Total Bookings"
+                    value={`${data.booking?.totalBookings || 0}`}
+                    icon={Calendar}
+                    color="bg-emerald-500"
+                  />
+                  <StatCard
+                    title="Rooms Sold (Occupancy)"
+                    value={`${data.booking?.totalRoomsSold || 0}`}
+                    icon={Building2}
+                    color="bg-blue-500"
+                  />
+                </div>
+              )}
+            </section>
 
-        {loading.waiter ? (
-          <div className="h-48 flex items-center justify-center">
-            <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="bg-surface/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left text-slate-300">
-                <thead className="text-xs text-slate-400 uppercase bg-black/20">
-                  <tr>
-                    <th scope="col" className="px-6 py-4">Waiter Name</th>
-                    <th scope="col" className="px-6 py-4">Phone Number</th>
-                    <th scope="col" className="px-6 py-4 text-center">Total Orders</th>
-                    <th scope="col" className="px-6 py-4 text-right">Revenue Generated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.waiter.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
-                        No waiter data found for the selected date range.
-                      </td>
-                    </tr>
-                  ) : (
-                    data.waiter.map((waiter, index) => (
-                      <motion.tr
-                        key={waiter.userId}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="border-b border-white/5 hover:bg-white/5 transition-colors"
-                      >
-                        <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">
-                            {waiter.waiterName.charAt(0).toUpperCase()}
+            {/* Channel Breakdown Section */}
+            <section className="space-y-4 sm:space-y-6 pt-4 sm:pt-6 border-t border-white/5">
+              <DateRangeFilter
+                title="Channel Breakdown"
+                dateNote="Check-Out Date"
+                icon={Building2}
+                iconColor="text-sky-400"
+                color={{ bgLight: 'bg-sky-500/20', text: 'text-sky-400', bgHover: 'bg-sky-500/30', border: 'border-sky-500/50' }}
+                startDate={dateRanges.channel.start}
+                setStartDate={(v: string) => updateDateRange('channel', 'start', v)}
+                endDate={dateRanges.channel.end}
+                setEndDate={(v: string) => updateDateRange('channel', 'end', v)}
+                onGenerate={fetchChannelAnalysis}
+                loading={loading.channel}
+                setDateRangeType={(type: string) => setPresetDateRange(type, 'channel', getChannelAnalysis)}
+                error={errors.channel}
+              />
+
+              {loading.channel ? (
+                <div className="h-32 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  {Object.keys(data.channel?.channelBreakdown || {}).length > 0 && (
+                    <>
+                      <div className="bg-surface/40 backdrop-blur-md border border-white/10 p-4 sm:p-6 rounded-2xl h-[260px] sm:h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={Object.entries(data.channel!.channelBreakdown).map(([name, value]) => ({ name, value }))}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={50}
+                              outerRadius={75}
+                              paddingAngle={5}
+                              dataKey="value"
+                            >
+                              {Object.entries(data.channel!.channelBreakdown).map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
+                              itemStyle={{ color: '#fff' }}
+                            />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4 content-start">
+                        {Object.entries(data.channel!.channelBreakdown).map(([channel, count], index) => (
+                          <div key={channel} className="bg-surface/40 backdrop-blur-md border border-white/10 p-3 sm:p-4 rounded-xl flex flex-col justify-center">
+                            <div className="flex items-center gap-2 mb-1 sm:mb-2">
+                              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                              <span className="text-slate-400 font-medium text-xs sm:text-sm truncate">{channel}</span>
+                            </div>
+                            <span className="text-white font-bold text-xl sm:text-2xl">{count}</span>
                           </div>
-                          {waiter.waiterName}
-                        </td>
-                        <td className="px-6 py-4">
-                          {waiter.phoneNumber}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="bg-white/10 text-white px-2.5 py-1 rounded-full font-medium">
-                            {waiter.totalOrders}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right font-semibold text-emerald-400">
-                          ₹{Number(waiter.totalRevenue || 0).toFixed(2)}
-                        </td>
-                      </motion.tr>
-                    ))
+                        ))}
+                      </div>
+                    </>
                   )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                </div>
+              )}
+            </section>
+          </motion.div>
         )}
-      </section>
+
+        {/* ===================== RESTAURANT ANALYTICS SECTION ===================== */}
+        {activeCategory === 'RESTAURANT' && (
+          <motion.div
+            key="restaurant-analytics-tab"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6 sm:space-y-8"
+          >
+            {/* Restaurant Revenue Section */}
+            <section className="space-y-4 sm:space-y-6">
+              <DateRangeFilter
+                title="Restaurant Revenue Analysis"
+                icon={TrendingUp}
+                iconColor="text-primary"
+                color={{ bgLight: 'bg-primary/20', text: 'text-primary', bgHover: 'bg-primary/30', border: 'border-primary/50' }}
+                startDate={dateRanges.revenue.start}
+                setStartDate={(v: string) => updateDateRange('revenue', 'start', v)}
+                endDate={dateRanges.revenue.end}
+                setEndDate={(v: string) => updateDateRange('revenue', 'end', v)}
+                onGenerate={fetchRevenueAnalysis}
+                loading={loading.revenue}
+                setDateRangeType={(type: string) => setPresetDateRange(type, 'revenue', getRevenueAnalysis)}
+                error={errors.revenue}
+                onDownload={downloadRevenueReport}
+                onPrint={printRevenueReport}
+                hasData={!!data.revenue}
+              />
+
+              {loading.revenue ? (
+                <div className="h-32 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+                    <StatCard
+                      title="Total Base Amount"
+                      value={`₹${Number(data.revenue?.totalBaseAmount || 0).toFixed(2)}`}
+                      icon={Receipt}
+                      color="bg-blue-500"
+                    />
+                    <StatCard
+                      title="Total GST Amount"
+                      value={`₹${Number(data.revenue?.totalGstAmount || 0).toFixed(2)}`}
+                      icon={Receipt}
+                      color="bg-orange-500"
+                    />
+                    <StatCard
+                      title="Final Discounted Amount"
+                      value={`₹${Number(data.revenue?.totalFinalDiscountedAmount || 0).toFixed(2)}`}
+                      icon={IndianRupee}
+                      color="bg-emerald-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+                    <PaymentModeCard
+                      title="Cash Collection"
+                      baseAmount={data.revenue?.paymentModes?.CASH?.baseAmount ?? 0}
+                      gstAmount={data.revenue?.paymentModes?.CASH?.gstAmount ?? 0}
+                      totalAmount={data.revenue?.paymentModes?.CASH?.totalAmount ?? (data.revenue?.cashAmount || 0)}
+                      icon={Banknote}
+                      colorClass="text-emerald-400"
+                      badgeBg="bg-emerald-500/20"
+                      borderColor="border-emerald-500/30"
+                      gradientFrom="from-emerald-500"
+                    />
+                    <PaymentModeCard
+                      title="Card Collection"
+                      baseAmount={data.revenue?.paymentModes?.CARD?.baseAmount ?? 0}
+                      gstAmount={data.revenue?.paymentModes?.CARD?.gstAmount ?? 0}
+                      totalAmount={data.revenue?.paymentModes?.CARD?.totalAmount ?? (data.revenue?.cardAmount || 0)}
+                      icon={CreditCard}
+                      colorClass="text-sky-400"
+                      badgeBg="bg-sky-500/20"
+                      borderColor="border-sky-500/30"
+                      gradientFrom="from-sky-500"
+                    />
+                    <PaymentModeCard
+                      title="UPI Collection"
+                      baseAmount={data.revenue?.paymentModes?.UPI?.baseAmount ?? 0}
+                      gstAmount={data.revenue?.paymentModes?.UPI?.gstAmount ?? 0}
+                      totalAmount={data.revenue?.paymentModes?.UPI?.totalAmount ?? (data.revenue?.upiAmount || 0)}
+                      icon={QrCode}
+                      colorClass="text-purple-400"
+                      badgeBg="bg-purple-500/20"
+                      borderColor="border-purple-500/30"
+                      gradientFrom="from-purple-500"
+                    />
+                    <PaymentModeCard
+                      title="Room Transfer"
+                      baseAmount={data.revenue?.paymentModes?.ROOM_TRANSFER?.baseAmount ?? 0}
+                      gstAmount={data.revenue?.paymentModes?.ROOM_TRANSFER?.gstAmount ?? 0}
+                      totalAmount={data.revenue?.paymentModes?.ROOM_TRANSFER?.totalAmount ?? (data.revenue?.roomTransferAmount || 0)}
+                      icon={Bed}
+                      colorClass="text-rose-400"
+                      badgeBg="bg-rose-500/20"
+                      borderColor="border-rose-500/30"
+                      gradientFrom="from-rose-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* Restaurant Order Items Section */}
+            <section className="space-y-4 sm:space-y-6 pt-4 sm:pt-6 border-t border-white/5">
+              <DateRangeFilter
+                title="Restaurant Order Items (Excl. GST)"
+                icon={UtensilsCrossed}
+                iconColor="text-emerald-400"
+                color={{ bgLight: 'bg-emerald-500/20', text: 'text-emerald-400', bgHover: 'bg-emerald-500/30', border: 'border-emerald-500/50' }}
+                startDate={dateRanges.orderItem.start}
+                setStartDate={(v: string) => updateDateRange('orderItem', 'start', v)}
+                endDate={dateRanges.orderItem.end}
+                setEndDate={(v: string) => updateDateRange('orderItem', 'end', v)}
+                onGenerate={fetchOrderItemAnalysis}
+                loading={loading.orderItem}
+                setDateRangeType={(type: string) => setPresetDateRange(type, 'orderItem', getOrderItemAnalysis)}
+                error={errors.orderItem}
+                onDownload={downloadOrderItemReport}
+                onPrint={printOrderItemReport}
+                hasData={!!data.orderItem && (data.orderItem.items?.length ?? 0) > 0}
+              />
+
+              {loading.orderItem ? (
+                <div className="h-48 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : data.orderItem ? (
+                <div className="space-y-4 sm:space-y-6">
+                  {/* Stat Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+                    <StatCard
+                      title="Total Items Sold"
+                      value={`${data.orderItem.totalItemsSold || 0} pcs`}
+                      icon={ShoppingBag}
+                      color="bg-emerald-500"
+                    />
+                    <StatCard
+                      title="Unique Dishes Ordered"
+                      value={`${data.orderItem.totalUniqueItems || 0} items`}
+                      icon={UtensilsCrossed}
+                      color="bg-blue-500"
+                    />
+                    <StatCard
+                      title="Total Amount (Excl. GST)"
+                      value={`₹${Number(data.orderItem.totalAmountExcludingGst || 0).toFixed(2)}`}
+                      icon={IndianRupee}
+                      color="bg-amber-500"
+                    />
+                  </div>
+
+                  {/* Search & Sort Controls */}
+                  <div className="bg-surface/30 p-3.5 sm:p-4 rounded-2xl border border-white/10 flex flex-col md:flex-row justify-between items-center gap-3 sm:gap-4 shadow-md">
+                    <div className="relative w-full md:w-80">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input
+                        type="text"
+                        placeholder="Search ordered items..."
+                        value={itemSearchQuery}
+                        onChange={(e) => setItemSearchQuery(e.target.value)}
+                        className="w-full bg-surface/60 border border-white/10 text-white pl-10 pr-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-500"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-1.5 sm:gap-2 w-full md:w-auto justify-between sm:justify-end overflow-x-auto pb-1 sm:pb-0">
+                      <span className="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1 font-medium shrink-0">
+                        <ArrowUpDown size={13} /> Sort:
+                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => setItemSortBy('quantity')}
+                          className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${
+                            itemSortBy === 'quantity'
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                              : 'bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5'
+                          }`}
+                        >
+                          Quantity
+                        </button>
+                        <button
+                          onClick={() => setItemSortBy('amount')}
+                          className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${
+                            itemSortBy === 'amount'
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                              : 'bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5'
+                          }`}
+                        >
+                          Total Price
+                        </button>
+                        <button
+                          onClick={() => setItemSortBy('name')}
+                          className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${
+                            itemSortBy === 'name'
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                              : 'bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5'
+                          }`}
+                        >
+                          Name
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ===== MOBILE CARDS VIEW (md:hidden) ===== */}
+                  <div className="block md:hidden space-y-3">
+                    {filteredOrderItems.length === 0 ? (
+                      <div className="bg-surface/40 backdrop-blur-md rounded-2xl border border-white/10 p-8 text-center text-slate-500 text-sm">
+                        {itemSearchQuery ? 'No items match your search.' : 'No items ordered in this date range.'}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-2.5">
+                          {filteredOrderItems.map((item, index) => {
+                            const maxQty = Math.max(...data.orderItem!.items.map(i => i.totalQuantity), 1);
+                            const progressPercent = Math.round((item.totalQuantity / maxQty) * 100);
+                            const sharePercent = ((item.totalAmount / (data.orderItem?.totalAmountExcludingGst || 1)) * 100).toFixed(1);
+
+                            return (
+                              <motion.div
+                                key={item.menuItemId || `item-mob-${item.name}-${index}`}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.02 }}
+                                className="bg-surface/40 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 space-y-2.5 shadow-md"
+                              >
+                                <div className="flex items-start justify-between gap-2.5">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold text-xs shrink-0">
+                                      {item.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[11px] font-mono text-slate-500 font-bold">#{index + 1}</span>
+                                        <h4 className="text-sm font-bold text-white leading-snug break-words">
+                                          {item.name}
+                                        </h4>
+                                      </div>
+                                      <span className="text-xs font-mono text-slate-400 block mt-0.5">
+                                        ₹{Number(item.price || 0).toFixed(2)} <span className="text-[10px] text-slate-500">/ pc</span>
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="text-right shrink-0">
+                                    <div className="font-bold text-base text-emerald-400 font-mono">
+                                      ₹{Number(item.totalAmount || 0).toFixed(2)}
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-medium">
+                                      {sharePercent}% share
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-3 pt-2 border-t border-white/5 text-xs">
+                                  <span className="text-slate-400 text-[11px]">Quantity Sold:</span>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-20 bg-white/5 h-1.5 rounded-full overflow-hidden">
+                                      <div
+                                        className="bg-emerald-500 h-full rounded-full"
+                                        style={{ width: `${progressPercent}%` }}
+                                      />
+                                    </div>
+                                    <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold text-xs">
+                                      {item.totalQuantity} pcs
+                                    </span>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Mobile Grand Total Card */}
+                        <div className="bg-black/50 backdrop-blur-md p-4 rounded-2xl border border-emerald-500/30 space-y-2 shadow-lg">
+                          <div className="flex items-center justify-between text-xs text-slate-300 font-bold uppercase tracking-wider">
+                            <span>Grand Total</span>
+                            <span>{data.orderItem?.totalUniqueItems || 0} Unique Items</span>
+                          </div>
+                          <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                            <span className="text-emerald-400 font-bold text-sm">
+                              {data.orderItem?.totalItemsSold || 0} pcs sold
+                            </span>
+                            <span className="text-emerald-400 text-lg font-black font-mono">
+                              ₹{Number(data.orderItem?.totalAmountExcludingGst || 0).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* ===== DESKTOP TABLE VIEW (hidden md:block) ===== */}
+                  <div className="hidden md:block bg-surface/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-xl">
+                    <div className="overflow-x-auto custom-scrollbar">
+                      <table className="w-full text-sm text-left text-slate-300 min-w-[650px]">
+                        <thead className="text-xs text-slate-400 uppercase bg-black/30 border-b border-white/5">
+                          <tr>
+                            <th scope="col" className="px-6 py-4 w-16 text-center">#</th>
+                            <th scope="col" className="px-6 py-4">Item Name</th>
+                            <th scope="col" className="px-6 py-4 text-center">Unit Price (Excl. GST)</th>
+                            <th scope="col" className="px-6 py-4 text-center">Quantity Sold</th>
+                            <th scope="col" className="px-6 py-4 text-right">Total Price (Excl. GST)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {filteredOrderItems.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="px-6 py-10 text-center text-slate-500">
+                                {itemSearchQuery ? 'No items match your search.' : 'No items ordered in this date range.'}
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredOrderItems.map((item, index) => {
+                              const maxQty = Math.max(...data.orderItem!.items.map(i => i.totalQuantity), 1);
+                              const progressPercent = Math.round((item.totalQuantity / maxQty) * 100);
+
+                              return (
+                                <motion.tr
+                                  key={item.menuItemId || `item-desk-${item.name}-${index}`}
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: index * 0.02 }}
+                                  className="hover:bg-white/5 transition-colors"
+                                >
+                                  <td className="px-6 py-4 text-center font-mono text-xs text-slate-500">
+                                    {index + 1}
+                                  </td>
+                                  <td className="px-6 py-4 font-semibold text-white flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold text-xs shrink-0">
+                                      {item.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span>{item.name}</span>
+                                  </td>
+                                  <td className="px-6 py-4 text-center font-mono text-slate-300">
+                                    ₹{Number(item.price || 0).toFixed(2)}
+                                  </td>
+                                  <td className="px-6 py-4 text-center">
+                                    <div className="flex flex-col items-center gap-1.5">
+                                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-0.5 rounded-full font-bold text-xs">
+                                        {item.totalQuantity} pcs
+                                      </span>
+                                      <div className="w-20 bg-white/5 h-1 rounded-full overflow-hidden">
+                                        <div
+                                          className="bg-emerald-500 h-full rounded-full"
+                                          style={{ width: `${progressPercent}%` }}
+                                        />
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 text-right">
+                                    <div className="font-bold text-base text-emerald-400 font-mono">
+                                      ₹{Number(item.totalAmount || 0).toFixed(2)}
+                                    </div>
+                                    <div className="text-[10px] text-slate-500">
+                                      {((item.totalAmount / (data.orderItem?.totalAmountExcludingGst || 1)) * 100).toFixed(1)}% of total
+                                    </div>
+                                  </td>
+                                </motion.tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                        {filteredOrderItems.length > 0 && (
+                          <tfoot className="bg-black/40 border-t border-white/10 font-semibold text-white">
+                            <tr>
+                              <td colSpan={3} className="px-6 py-4 text-slate-300 font-bold uppercase tracking-wider text-xs">
+                                Grand Total ({data.orderItem?.totalUniqueItems || 0} Unique Items)
+                              </td>
+                              <td className="px-6 py-4 text-center text-emerald-400 font-bold">
+                                {data.orderItem?.totalItemsSold || 0} pcs
+                              </td>
+                              <td className="px-6 py-4 text-right text-emerald-400 text-lg font-black font-mono">
+                                ₹{Number(data.orderItem?.totalAmountExcludingGst || 0).toFixed(2)}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
+            {/* Waiter Analysis Section */}
+            <section className="space-y-4 sm:space-y-6 pt-4 sm:pt-6 border-t border-white/5">
+              <DateRangeFilter
+                title="Staff Performance"
+                icon={Users}
+                iconColor="text-purple-400"
+                color={{ bgLight: 'bg-purple-500/20', text: 'text-purple-400', bgHover: 'bg-purple-500/30', border: 'border-purple-500/50' }}
+                startDate={dateRanges.waiter.start}
+                setStartDate={(v: string) => updateDateRange('waiter', 'start', v)}
+                endDate={dateRanges.waiter.end}
+                setEndDate={(v: string) => updateDateRange('waiter', 'end', v)}
+                onGenerate={fetchWaiterAnalysis}
+                loading={loading.waiter}
+                setDateRangeType={(type: string) => setPresetDateRange(type, 'waiter', getWaiterAnalysis)}
+                error={errors.waiter}
+              />
+
+              {loading.waiter ? (
+                <div className="h-48 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <>
+                  {/* Mobile View for Waiter */}
+                  <div className="block md:hidden space-y-2.5">
+                    {data.waiter.length === 0 ? (
+                      <div className="bg-surface/40 backdrop-blur-md rounded-2xl border border-white/10 p-8 text-center text-slate-500 text-sm">
+                        No waiter data found for the selected date range.
+                      </div>
+                    ) : (
+                      data.waiter.map((waiter, index) => (
+                        <motion.div
+                          key={waiter.userId}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="bg-surface/40 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 flex items-center justify-between gap-3 shadow-md"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm shrink-0">
+                              {waiter.waiterName.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-white text-sm truncate">{waiter.waiterName}</h4>
+                              <p className="text-xs text-slate-400">{waiter.phoneNumber}</p>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-emerald-400 font-bold text-sm font-mono block">
+                              ₹{Number(waiter.totalRevenue || 0).toFixed(2)}
+                            </span>
+                            <span className="bg-white/10 text-white px-2 py-0.5 rounded-full text-[10px] font-medium inline-block mt-0.5">
+                              {waiter.totalOrders} orders
+                            </span>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Desktop View for Waiter */}
+                  <div className="hidden md:block bg-surface/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-xl">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-left text-slate-300 min-w-[500px]">
+                        <thead className="text-xs text-slate-400 uppercase bg-black/20">
+                          <tr>
+                            <th scope="col" className="px-6 py-4">Waiter Name</th>
+                            <th scope="col" className="px-6 py-4">Phone Number</th>
+                            <th scope="col" className="px-6 py-4 text-center">Total Orders</th>
+                            <th scope="col" className="px-6 py-4 text-right">Revenue Generated</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.waiter.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
+                                No waiter data found for the selected date range.
+                              </td>
+                            </tr>
+                          ) : (
+                            data.waiter.map((waiter, index) => (
+                              <motion.tr
+                                key={waiter.userId}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                              >
+                                <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">
+                                    {waiter.waiterName.charAt(0).toUpperCase()}
+                                  </div>
+                                  {waiter.waiterName}
+                                </td>
+                                <td className="px-6 py-4">
+                                  {waiter.phoneNumber}
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                  <span className="bg-white/10 text-white px-2.5 py-1 rounded-full font-medium">
+                                    {waiter.totalOrders}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 text-right font-semibold text-emerald-400">
+                                  ₹{Number(waiter.totalRevenue || 0).toFixed(2)}
+                                </td>
+                              </motion.tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
