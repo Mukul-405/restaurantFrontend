@@ -55,6 +55,7 @@ export default function BookRoomPage() {
   const [extendBookingCurrentCheckOut, setExtendBookingCurrentCheckOut] = useState<string>('');
   const [newCheckOutDate, setNewCheckOutDate] = useState('');
   const [extendingCheckout, setExtendingCheckout] = useState(false);
+  const [extendModalError, setExtendModalError] = useState('');
 
   const roomCheckoutBase = Number(checkoutBooking?.totalAmount || 0);
 
@@ -221,13 +222,16 @@ export default function BookRoomPage() {
   const handleExtendCheckout = async () => {
     if (!extendBookingId || !newCheckOutDate) return;
     setExtendingCheckout(true);
+    setExtendModalError('');
     try {
       await extendCheckoutBooking(extendBookingId, newCheckOutDate);
       setFormSuccess("Checkout date extended successfully!");
       setExtendBookingModalOpen(false);
       handleSearchBookings();
     } catch (error: any) {
-      setFormError(error.response?.data?.message || 'Failed to extend checkout. Please try again.');
+      const msg = error.response?.data?.message || error.message || 'Failed to extend checkout. Please try again.';
+      setExtendModalError(msg);
+      setFormError(msg);
     } finally {
       setExtendingCheckout(false);
     }
@@ -997,6 +1001,7 @@ export default function BookRoomPage() {
                                 onClick={() => {
                                   setExtendBookingId(b.id);
                                   setExtendBookingCurrentCheckOut(b.checkOut);
+                                  setExtendModalError('');
                                   
                                   const d = new Date(b.checkOut);
                                   d.setDate(d.getDate() + 1);
@@ -1662,7 +1667,10 @@ export default function BookRoomPage() {
                         return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
                       })()}
                       value={newCheckOutDate}
-                      onChange={(e) => setNewCheckOutDate(e.target.value)}
+                      onChange={(e) => {
+                        setNewCheckOutDate(e.target.value);
+                        setExtendModalError('');
+                      }}
                       onClick={(e) => {
                         if (typeof (e.currentTarget as any).showPicker === 'function') {
                           try {
@@ -1683,6 +1691,17 @@ export default function BookRoomPage() {
                     />
                   </div>
                 </div>
+
+                {extendModalError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-red-500/10 border border-red-500/30 text-red-400 p-3.5 rounded-2xl flex items-start gap-2.5 text-xs leading-relaxed"
+                  >
+                    <AlertCircle size={16} className="shrink-0 text-red-400 mt-0.5" />
+                    <div className="flex-1 font-medium">{extendModalError}</div>
+                  </motion.div>
+                )}
 
                 {newCheckOutDate && (
                   <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-3.5 space-y-2 text-xs">
