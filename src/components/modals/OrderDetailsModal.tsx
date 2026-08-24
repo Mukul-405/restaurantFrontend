@@ -1,10 +1,11 @@
-import React, { useEffect,useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Calendar, IndianRupee, User, Hash, Printer } from 'lucide-react';
+import { X, Loader2, Calendar, IndianRupee, User, Hash, Printer, Tag } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchOrderById, updateOrder, transferOrderToRoom } from '../../store/slices/orderSlice';
 import CancelOrderModal from './CancelOrderModal';
 import TransferToRoomModal from './TransferToRoomModal';
+import DiscountModal from './DiscountModal';
 import { printReceipt } from '../../utils/printReceipt';
 
 interface OrderDetailsModalProps {
@@ -18,6 +19,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
   const { selectedOrder, status, error } = useAppSelector(state => state.order);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
@@ -119,26 +121,33 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
 
                     {/* Action Buttons if Pending */}
                     {selectedOrder.status === 'PENDING' && (
-                      <div className="flex flex-col gap-3 sm:flex-row">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                         <button
                           onClick={() => setIsCancelModalOpen(true)}
-                          className="flex-1 py-3 bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 rounded-xl font-bold transition-all"
+                          className="py-2.5 px-3 bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 rounded-xl font-bold text-sm transition-all"
                         >
                           Cancel
                         </button>
                         <button
-                          onClick={() => setIsTransferModalOpen(true)}
-                          className="flex-1 py-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-xl font-bold transition-all"
+                          onClick={() => setIsDiscountModalOpen(true)}
+                          className="py-2.5 px-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-1.5"
                         >
-                          Transfer to Room
+                          <Tag size={15} />
+                          <span>Discount</span>
+                        </button>
+                        <button
+                          onClick={() => setIsTransferModalOpen(true)}
+                          className="py-2.5 px-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-xl font-bold text-sm transition-all"
+                        >
+                          Transfer Room
                         </button>
                         <button
                           onClick={() => handleStatusChange('COMPLETED')}
                           disabled={isUpdatingStatus}
-                          className="flex-1 py-3 bg-emerald-600 border border-emerald-500/20 text-white hover:bg-emerald-700 rounded-xl font-bold transition-all shadow-[0_4px_14px_0_rgba(16,185,129,0.39)] disabled:opacity-50 flex items-center justify-center gap-2"
+                          className="py-2.5 px-3 bg-emerald-600 border border-emerald-500/20 text-white hover:bg-emerald-700 rounded-xl font-bold text-sm transition-all shadow-[0_4px_14px_0_rgba(16,185,129,0.39)] disabled:opacity-50 flex items-center justify-center gap-1.5"
                         >
-                          {isUpdatingStatus && <Loader2 className="animate-spin" size={16} />}
-                          Mark Completed
+                          {isUpdatingStatus && <Loader2 className="animate-spin" size={15} />}
+                          <span>Mark Done</span>
                         </button>
                       </div>
                     )}
@@ -234,6 +243,18 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
           orderId={selectedOrder.id}
           onSubmit={async (data) => {
             await dispatch(transferOrderToRoom({ id: selectedOrder.id, data })).unwrap();
+            dispatch(fetchOrderById(selectedOrder.id));
+          }}
+        />
+      )}
+
+      {selectedOrder && (
+        <DiscountModal
+          isOpen={isDiscountModalOpen}
+          onClose={() => setIsDiscountModalOpen(false)}
+          order={selectedOrder}
+          onConfirm={async (amounts) => {
+            await dispatch(updateOrder({ id: selectedOrder.id, data: amounts })).unwrap();
             dispatch(fetchOrderById(selectedOrder.id));
           }}
         />

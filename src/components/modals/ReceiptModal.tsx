@@ -24,14 +24,31 @@ export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: Rece
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      setDiscountType('PERCENTAGE');
-      setDiscountValue('');
-      setPaymentMode('CASH');
+    if (isOpen && order) {
       setError(null);
       setIsSubmitting(false);
+      setPaymentMode((order.paymentMode as any) || 'CASH');
+
+      const existingDiscount = Number(order.discountAmount || 0);
+      const base = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+      if (existingDiscount > 0 && base > 0) {
+        const calculatedPercent = (existingDiscount / base) * 100;
+        const roundedPercent = Number(calculatedPercent.toFixed(2));
+
+        if (Math.abs((base * roundedPercent) / 100 - existingDiscount) < 0.01 && (Number.isInteger(roundedPercent) || Number.isInteger(roundedPercent * 10))) {
+          setDiscountType('PERCENTAGE');
+          setDiscountValue(roundedPercent.toString());
+        } else {
+          setDiscountType('FLAT');
+          setDiscountValue(existingDiscount.toString());
+        }
+      } else {
+        setDiscountType('PERCENTAGE');
+        setDiscountValue('');
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, order]);
 
   if (!isOpen || !order) return null;
 
@@ -52,6 +69,19 @@ export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: Rece
     // Prevent discount > base amount (cannot discount more than the subtotal itself)
     discountAmount = Math.min(Math.max(parsedValue, 0), baseAmount);
   }
+
+  const handleTypeChange = (type: 'PERCENTAGE' | 'FLAT') => {
+    if (type === discountType) return;
+    if (parsedValue > 0 && baseAmount > 0) {
+      if (type === 'FLAT') {
+        setDiscountValue(discountAmount.toFixed(2).replace(/\.00$/, ''));
+      } else {
+        const pct = (parsedValue / baseAmount) * 100;
+        setDiscountValue(Number(pct.toFixed(2)).toString());
+      }
+    }
+    setDiscountType(type);
+  };
 
   // Final total = Base Amount - Discount + Fixed GST (rounded to integer: <.5 round down, >=.5 round up)
   const finalTotal = Math.max(Math.round(baseAmount + gstAmount - discountAmount), 0);
@@ -119,7 +149,7 @@ export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: Rece
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setDiscountType('PERCENTAGE')}
+                    onClick={() => handleTypeChange('PERCENTAGE')}
                     className={`px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${
                       discountType === 'PERCENTAGE'
                         ? 'border-primary bg-primary/10 text-primary'
@@ -130,7 +160,7 @@ export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: Rece
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDiscountType('FLAT')}
+                    onClick={() => handleTypeChange('FLAT')}
                     className={`px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${
                       discountType === 'FLAT'
                         ? 'border-primary bg-primary/10 text-primary'

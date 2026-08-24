@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, RefreshCw, Plus, Search, Eye, Edit2, ChevronDown, ChevronUp, X, CheckCircle, Filter, Printer } from 'lucide-react';
+import { Loader2, RefreshCw, Plus, Search, Eye, Edit2, ChevronDown, ChevronUp, X, CheckCircle, Filter, Printer, Tag } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchOrders, Order, updateOrder } from '../../../store/slices/orderSlice';
 import { fetcher } from '../../../lib/fetcher';
@@ -10,6 +10,7 @@ import OrderModal from '../../../components/modals/OrderModal';
 import OrderDetailsModal from '../../../components/modals/OrderDetailsModal';
 import CancelOrderModal from '../../../components/modals/CancelOrderModal';
 import ReceiptModal from '../../../components/modals/ReceiptModal';
+import DiscountModal from '../../../components/modals/DiscountModal';
 import { printReceipt } from '../../../utils/printReceipt';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -23,6 +24,7 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderToCancel, setOrderToCancel] = useState<number | null>(null);
   const [orderToComplete, setOrderToComplete] = useState<Order | null>(null);
+  const [orderToDiscount, setOrderToDiscount] = useState<Order | null>(null);
   
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -311,49 +313,80 @@ export default function OrdersPage() {
                     <span className="text-2xl font-bold text-emerald-400">₹{Math.round(Number(order.finalDiscountedAmount ?? 0))}</span>
                   </div>
 
-                  <div className="flex items-center gap-2 mt-2">
-                    {order.status === 'PENDING' && (
-                      <button
-                        onClick={() => handleOpenEdit(order)}
-                        className="px-4 py-2 text-xs font-semibold bg-white/5 text-slate-300 rounded-lg hover:bg-white/10 transition-colors"
-                      >
-                        Edit
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleOpenDetails(order)}
-                      className="px-4 py-2 text-xs font-semibold bg-white/5 text-slate-300 rounded-lg hover:bg-white/10 transition-colors"
-                    >
-                      View
-                    </button>
-                    {order.status === 'COMPLETED' && (
-                      <button
-                        onClick={() => printReceipt(order)}
-                        className="px-3 py-2 text-xs font-semibold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-lg transition-colors flex items-center gap-1.5"
-                        title="Print Bill"
-                      >
-                        <Printer size={14} />
-                        <span>Print</span>
-                      </button>
-                    )}
-                    
-                    <div className="flex-1"></div>
-                    
+                  <div className="flex flex-col gap-2 pt-3 border-t border-white/5 mt-2">
                     {order.status === 'PENDING' && (
                       <>
-                        <button
-                          onClick={() => setOrderToCancel(order.id)}
-                          className="text-xs font-semibold text-danger hover:text-danger/80 transition-colors px-2"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => setOrderToComplete(order)}
-                          className="px-4 py-2 text-xs font-semibold bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors shadow-[0_2px_10px_0_rgba(16,185,129,0.2)] ml-2"
-                        >
-                          Mark Done
-                        </button>
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            onClick={() => handleOpenEdit(order)}
+                            className="h-9 px-2.5 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5 active:scale-[0.98]"
+                          >
+                            <Edit2 size={13} className="text-slate-400" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            onClick={() => setOrderToDiscount(order)}
+                            className="h-9 px-2.5 text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                          >
+                            <Tag size={13} />
+                            <span>Discount</span>
+                          </button>
+                          <button
+                            onClick={() => handleOpenDetails(order)}
+                            className="h-9 px-2.5 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5 active:scale-[0.98]"
+                          >
+                            <Eye size={13} className="text-slate-400" />
+                            <span>View</span>
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            onClick={() => setOrderToCancel(order.id)}
+                            className="h-9 px-3 text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-all flex items-center justify-center gap-1 active:scale-[0.98]"
+                          >
+                            <X size={13} />
+                            <span>Cancel</span>
+                          </button>
+                          <button
+                            onClick={() => setOrderToComplete(order)}
+                            className="col-span-2 h-9 px-3 text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                          >
+                            <CheckCircle size={14} />
+                            <span>Mark Done</span>
+                          </button>
+                        </div>
                       </>
+                    )}
+
+                    {order.status === 'COMPLETED' && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => handleOpenDetails(order)}
+                          className="h-9 px-3 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5"
+                        >
+                          <Eye size={14} className="text-slate-400" />
+                          <span>View Details</span>
+                        </button>
+                        <button
+                          onClick={() => printReceipt(order)}
+                          className="h-9 px-3 text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                          title="Print Bill"
+                        >
+                          <Printer size={14} />
+                          <span>Print Bill</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {order.status === 'CANCELLED' && (
+                      <button
+                        onClick={() => handleOpenDetails(order)}
+                        className="w-full h-9 px-3 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5"
+                      >
+                        <Eye size={14} className="text-slate-400" />
+                        <span>View Details</span>
+                      </button>
                     )}
                   </div>
                 </motion.div>
@@ -415,44 +448,78 @@ export default function OrdersPage() {
                           })()}
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col gap-2">
                           {order.status === 'PENDING' && (
                             <>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleOpenEdit(order); }}
-                                className="flex items-center justify-center p-2.5 bg-primary text-white hover:bg-primary-hover rounded-lg transition-colors shadow-sm"
-                              >
-                                <Edit2 size={18} />
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setOrderToCancel(order.id); }}
-                                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-danger text-white hover:bg-danger/90 font-semibold text-sm rounded-lg transition-colors shadow-sm"
-                              >
-                                <X size={18} /> Cancel
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setOrderToComplete(order); }}
-                                className="flex-[1.5] flex items-center justify-center gap-2 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 font-semibold text-sm rounded-lg transition-colors shadow-sm"
-                              >
-                                <CheckCircle size={18} /> Mark Done
-                              </button>
+                              <div className="grid grid-cols-3 gap-2">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleOpenEdit(order); }}
+                                  className="h-9 px-2 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5"
+                                >
+                                  <Edit2 size={13} className="text-slate-400" />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setOrderToDiscount(order); }}
+                                  className="h-9 px-2 text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                                >
+                                  <Tag size={13} />
+                                  <span>Discount</span>
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleOpenDetails(order); }}
+                                  className="h-9 px-2 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5"
+                                >
+                                  <Eye size={13} className="text-slate-400" />
+                                  <span>View</span>
+                                </button>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-2">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setOrderToCancel(order.id); }}
+                                  className="h-9 px-3 text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-all flex items-center justify-center gap-1"
+                                >
+                                  <X size={13} />
+                                  <span>Cancel</span>
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setOrderToComplete(order); }}
+                                  className="col-span-2 h-9 px-3 text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5"
+                                >
+                                  <CheckCircle size={14} />
+                                  <span>Mark Done</span>
+                                </button>
+                              </div>
                             </>
                           )}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleOpenDetails(order); }}
-                            className={`flex items-center justify-center p-2.5 bg-white/10 text-slate-200 hover:bg-white/20 rounded-lg transition-colors shadow-sm ${order.status !== 'PENDING' ? 'flex-1' : ''}`}
-                          >
-                            <Eye size={18} />
-                            {order.status !== 'PENDING' && <span className="ml-2 font-semibold text-sm">View Details</span>}
-                          </button>
+
                           {order.status === 'COMPLETED' && (
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleOpenDetails(order); }}
+                                className="h-9 px-3 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5"
+                              >
+                                <Eye size={14} className="text-slate-400" />
+                                <span>View Details</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); printReceipt(order); }}
+                                className="h-9 px-3 text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                              >
+                                <Printer size={14} />
+                                <span>Print Bill</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {order.status === 'CANCELLED' && (
                             <button
-                              onClick={(e) => { e.stopPropagation(); printReceipt(order); }}
-                              className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-semibold text-sm rounded-lg transition-colors shadow-sm"
-                              title="Print Bill"
+                              onClick={(e) => { e.stopPropagation(); handleOpenDetails(order); }}
+                              className="w-full h-9 px-3 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5"
                             >
-                              <Printer size={16} />
-                              <span>Print</span>
+                              <Eye size={14} className="text-slate-400" />
+                              <span>View Details</span>
                             </button>
                           )}
                         </div>
@@ -525,6 +592,20 @@ export default function OrdersPage() {
         onClose={() => setOrderToComplete(null)}
         order={orderToComplete}
         onConfirm={handleCompleteOrder}
+      />
+
+      <DiscountModal
+        isOpen={orderToDiscount !== null}
+        onClose={() => setOrderToDiscount(null)}
+        order={orderToDiscount}
+        onConfirm={async (amounts) => {
+          if (!orderToDiscount) return;
+          await dispatch(updateOrder({
+            id: orderToDiscount.id,
+            data: amounts
+          })).unwrap();
+          fetchOrdersData(currentPage);
+        }}
       />
     </div>
   );

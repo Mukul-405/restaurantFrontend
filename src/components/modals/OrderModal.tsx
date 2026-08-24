@@ -115,8 +115,8 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
   const baseAmount = Number(selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2));
   const gstAmount = Number((baseAmount * 0.05).toFixed(2));
   const calculatedTotalAmount = Math.round(baseAmount + gstAmount);
-  const discountAmount = 0;
-  const finalDiscountedAmount = calculatedTotalAmount;
+  const discountAmount = orderToEdit?.discountAmount ? Number(orderToEdit.discountAmount) : 0;
+  const finalDiscountedAmount = Math.max(0, Math.round(baseAmount + gstAmount - discountAmount));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
