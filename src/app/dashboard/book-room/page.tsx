@@ -145,23 +145,38 @@ export default function BookRoomPage() {
     }
   };
 
-  const handleSearchBookings = async (overrideQuery?: string, page = currentPage, status = bookingStatusFilter, date = searchDate) => {
-    const term = typeof overrideQuery === 'string' ? overrideQuery : searchPhone;
+  const handleSearchBookings = async (
+    phone = searchPhone, 
+    page = currentPage, 
+    status = bookingStatusFilter, 
+    date = searchDate
+  ) => {
     setSearchingBookings(true);
     try {
-      const response = await getBookings({
-        phone: term.trim() || undefined,
-        status: status,
-        date: date || undefined,
-        page: page,
-        limit: 6
-      });
-      setManagedBookings(response.data);
-      setCurrentPage(response.meta.page);
-      setTotalPages(response.meta.totalPages);
-      setTotalBookings(response.meta.total);
+      const params: any = { page, limit: 9 };
+      if (phone?.trim()) params.phone = phone.trim();
+      if (status && status !== 'ALL') params.status = status;
+      if (date) params.date = date;
+
+      const res = await getBookings(params);
+      const bookingsList = Array.isArray(res) 
+        ? res 
+        : Array.isArray(res?.data) 
+        ? res.data 
+        : Array.isArray(res?.bookings) 
+        ? res.bookings 
+        : [];
+      const totalP = res?.meta?.totalPages || res?.totalPages || 1;
+      const totalB = res?.meta?.total ?? res?.total ?? bookingsList.length;
+
+      setManagedBookings(bookingsList);
+      setTotalPages(totalP);
+      setTotalBookings(totalB);
     } catch (error) {
       console.error('Failed to search bookings:', error);
+      setManagedBookings([]);
+      setTotalPages(1);
+      setTotalBookings(0);
     } finally {
       setSearchingBookings(false);
     }
@@ -171,7 +186,7 @@ export default function BookRoomPage() {
     if (activeTab === 'manage') {
       handleSearchBookings(searchPhone, currentPage, bookingStatusFilter, searchDate);
     }
-  }, [activeTab, currentPage, bookingStatusFilter]);
+  }, [activeTab, currentPage, bookingStatusFilter, searchDate]);
 
   const openAssignmentModal = async (booking: any, mode: 'checkin' | 'edit') => {
     setOpeningModalBookingId(booking.id);
