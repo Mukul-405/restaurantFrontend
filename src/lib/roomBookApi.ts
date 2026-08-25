@@ -6,6 +6,7 @@ export interface BookingRoomPayload {
   roomNumber: string | null;
   adults: number;
   children: number;
+  price?: number;
 }
 
 export interface BookingPayload {
@@ -18,6 +19,9 @@ export interface BookingPayload {
   totalAdults: number;
   totalChildren: number;
   rooms: BookingRoomPayload[];
+  totalAmount?: number;
+  taxAmount?: number;
+  baseAmount?: number;
 }
 
 export const createBooking = async (payload: BookingPayload) => {
@@ -58,4 +62,9 @@ export const editBookingRooms = async (id: number, rooms: { roomCode: string, ro
 export const extendCheckoutBooking = async (id: number, newCheckOut: string) => {
   const { data } = await api.patch(`/bookings/${id}/extend-checkout`, { newCheckOut });
   return data;
+};
+
+export const updateBookingGuestDetails = async (id: number, data: { guestName: string; guestPhone: string }) => {
+  const res = await api.patch(`/bookings/${id}/guest-details`, data);
+  return res.data;
 };

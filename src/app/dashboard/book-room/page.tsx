@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Printer, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Printer, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react';
 import { getRoomTypes, RoomType, getAvailability } from '../../../lib/roomsApi';
 import { createBooking, BookingPayload, getBookings, checkInBooking, checkOutBooking, editBookingRooms, cancelBooking, extendCheckoutBooking } from '../../../lib/roomBookApi';
 import { printBookingBill } from '../../../utils/printReceipt';
+import EditGuestModal from '../../../components/modals/EditGuestModal';
+import PrintBookingBillModal from '../../../components/modals/PrintBookingBillModal';
 
 export default function BookRoomPage() {
   const [formData, setFormData] = useState({
@@ -17,8 +19,8 @@ export default function BookRoomPage() {
     specialRequests: '',
   });
 
-  const [rooms, setRooms] = useState([
-    { id: 1, roomCode: '', rateplanCode: '', adults: 1, children: 0 }
+  const [rooms, setRooms] = useState<{ id: number; roomCode: string; rateplanCode: string; price: number | ''; adults: number; children: number }[]>([
+    { id: 1, roomCode: '', rateplanCode: '', price: '', adults: 1, children: 0 }
   ]);
 
   const [assignments, setAssignments] = useState<{ id: number; roomCode: string; roomNumber: string }[]>([]);
@@ -30,6 +32,7 @@ export default function BookRoomPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
+  const [printBillModalData, setPrintBillModalData] = useState<{ booking: any; roomDiscount?: number; foodDiscount?: number } | null>(null);
 
   // Manage Bookings State
   const [activeTab, setActiveTab] = useState<'book' | 'manage'>('book');
@@ -41,7 +44,9 @@ export default function BookRoomPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalBookings, setTotalBookings] = useState(0);
   const [searchingBookings, setSearchingBookings] = useState(false);
-  const [modalMode, setModalMode] = useState<'checkin' | 'edit'>('checkin');
+  const [cancelingBooking, setCancelingBooking] = useState<any>(null);
+  const [openingModalBookingId, setOpeningModalBookingId] = useState<number | null>(null);
+
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   const [checkoutBooking, setCheckoutBooking] = useState<any>(null);
   const [roomCheckoutDiscountType, setRoomCheckoutDiscountType] = useState<'FLAT' | 'PERCENT'>('FLAT');
@@ -56,8 +61,47 @@ export default function BookRoomPage() {
   const [newCheckOutDate, setNewCheckOutDate] = useState('');
   const [extendingCheckout, setExtendingCheckout] = useState(false);
   const [extendModalError, setExtendModalError] = useState('');
+  const [editingGuestBooking, setEditingGuestBooking] = useState<any>(null);
 
-  const roomCheckoutBase = Number(checkoutBooking?.totalAmount || 0);
+  const [modalMode, setModalMode] = useState<'checkin' | 'edit'>('checkin');
+
+  const roomCheckoutTax = useMemo(() => {
+    if (!checkoutBooking) return 0;
+    const dbTax = Number(checkoutBooking.taxAmount || 0);
+    const rawTotal = Number(checkoutBooking.totalAmount || 0);
+    const roomsList = Array.isArray(checkoutBooking.rooms) ? checkoutBooking.rooms : [];
+    const sumRoomPrices = roomsList.reduce((sum: number, r: any) => sum + (Number(r.price) || 0), 0);
+
+    if (dbTax > 0) {
+      return dbTax;
+    } else if (sumRoomPrices > 0 && Math.abs(sumRoomPrices - rawTotal) < 1) {
+      return Number((sumRoomPrices * 0.05).toFixed(2));
+    } else if (rawTotal > 0) {
+      return Number((rawTotal - rawTotal / 1.05).toFixed(2));
+    }
+    return 0;
+  }, [checkoutBooking]);
+
+  const roomCheckoutBase = useMemo(() => {
+    if (!checkoutBooking) return 0;
+    const dbTax = Number(checkoutBooking.taxAmount || 0);
+    const rawTotal = Number(checkoutBooking.totalAmount || 0);
+    const roomsList = Array.isArray(checkoutBooking.rooms) ? checkoutBooking.rooms : [];
+    const sumRoomPrices = roomsList.reduce((sum: number, r: any) => sum + (Number(r.price) || 0), 0);
+
+    if (dbTax > 0) {
+      return Math.max(0, Number((rawTotal - dbTax).toFixed(2)));
+    } else if (sumRoomPrices > 0 && Math.abs(sumRoomPrices - rawTotal) < 1) {
+      return sumRoomPrices;
+    } else if (rawTotal > 0) {
+      return Number((rawTotal / 1.05).toFixed(2));
+    }
+    return 0;
+  }, [checkoutBooking]);
+
+  const roomCheckoutTotal = useMemo(() => {
+    return Number((roomCheckoutBase + roomCheckoutTax).toFixed(2));
+  }, [roomCheckoutBase, roomCheckoutTax]);
 
   const roomCheckoutDiscountAmount = useMemo(() => {
     if (!roomCheckoutDiscountValue || roomCheckoutBase <= 0) return 0;
@@ -88,8 +132,6 @@ export default function BookRoomPage() {
       return Number(((foodCheckoutBase * pct) / 100).toFixed(2));
     }
   }, [foodCheckoutDiscountType, foodCheckoutDiscountValue, foodCheckoutBase]);
-  const [cancelingBooking, setCancelingBooking] = useState<any>(null);
-  const [openingModalBookingId, setOpeningModalBookingId] = useState<number | null>(null);
 
   const refreshRoomTypes = async () => {
     try {
@@ -297,12 +339,19 @@ export default function BookRoomPage() {
     newRooms[index] = { ...newRooms[index], [field]: value };
     if (field === 'roomCode') {
       newRooms[index].rateplanCode = '';
+      newRooms[index].price = '';
+    } else if (field === 'rateplanCode') {
+      const selectedType = roomTypes.find(rt => rt.roomCode === newRooms[index].roomCode);
+      const plan = (selectedType?.rateplanCodes as any[])?.find(p => p.code === value);
+      if (plan && plan.price !== undefined) {
+        newRooms[index].price = Number(plan.price);
+      }
     }
     setRooms(newRooms);
   };
 
   const addRoom = () => {
-    setRooms([...rooms, { id: Date.now(), roomCode: '', rateplanCode: '', adults: 1, children: 0 }]);
+    setRooms([...rooms, { id: Date.now(), roomCode: '', rateplanCode: '', price: '', adults: 1, children: 0 }]);
   };
 
   const removeRoom = (index: number) => {
@@ -324,14 +373,21 @@ export default function BookRoomPage() {
     try {
       const totalAdults = rooms.reduce((sum, room) => sum + Number(room.adults), 0);
       const totalChildren = rooms.reduce((sum, room) => sum + Number(room.children), 0);
+      const baseAmount = rooms.reduce((sum, room) => sum + (Number(room.price) || 0), 0);
+      const taxAmount = Number((baseAmount * 0.05).toFixed(2));
+      const totalAmount = Number((baseAmount + taxAmount).toFixed(2));
 
       const payload: BookingPayload = {
         ...formData,
         totalAdults,
         totalChildren,
+        baseAmount,
+        taxAmount,
+        totalAmount,
         rooms: rooms.map(r => ({
           roomCode: r.roomCode,
           rateplanCode: r.rateplanCode,
+          price: r.price !== '' ? Number(r.price) : undefined,
           adults: Number(r.adults),
           children: Number(r.children),
           roomNumber: null
@@ -380,11 +436,9 @@ export default function BookRoomPage() {
     submitBooking();
   };
 
-
-
   const resetForm = () => {
     setFormData({ guestName: '', guestEmail: '', guestPhone: '', checkIn: '', checkOut: '', specialRequests: '' });
-    setRooms([{ id: Date.now(), roomCode: '', rateplanCode: '', adults: 1, children: 0 }]);
+    setRooms([{ id: Date.now(), roomCode: '', rateplanCode: '', price: '', adults: 1, children: 0 }]);
     setAssignments([]);
     setAvailability({});
     setIsModalOpen(false);
@@ -506,9 +560,16 @@ export default function BookRoomPage() {
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                   <Bed size={18} className="text-emerald-400" /> Room Allocation
                 </h2>
-                <span className="bg-emerald-500/10 text-emerald-400 text-xs font-bold px-3 py-1 rounded-lg border border-emerald-500/20">
-                  {rooms.length} {rooms.length === 1 ? 'Room' : 'Rooms'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="bg-emerald-500/10 text-emerald-400 text-xs font-bold px-3 py-1 rounded-lg border border-emerald-500/20">
+                    {rooms.length} {rooms.length === 1 ? 'Room' : 'Rooms'}
+                  </span>
+                  {rooms.some(r => Number(r.price) > 0) && (
+                    <span className="bg-emerald-500/20 text-emerald-300 text-xs font-mono font-extrabold px-3 py-1 rounded-lg border border-emerald-500/30">
+                      Total: ₹{rooms.reduce((sum, r) => sum + (Number(r.price) || 0), 0)}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -555,8 +616,8 @@ export default function BookRoomPage() {
                               </h3>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                              <div className="md:col-span-2">
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                              <div className="md:col-span-4">
                                 <label className={labelClass}>Room Type</label>
                                 <div className="relative group">
                                   <Bed size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10" />
@@ -582,7 +643,7 @@ export default function BookRoomPage() {
                                 </div>
                               </div>
 
-                              <div className="md:col-span-2">
+                              <div className="md:col-span-3">
                                 <label className={labelClass}>Rate Plan</label>
                                 <div className="relative group">
                                   <Tag size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10" />
@@ -603,32 +664,50 @@ export default function BookRoomPage() {
                                 </div>
                               </div>
 
-                              <div className="md:col-span-2 lg:col-span-1">
+                              <div className="md:col-span-2 sm:col-span-4">
+                                <label className={labelClass}>
+                                  Price (₹) <span className="text-emerald-400 font-normal lowercase">(editable)</span>
+                                </label>
+                                <div className="relative group">
+                                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-sm">₹</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    required
+                                    placeholder="0"
+                                    value={room.price ?? ''}
+                                    onChange={(e) => handleRoomChange(index, 'price', e.target.value === '' ? '' : Number(e.target.value))}
+                                    className={`${inputClass} pl-8 font-mono font-bold text-emerald-400 bg-black/40`}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="md:col-span-1 sm:col-span-4">
                                 <label className={labelClass}>Adults</label>
                                 <div className="relative group">
-                                  <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                                  <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
                                   <input
                                     type="number"
                                     min="1"
                                     required
                                     value={room.adults}
                                     onChange={(e) => handleRoomChange(index, 'adults', parseInt(e.target.value) || 1)}
-                                    className={`${inputClass} pl-10 bg-black/40`}
+                                    className={`${inputClass} pl-8 bg-black/40`}
                                   />
                                 </div>
                               </div>
 
-                              <div className="md:col-span-2 lg:col-span-1">
+                              <div className="md:col-span-2 sm:col-span-4">
                                 <label className={labelClass}>Children</label>
                                 <div className="relative group">
-                                  <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                                  <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
                                   <input
                                     type="number"
                                     min="0"
                                     required
                                     value={room.children}
                                     onChange={(e) => handleRoomChange(index, 'children', parseInt(e.target.value) || 0)}
-                                    className={`${inputClass} pl-10 bg-black/40`}
+                                    className={`${inputClass} pl-8 bg-black/40`}
                                   />
                                 </div>
                               </div>
@@ -666,6 +745,34 @@ export default function BookRoomPage() {
                   ></textarea>
                 </div>
               </div>
+
+              {/* Room Price Summary & Tax Breakdown */}
+              {(() => {
+                const formBaseAmount = rooms.reduce((sum, r) => sum + (Number(r.price) || 0), 0);
+                const formTaxAmount = Number((formBaseAmount * 0.05).toFixed(2));
+                const formTotalAmount = Number((formBaseAmount + formTaxAmount).toFixed(2));
+
+                if (formBaseAmount <= 0) return null;
+
+                return (
+                  <div className="mt-6 p-4 rounded-2xl bg-gradient-to-r from-violet-500/10 via-primary/5 to-transparent border border-primary/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div className="space-y-1">
+                      <div className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <Tag size={14} className="text-primary" /> Room Price Summary
+                      </div>
+                      <div className="text-xs text-slate-400 flex items-center gap-2 sm:gap-3 flex-wrap">
+                        <span>Base Amount: <strong className="text-slate-200 font-mono font-bold">₹{formBaseAmount.toFixed(2)}</strong></span>
+                        <span>&bull;</span>
+                        <span>GST (5%): <strong className="text-emerald-400 font-mono font-bold">+₹{formTaxAmount.toFixed(2)}</strong></span>
+                      </div>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">Total Amount (inc. 5% Tax)</span>
+                      <span className="text-2xl font-mono font-black text-emerald-400">₹{formTotalAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Action Footer */}
@@ -817,16 +924,29 @@ export default function BookRoomPage() {
                         <div className="space-y-4">
                           {/* Top Row: Guest Info & Status Badge */}
                           <div className="flex items-start justify-between gap-2 pb-3 border-b border-white/10">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/30 to-indigo-600/30 border border-primary/40 text-primary-light font-black text-sm flex items-center justify-center shadow-lg shadow-primary/10 shrink-0">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-600/40 to-indigo-600/40 border border-violet-500/50 text-violet-200 font-black text-sm flex items-center justify-center shadow-lg shadow-violet-500/10 shrink-0">
                                 {(b.guestName || 'G').charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0">
-                                <h3 className="text-sm font-extrabold text-white tracking-tight truncate">
-                                  {b.guestName || 'Guest'}
-                                </h3>
-                                <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1 mt-0.5 truncate">
-                                  <Phone size={12} className="text-slate-500 shrink-0" /> {b.guestPhone}
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-sm font-extrabold text-white tracking-tight truncate">
+                                    {b.guestName || 'Guest'}
+                                  </h3>
+                                  {(b.status === 'RESERVED' || b.status === 'CHECKED_IN') && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingGuestBooking(b)}
+                                      className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-violet-600/30 active:scale-95 text-slate-200 hover:text-white border border-white/20 hover:border-violet-400/60 text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm shrink-0 cursor-pointer"
+                                      title="Edit Guest Name & Phone"
+                                    >
+                                      <Edit2 size={10} className="text-violet-400" />
+                                      <span>Edit</span>
+                                    </button>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-slate-300 font-medium flex items-center gap-1.5 mt-0.5 truncate">
+                                  <Phone size={12} className="text-emerald-400 shrink-0" /> {b.guestPhone}
                                 </p>
                               </div>
                             </div>
@@ -1035,7 +1155,7 @@ export default function BookRoomPage() {
                           {b.status === 'CHECKED_OUT' && (
                             <button
                               type="button"
-                              onClick={() => printBookingBill(b)}
+                              onClick={() => setPrintBillModalData({ booking: b })}
                               className="w-full h-10 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-[0.98] text-emerald-400 border border-emerald-500/25 font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
                             >
                               <Printer size={15} /> Print Bill
@@ -1282,9 +1402,22 @@ export default function BookRoomPage() {
                       }`}>
                         {checkoutBooking.paymentStatus}
                       </span>
-                      <span className="text-white font-bold font-mono">₹{roomCheckoutBase.toFixed(2)}</span>
+                      <span className="text-white font-bold font-mono">₹{roomCheckoutTotal.toFixed(2)}</span>
                     </div>
                   </div>
+
+                  {roomCheckoutTotal > 0 && (
+                    <div className="bg-white/5 rounded-xl p-2.5 text-xs space-y-1 text-slate-400">
+                      <div className="flex justify-between items-center">
+                        <span>Base Amount:</span>
+                        <span className="text-slate-200 font-mono">₹{roomCheckoutBase.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>GST (5%):</span>
+                        <span className="text-slate-200 font-mono">₹{roomCheckoutTax.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Room Discount Controls */}
                   {checkoutBooking.paymentStatus !== 'PAID' && (
@@ -1456,7 +1589,7 @@ export default function BookRoomPage() {
                   </div>
                   <div className="text-emerald-400 font-black text-2xl font-mono tracking-tight">
                     ₹{Math.max(0, (
-                      (checkoutBooking.paymentStatus !== 'PAID' ? Math.max(0, roomCheckoutBase - roomCheckoutDiscountAmount) : 0) +
+                      (checkoutBooking.paymentStatus !== 'PAID' ? Math.max(0, roomCheckoutTotal - roomCheckoutDiscountAmount) : 0) +
                       Math.max(0, (foodCheckoutBase + foodCheckoutBase * 0.05) - foodCheckoutDiscountAmount)
                     )).toFixed(2)}
                   </div>
@@ -1474,7 +1607,11 @@ export default function BookRoomPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => printBookingBill(checkoutBooking, roomCheckoutDiscountAmount, foodCheckoutDiscountAmount)}
+                  onClick={() => setPrintBillModalData({
+                    booking: checkoutBooking,
+                    roomDiscount: roomCheckoutDiscountAmount,
+                    foodDiscount: foodCheckoutDiscountAmount
+                  })}
                   className="w-full sm:flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-all text-sm font-bold whitespace-nowrap"
                 >
                   <Printer size={16} /> Print Bill
@@ -1768,6 +1905,24 @@ export default function BookRoomPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <EditGuestModal
+        isOpen={!!editingGuestBooking}
+        onClose={() => setEditingGuestBooking(null)}
+        booking={editingGuestBooking}
+        onSuccess={() => {
+          setFormSuccess("Guest details updated successfully!");
+          handleSearchBookings();
+        }}
+      />
+
+      <PrintBookingBillModal
+        isOpen={!!printBillModalData}
+        onClose={() => setPrintBillModalData(null)}
+        booking={printBillModalData?.booking}
+        roomDiscount={printBillModalData?.roomDiscount}
+        foodDiscount={printBillModalData?.foodDiscount}
+      />
 
     </div>
   );

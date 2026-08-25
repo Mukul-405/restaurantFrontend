@@ -350,14 +350,58 @@ export const printReceipt = (order: Order) => {
   printHtml(html);
 };
 
-export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDiscount: number = 0) => {
+export interface BookingBillCustomField {
+  key: string;
+  value: string;
+}
+
+export type BookingBillExtraDetails = 
+  | BookingBillCustomField[]
+  | {
+      billTo?: string;
+      gstin?: string;
+      address?: string;
+      notes?: string;
+      [key: string]: any;
+    };
+
+export const printBookingBill = (
+  booking: any, 
+  roomDiscount: number = 0, 
+  foodDiscount: number = 0,
+  extraDetails?: BookingBillExtraDetails
+) => {
   const now = new Date();
   const formattedDate = now.toISOString().split('T')[0];
   const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
   const rooms: any[] = Array.isArray(booking.rooms) ? booking.rooms : [];
   const foodOrders: any[] = Array.isArray(booking.foodOrders) ? booking.foodOrders : [];
-  const roomTotal = Number(booking.totalAmount || 0);
+  
+  const rawRoomTotal = Number(booking.totalAmount || 0);
+  const dbRoomTax = Number(booking.taxAmount || 0);
+
+  let roomBase = 0;
+  let roomTax = 0;
+  let roomTotal = rawRoomTotal;
+
+  const sumRoomPrices = rooms.reduce((sum, r) => sum + (Number(r.price) || 0), 0);
+
+  if (dbRoomTax > 0) {
+    roomTax = dbRoomTax;
+    roomBase = Math.max(0, Number((roomTotal - roomTax).toFixed(2)));
+  } else if (sumRoomPrices > 0 && Math.abs(sumRoomPrices - rawRoomTotal) < 1) {
+    roomBase = sumRoomPrices;
+    roomTax = Number((roomBase * 0.05).toFixed(2));
+    roomTotal = Number((roomBase + roomTax).toFixed(2));
+  } else if (rawRoomTotal > 0) {
+    roomBase = Number((rawRoomTotal / 1.05).toFixed(2));
+    roomTax = Number((rawRoomTotal - roomBase).toFixed(2));
+  }
+
+  const roomCgst = Number((roomTax / 2).toFixed(2));
+  const roomSgst = Number((roomTax / 2).toFixed(2));
+
   const foodTotal = Number(booking.foodTotalAmount || 0);
 
   const rDiscount = roomDiscount > 0 ? roomDiscount : Number(booking.roomDiscountAmount || 0);
@@ -375,11 +419,12 @@ export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDis
   const foodCgst = foodSubtotal * 0.025;
   const foodSgst = foodSubtotal * 0.025;
   const foodNet = Math.max(0, finalFoodTotal - fDiscount);
+  const roomNet = Math.max(0, roomTotal - rDiscount);
 
   const grandTotalBeforeDiscount = roomTotal + finalFoodTotal;
   const totalDiscount = rDiscount + fDiscount;
   const grandTotal = Math.max(0, grandTotalBeforeDiscount - totalDiscount);
-  const dueTotal = Math.max(0, (booking.paymentStatus === 'PAID' ? foodNet : grandTotal));
+  const dueTotal = Math.max(0, (booking.paymentStatus === 'PAID' ? foodNet : (roomNet + foodNet)));
 
   const roomRows = rooms.map((r: any) => `
     <tr>
@@ -544,7 +589,34 @@ export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDis
             <div class="meta-right">Time: ${formattedTime}</div>
           </div>
           <div class="font-bold" style="margin-top: 4px;">Phone: ${escapeHtml(booking.guestPhone) || 'N/A'}</div>
-          <div class="font-bold" style="margin-top: 2px;">
+
+          ${(() => {
+            let fields: BookingBillCustomField[] = [];
+            if (Array.isArray(extraDetails)) {
+              fields = extraDetails.filter(f => f && f.key && f.key.trim() && f.value && f.value.trim());
+            } else if (extraDetails && typeof extraDetails === 'object') {
+              if (extraDetails.billTo?.trim()) fields.push({ key: 'Bill To', value: extraDetails.billTo.trim() });
+              if (extraDetails.gstin?.trim()) fields.push({ key: 'Guest GSTIN', value: extraDetails.gstin.trim() });
+              if (extraDetails.address?.trim()) fields.push({ key: 'Address', value: extraDetails.address.trim() });
+              if (extraDetails.notes?.trim()) fields.push({ key: 'Note', value: extraDetails.notes.trim() });
+            }
+
+            if (fields.length === 0) return '';
+
+            return `
+            <div style="margin-top: 5px; border-top: 1px dashed #cbd5e1; border-bottom: 1px dashed #cbd5e1; padding: 4px 0;">
+              ${fields.map(f => {
+                const isBillTo = f.key.toLowerCase().includes('bill to');
+                return `
+                <div style="margin: 2px 0; font-size: 12px; line-height: 1.35; display: flex; justify-content: space-between; align-items: baseline;">
+                  <span style="font-weight: bold; color: #000; padding-right: 6px; white-space: nowrap;">${escapeHtml(f.key)}:</span>
+                  <span style="color: #111; text-align: right; word-break: break-word; ${isBillTo ? 'font-weight: 900; color: #000;' : ''}">${escapeHtml(f.value)}</span>
+                </div>`;
+              }).join('')}
+            </div>`;
+          })()}
+
+          <div class="font-bold" style="margin-top: 3px;">
             Check-in: ${new Date(booking.checkIn).toLocaleDateString()} &bull; Check-out: ${new Date(booking.checkOut).toLocaleDateString()}
           </div>
 
@@ -571,7 +643,19 @@ export const printBookingBill = (booking: any, roomDiscount: number = 0, foodDis
           <div class="totals-wrapper">
             <div class="totals-table">
               <div class="totals-row">
-                <span>Room Total :</span>
+                <span>Base Subtotal :</span>
+                <span>₹${roomBase.toFixed(2)}</span>
+              </div>
+              <div class="totals-row">
+                <span>CGST (2.5%):</span>
+                <span>₹${roomCgst.toFixed(2)}</span>
+              </div>
+              <div class="totals-row">
+                <span>SGST (2.5%):</span>
+                <span>₹${roomSgst.toFixed(2)}</span>
+              </div>
+              <div class="totals-row" style="font-weight: bold;">
+                <span>Room Total (inc. Tax) :</span>
                 <span>₹${roomTotal.toFixed(2)}</span>
               </div>
             </div>

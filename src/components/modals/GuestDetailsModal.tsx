@@ -5,6 +5,8 @@ import { getBookingById, checkOutBooking, editBookingRooms, cancelBooking } from
 import { getRoomTypes, RoomType } from '../../lib/roomsApi';
 import { printBookingBill } from '../../utils/printReceipt';
 import toast from 'react-hot-toast';
+import EditGuestModal from './EditGuestModal';
+import PrintBookingBillModal from './PrintBookingBillModal';
 
 interface GuestDetailsModalProps {
   isOpen: boolean;
@@ -17,6 +19,8 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [booking, setBooking] = useState<any>(null);
+  const [isEditGuestModalOpen, setIsEditGuestModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   
   // Views inside modal
   const [mode, setMode] = useState<'view' | 'editRooms' | 'checkout' | 'cancel'>('view');
@@ -28,7 +32,43 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
   const [foodDiscountType, setFoodDiscountType] = useState<'FLAT' | 'PERCENT'>('FLAT');
   const [foodDiscountValue, setFoodDiscountValue] = useState<number | ''>('');
 
-  const roomBase = Number(booking?.totalAmount || 0);
+  const roomTax = useMemo(() => {
+    if (!booking) return 0;
+    const dbTax = Number(booking.taxAmount || 0);
+    const rawTotal = Number(booking.totalAmount || 0);
+    const roomsList = Array.isArray(booking.rooms) ? booking.rooms : [];
+    const sumRoomPrices = roomsList.reduce((sum: number, r: any) => sum + (Number(r.price) || 0), 0);
+
+    if (dbTax > 0) {
+      return dbTax;
+    } else if (sumRoomPrices > 0 && Math.abs(sumRoomPrices - rawTotal) < 1) {
+      return Number((sumRoomPrices * 0.05).toFixed(2));
+    } else if (rawTotal > 0) {
+      return Number((rawTotal - rawTotal / 1.05).toFixed(2));
+    }
+    return 0;
+  }, [booking]);
+
+  const roomBase = useMemo(() => {
+    if (!booking) return 0;
+    const dbTax = Number(booking.taxAmount || 0);
+    const rawTotal = Number(booking.totalAmount || 0);
+    const roomsList = Array.isArray(booking.rooms) ? booking.rooms : [];
+    const sumRoomPrices = roomsList.reduce((sum: number, r: any) => sum + (Number(r.price) || 0), 0);
+
+    if (dbTax > 0) {
+      return Math.max(0, Number((rawTotal - dbTax).toFixed(2)));
+    } else if (sumRoomPrices > 0 && Math.abs(sumRoomPrices - rawTotal) < 1) {
+      return sumRoomPrices;
+    } else if (rawTotal > 0) {
+      return Number((rawTotal / 1.05).toFixed(2));
+    }
+    return 0;
+  }, [booking]);
+
+  const roomTotal = useMemo(() => {
+    return Number((roomBase + roomTax).toFixed(2));
+  }, [roomBase, roomTax]);
 
   const roomDiscountAmount = useMemo(() => {
     if (!roomDiscountValue || roomBase <= 0) return 0;
@@ -159,6 +199,7 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
   const isCheckedIn = booking?.status === 'CHECKED_IN';
 
   return (
+    <>
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -267,9 +308,22 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                         }`}>
                           {booking.paymentStatus}
                         </span>
-                        <span className="text-white font-bold font-mono">₹{roomBase.toFixed(2)}</span>
+                        <span className="text-white font-bold font-mono">₹{roomTotal.toFixed(2)}</span>
                       </div>
                     </div>
+
+                    {roomTotal > 0 && (
+                      <div className="bg-white/5 rounded-xl p-2.5 text-xs space-y-1 text-slate-400">
+                        <div className="flex justify-between items-center">
+                          <span>Base Amount:</span>
+                          <span className="text-slate-200 font-mono">₹{roomBase.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span>GST (5%):</span>
+                          <span className="text-slate-200 font-mono">₹{roomTax.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Room Bill Discount Controls */}
                     {booking.paymentStatus !== 'PAID' && (
@@ -440,7 +494,7 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                     </div>
                     <div className="text-emerald-400 font-black text-2xl font-mono tracking-tight">
                       ₹{Math.max(0, (
-                        (booking.paymentStatus !== 'PAID' ? Math.max(0, Number(booking.totalAmount || 0) - (roomDiscountAmount || 0)) : 0) +
+                        (booking.paymentStatus !== 'PAID' ? Math.max(0, roomTotal - (roomDiscountAmount || 0)) : 0) +
                         Math.max(0, Number(booking.foodTotalAmount || 0) - (foodDiscountAmount || 0))
                       )).toFixed(2)}
                     </div>
@@ -454,7 +508,7 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                       Back
                     </button>
                     <button
-                      onClick={() => printBookingBill(booking, roomDiscountAmount, foodDiscountAmount)}
+                      onClick={() => setIsPrintModalOpen(true)}
                       className="flex-1 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 text-xs font-bold flex items-center justify-center gap-1.5"
                     >
                       <Printer size={14} /> Print Bill
@@ -515,20 +569,44 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                 <>
                   {/* Guest Info Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="flex items-center gap-3 bg-black/20 p-3.5 rounded-xl border border-white/5">
-                      <div className="p-2 bg-blue-500/20 text-blue-400 rounded-lg shrink-0"><User size={18} /></div>
-                      <div className="overflow-hidden">
-                        <div className="text-xs text-slate-400 mb-0.5">Guest Name</div>
-                        <div className="text-white font-bold truncate">{booking.guestName || 'Unknown'}</div>
+                    <div className="flex items-center justify-between bg-black/20 p-3.5 rounded-xl border border-white/5">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="p-2 bg-blue-500/20 text-blue-400 rounded-lg shrink-0"><User size={18} /></div>
+                        <div className="overflow-hidden">
+                          <div className="text-xs text-slate-400 mb-0.5">Guest Name</div>
+                          <div className="text-white font-bold truncate">{booking.guestName || 'Unknown'}</div>
+                        </div>
                       </div>
+                      {(booking.status === 'RESERVED' || booking.status === 'CHECKED_IN') && (
+                        <button
+                          onClick={() => setIsEditGuestModalOpen(true)}
+                          className="px-2.5 py-1 bg-white/10 hover:bg-violet-600/30 active:scale-95 text-slate-200 hover:text-white border border-white/20 hover:border-violet-400/60 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer shadow-sm"
+                          title="Edit Guest Details"
+                        >
+                          <Edit2 size={12} className="text-violet-400" />
+                          <span>Edit</span>
+                        </button>
+                      )}
                     </div>
                     
-                    <div className="flex items-center gap-3 bg-black/20 p-3.5 rounded-xl border border-white/5">
-                      <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg shrink-0"><Phone size={18} /></div>
-                      <div className="overflow-hidden">
-                        <div className="text-xs text-slate-400 mb-0.5">Phone Number</div>
-                        <div className="text-white font-bold truncate">{booking.guestPhone}</div>
+                    <div className="flex items-center justify-between bg-black/20 p-3.5 rounded-xl border border-white/5">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg shrink-0"><Phone size={18} /></div>
+                        <div className="overflow-hidden">
+                          <div className="text-xs text-slate-400 mb-0.5">Phone Number</div>
+                          <div className="text-white font-bold truncate">{booking.guestPhone}</div>
+                        </div>
                       </div>
+                      {(booking.status === 'RESERVED' || booking.status === 'CHECKED_IN') && (
+                        <button
+                          onClick={() => setIsEditGuestModalOpen(true)}
+                          className="px-2.5 py-1 bg-white/10 hover:bg-violet-600/30 active:scale-95 text-slate-200 hover:text-white border border-white/20 hover:border-violet-400/60 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer shadow-sm"
+                          title="Edit Guest Details"
+                        >
+                          <Edit2 size={12} className="text-violet-400" />
+                          <span>Edit</span>
+                        </button>
+                      )}
                     </div>
 
                     {booking.guestEmail && (
@@ -560,6 +638,57 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                         <div className="text-xs text-slate-400 mb-0.5">Check-Out</div>
                         <div className="text-white font-bold text-sm">
                           {booking.checkOut ? new Date(booking.checkOut).toLocaleDateString() : '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Billing Summary Section */}
+                  <div className="bg-black/30 border border-white/10 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm font-bold text-slate-200">
+                        <CreditCard size={18} className="text-primary" />
+                        <span>Billing Summary</span>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                        booking.paymentStatus === 'PAID'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                      }`}>
+                        {booking.paymentStatus}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                      <div className="bg-surface/80 border border-white/10 rounded-xl p-3 space-y-1">
+                        <div className="text-slate-400 font-semibold flex items-center justify-between">
+                          <span>Room Base:</span>
+                          <span className="text-slate-200 font-mono font-bold">₹{roomBase.toFixed(2)}</span>
+                        </div>
+                        <div className="text-slate-400 font-semibold flex items-center justify-between">
+                          <span>Room GST (5%):</span>
+                          <span className="text-emerald-400 font-mono font-bold">+₹{roomTax.toFixed(2)}</span>
+                        </div>
+                        <div className="pt-1.5 border-t border-white/10 flex items-center justify-between text-slate-100 font-bold">
+                          <span>Room Total:</span>
+                          <span className="font-mono text-emerald-400">₹{roomTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-surface/80 border border-white/10 rounded-xl p-3 space-y-1">
+                        <div className="text-slate-400 font-semibold flex items-center justify-between">
+                          <span>Restaurant Food:</span>
+                          <span className="text-slate-200 font-mono font-bold">₹{Number(booking.foodTotalAmount || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="text-slate-400 font-semibold flex items-center justify-between">
+                          <span>Discounts:</span>
+                          <span className="text-rose-400 font-mono font-bold">-₹{(Number(booking.roomDiscountAmount || 0) + Number(booking.foodDiscountAmount || 0)).toFixed(2)}</span>
+                        </div>
+                        <div className="pt-1.5 border-t border-white/10 flex items-center justify-between text-slate-100 font-bold">
+                          <span>Grand Total:</span>
+                          <span className="font-mono text-emerald-400">
+                            ₹{Math.max(0, roomTotal + Number(booking.foodTotalAmount || 0) - Number(booking.roomDiscountAmount || 0) - Number(booking.foodDiscountAmount || 0)).toFixed(2)}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -615,26 +744,49 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                         onClick={handleOpenEditRooms}
                         className="flex-1 py-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 font-bold text-xs transition-all flex items-center justify-center gap-2"
                       >
-                        <Edit2 size={15} /> Change / Edit Room
+                        <Edit2 size={15} /> Change Room
+                      </button>
+                      <button
+                        onClick={() => setIsPrintModalOpen(true)}
+                        className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 font-bold text-xs transition-all flex items-center justify-center gap-2"
+                      >
+                        <Printer size={15} /> Print
                       </button>
                       <button
                         onClick={() => setMode('checkout')}
                         className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs transition-all shadow-lg shadow-red-500/20 flex items-center justify-center gap-2"
                       >
-                        <CheckCircle size={15} /> Check Out Guest
+                        <CheckCircle size={15} /> Check Out
+                      </button>
+                    </div>
+                  )}
+
+                  {booking?.status === 'CHECKED_OUT' && (
+                    <div className="pt-2 flex items-center justify-end">
+                      <button
+                        onClick={() => setIsPrintModalOpen(true)}
+                        className="py-3 px-6 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 font-bold text-xs transition-all flex items-center justify-center gap-2"
+                      >
+                        <Printer size={15} /> Print Bill
                       </button>
                     </div>
                   )}
 
                   {/* Actions for Reserved Booking */}
                   {booking?.status === 'RESERVED' && (
-                    <div className="pt-2 flex items-center justify-end">
+                    <div className="pt-2 flex items-center justify-between gap-3">
                       <button
-                        onClick={() => setMode('cancel')}
+                        onClick={() => setIsPrintModalOpen(true)}
+                        className="py-3 px-5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 font-bold text-xs transition-all flex items-center justify-center gap-2"
+                      >
+                        <Printer size={15} /> Print Bill
+                      </button>
+                      <button
+                        onClick={handleCancelBooking}
                         disabled={submitting}
                         className="py-3 px-6 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                       >
-                        <X size={15} />
+                        {submitting ? <Loader2 size={15} className="animate-spin" /> : <X size={15} />}
                         Cancel Booking
                       </button>
                     </div>
@@ -646,5 +798,24 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
         </div>
       )}
     </AnimatePresence>
+
+    <EditGuestModal
+      isOpen={isEditGuestModalOpen}
+      onClose={() => setIsEditGuestModalOpen(false)}
+      booking={booking}
+      onSuccess={() => {
+        fetchBooking();
+        onRefresh?.();
+      }}
+    />
+
+    <PrintBookingBillModal
+      isOpen={isPrintModalOpen}
+      onClose={() => setIsPrintModalOpen(false)}
+      booking={booking}
+      roomDiscount={roomDiscountAmount}
+      foodDiscount={foodDiscountAmount}
+    />
+    </>
   );
 }
