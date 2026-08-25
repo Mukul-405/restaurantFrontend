@@ -608,8 +608,8 @@ export default function AnalysisPage() {
         <head>
           <title>Hotel Bookings & Occupancy Report</title>
           <style>
-            @page { margin: 0; size: A4 portrait; }
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 15mm; font-size: 13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            @page { margin: 12mm 10mm; size: A4 portrait; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 0; font-size: 13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 20px; }
             .title { font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
             .subtitle { color: #64748b; font-size: 12px; margin: 0; }
@@ -660,13 +660,15 @@ export default function AnalysisPage() {
         <head>
           <title>Sales & Revenue Summary Report</title>
           <style>
-            @page { margin: 0; size: A4 portrait; }
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 15mm; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            @page { margin: 12mm 10mm; size: A4 portrait; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 0; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; }
             .title { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
             .subtitle { color: #64748b; font-size: 11px; margin: 0; }
             .section-title { font-size: 13px; font-weight: 800; color: #0f172a; margin: 16px 0 6px 0; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+            thead { display: table-header-group; }
+            tr { page-break-inside: avoid; break-inside: avoid; }
             th { background: #f1f5f9; text-align: left; padding: 6px 10px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; }
             td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
             .text-right { text-align: right; }
@@ -738,8 +740,8 @@ export default function AnalysisPage() {
         <head>
           <title>Restaurant Order Items Analysis Report (Excl. GST)</title>
           <style>
-            @page { margin: 0; size: A4 portrait; }
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 15mm; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            @page { margin: 12mm 10mm; size: A4 portrait; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 0; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; }
             .title { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
             .subtitle { color: #64748b; font-size: 11px; margin: 0; }
@@ -748,6 +750,8 @@ export default function AnalysisPage() {
             .card-title { font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 3px; }
             .card-val { font-size: 16px; font-weight: 800; color: #0f172a; }
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            thead { display: table-header-group; }
+            tr { page-break-inside: avoid; break-inside: avoid; }
             th { background: #f1f5f9; text-align: left; padding: 6px 10px; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; }
             td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
             .text-center { text-align: center; }
@@ -900,7 +904,7 @@ export default function AnalysisPage() {
           <style>
             @page {
               size: A4 portrait;
-              margin: 0;
+              margin: 12mm 10mm 12mm 10mm;
             }
             * { box-sizing: border-box; }
             body {
@@ -908,7 +912,7 @@ export default function AnalysisPage() {
               color: #000;
               background: #fff;
               margin: 0;
-              padding: 12mm 10mm;
+              padding: 0;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
@@ -918,18 +922,25 @@ export default function AnalysisPage() {
               font-weight: bold;
               font-style: italic;
               text-decoration: underline;
-              margin-bottom: 6px;
+              margin-bottom: 4px;
             }
             .sub-title {
               text-align: center;
               font-size: 11px;
               color: #444;
-              margin-bottom: 14px;
+              margin-bottom: 12px;
             }
             table {
               width: 100%;
               border-collapse: collapse;
               font-size: 11px;
+            }
+            thead {
+              display: table-header-group;
+            }
+            tr {
+              page-break-inside: avoid;
+              break-inside: avoid;
             }
             th, td {
               border: 1px solid #333;
@@ -948,6 +959,8 @@ export default function AnalysisPage() {
               font-weight: bold;
               font-size: 12px;
               padding: 5px 8px;
+              page-break-after: avoid;
+              break-after: avoid;
             }
             .subtotal-cell {
               background-color: #f8fafc;
@@ -957,6 +970,7 @@ export default function AnalysisPage() {
               background-color: #cbd5e1;
               font-weight: 900;
               font-size: 12px;
+              border-top: 2px solid #000;
             }
             .cancelled-text {
               font-style: italic;
@@ -1010,8 +1024,6 @@ export default function AnalysisPage() {
                   <td class="subtotal-cell">${day.completedOrders} Completed</td>
                 </tr>
               `).join('')}
-            </tbody>
-            <tfoot>
               <tr>
                 <td colspan="3" class="grand-total-cell text-right">Grand Total:</td>
                 <td class="grand-total-cell text-right">${Number(res.totalBaseAmount).toFixed(2)}</td>
@@ -1020,7 +1032,7 @@ export default function AnalysisPage() {
                 <td class="grand-total-cell text-right">${Number(res.grandTotalAmount).toFixed(2)}</td>
                 <td class="grand-total-cell">${res.completedOrders} Orders</td>
               </tr>
-            </tfoot>
+            </tbody>
           </table>
         </body>
       </html>
