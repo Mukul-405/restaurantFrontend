@@ -5,12 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   IndianRupee, Receipt, TrendingUp, Users, Bed, Building2, Calendar, 
   AlertCircle, Banknote, CreditCard, QrCode, Download, Printer, 
-  UtensilsCrossed, ShoppingBag, Search, ArrowUpDown, Sparkles, Hotel
+  UtensilsCrossed, ShoppingBag, Search, ArrowUpDown, Sparkles, Hotel,
+  FileSpreadsheet, CheckCircle2, XCircle, FileText, Check, Layers
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { 
-  getRevenueAnalysis, getWaiterAnalysis, getBookingAnalysis, getChannelAnalysis, getOrderItemAnalysis,
-  RevenueAnalysis, WaiterAnalysis, BookingAnalysis, ChannelAnalysis, OrderItemAnalysis 
+  getRevenueAnalysis, getWaiterAnalysis, getBookingAnalysis, getChannelAnalysis, getOrderItemAnalysis, getDailyBillSummary,
+  RevenueAnalysis, WaiterAnalysis, BookingAnalysis, ChannelAnalysis, OrderItemAnalysis, DailyBillSummaryResult, DailyBillSummaryItem, DayGroupSummary
 } from '../../../lib/analysis';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -222,6 +223,7 @@ export default function AnalysisPage() {
     revenue: { start: getLocalDateString(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)), end: getLocalDateString(new Date()) },
     orderItem: { start: getLocalDateString(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)), end: getLocalDateString(new Date()) },
     waiter: { start: getLocalDateString(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)), end: getLocalDateString(new Date()) },
+    dailyBills: { start: getLocalDateString(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)), end: getLocalDateString(new Date()) },
   });
 
   const [data, setData] = useState({
@@ -230,10 +232,11 @@ export default function AnalysisPage() {
     booking: null as BookingAnalysis | null,
     channel: null as ChannelAnalysis | null,
     orderItem: null as OrderItemAnalysis | null,
+    dailyBills: null as DailyBillSummaryResult | null,
   });
 
   const [loading, setLoading] = useState({
-    revenue: false, waiter: false, booking: false, channel: false, orderItem: false
+    revenue: false, waiter: false, booking: false, channel: false, orderItem: false, dailyBills: false
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string | null }>({
@@ -242,11 +245,17 @@ export default function AnalysisPage() {
     revenue: null,
     waiter: null,
     orderItem: null,
+    dailyBills: null,
   });
 
   // Local filter & sorting for Order Items table
   const [itemSearchQuery, setItemSearchQuery] = useState('');
   const [itemSortBy, setItemSortBy] = useState<'quantity' | 'amount' | 'name'>('quantity');
+
+  // Local filter for Daily Bill Summary table
+  const [dailyBillSearch, setDailyBillSearch] = useState('');
+  const [dailyBillStatusFilter, setDailyBillStatusFilter] = useState<'ALL' | 'COMPLETED' | 'CANCELLED'>('ALL');
+  const [dailyBillPaymentFilter, setDailyBillPaymentFilter] = useState<string>('ALL');
 
   const updateDateRange = (section: keyof typeof dateRanges, field: 'start' | 'end', value: string) => {
     setDateRanges(prev => ({ ...prev, [section]: { ...prev[section], [field]: value } }));
@@ -317,6 +326,7 @@ export default function AnalysisPage() {
   const fetchRevenueAnalysis = () => fetchData('revenue', getRevenueAnalysis);
   const fetchOrderItemAnalysis = () => fetchData('orderItem', getOrderItemAnalysis);
   const fetchWaiterAnalysis = () => fetchData('waiter', getWaiterAnalysis);
+  const fetchDailyBillSummary = () => fetchData('dailyBills', getDailyBillSummary);
 
   const generateBookingPDF = () => {
     if (!data.booking) return null;
@@ -598,8 +608,8 @@ export default function AnalysisPage() {
         <head>
           <title>Hotel Bookings & Occupancy Report</title>
           <style>
-            @page { margin: 15mm; size: A4 portrait; }
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; font-size: 13px; }
+            @page { margin: 0; size: A4 portrait; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 15mm; font-size: 13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 20px; }
             .title { font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
             .subtitle { color: #64748b; font-size: 12px; margin: 0; }
@@ -650,8 +660,8 @@ export default function AnalysisPage() {
         <head>
           <title>Sales & Revenue Summary Report</title>
           <style>
-            @page { margin: 15mm; size: A4 portrait; }
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; font-size: 12px; }
+            @page { margin: 0; size: A4 portrait; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 15mm; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; }
             .title { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
             .subtitle { color: #64748b; font-size: 11px; margin: 0; }
@@ -728,8 +738,8 @@ export default function AnalysisPage() {
         <head>
           <title>Restaurant Order Items Analysis Report (Excl. GST)</title>
           <style>
-            @page { margin: 15mm; size: A4 portrait; }
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; font-size: 12px; }
+            @page { margin: 0; size: A4 portrait; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 15mm; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; }
             .title { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
             .subtitle { color: #64748b; font-size: 11px; margin: 0; }
@@ -791,6 +801,323 @@ export default function AnalysisPage() {
     `;
     printHtml(html);
   };
+
+  const generateDailyBillPDF = () => {
+    if (!filteredDailyBills || filteredDailyBills.days.length === 0) return null;
+    const doc = new jsPDF();
+    const res = filteredDailyBills;
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(res.monthTitle || 'Bill Summary', 105, 18, { align: 'center' });
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Period: ${dateRanges.dailyBills.start} to ${dateRanges.dailyBills.end} | Generated: ${new Date().toLocaleString()}`, 105, 24, { align: 'center' });
+
+    const tableBody: any[] = [];
+    let currentSerNo = 1;
+
+    res.days.forEach(day => {
+      // Day header row
+      tableBody.push([
+        { content: day.dateHeaderStr, colSpan: 8, styles: { fillColor: [226, 232, 240], fontStyle: 'bold', textColor: [15, 23, 42] } }
+      ]);
+
+      day.orders.forEach(order => {
+        const isCancelled = order.status === 'CANCELLED';
+        tableBody.push([
+          String(currentSerNo++).padStart(2, '0'),
+          order.billNo,
+          order.dateStr,
+          isCancelled ? 'cancel' : Number(order.baseAmount).toFixed(2),
+          isCancelled ? '-' : Number(order.sgstAmount).toFixed(2),
+          isCancelled ? '-' : Number(order.cgstAmount).toFixed(2),
+          isCancelled ? '-' : Number(order.totalAmount).toFixed(2),
+          order.remarks || (isCancelled ? 'Cancelled' : (order.paymentMode || '-'))
+        ]);
+      });
+
+      // Day subtotal
+      tableBody.push([
+        { content: `Day Total (${day.dateStr})`, colSpan: 3, styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+        { content: Number(day.totalBaseAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 252] } },
+        { content: Number(day.totalSgstAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 252] } },
+        { content: Number(day.totalCgstAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 252] } },
+        { content: Number(day.totalAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 252] } },
+        { content: `${day.completedOrders} Orders`, styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } }
+      ]);
+    });
+
+    autoTable(doc, {
+      startY: 30,
+      theme: 'grid',
+      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+      styles: { fontSize: 8, cellPadding: 2.5 },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 16 },
+        1: { halign: 'center', cellWidth: 20 },
+        2: { halign: 'center', cellWidth: 24 },
+        3: { halign: 'right' },
+        4: { halign: 'right' },
+        5: { halign: 'right' },
+        6: { halign: 'right' },
+        7: { cellWidth: 34 },
+      },
+      head: [['Ser No', 'Bill No', 'Date', 'Amount', 'SGST 2.5%', 'CGST 2.5%', 'Total Amount', 'Remarks']],
+      body: tableBody,
+      foot: [
+        [
+          { content: 'Grand Total', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [226, 232, 240] } },
+          { content: Number(res.totalBaseAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [226, 232, 240] } },
+          { content: Number(res.totalSgstAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [226, 232, 240] } },
+          { content: Number(res.totalCgstAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [226, 232, 240] } },
+          { content: Number(res.grandTotalAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [226, 232, 240] } },
+          { content: `${res.completedOrders} Completed`, styles: { fontStyle: 'bold', fillColor: [226, 232, 240] } }
+        ]
+      ]
+    });
+
+    return doc;
+  };
+
+  const downloadDailyBillReport = () => {
+    const doc = generateDailyBillPDF();
+    if (doc) doc.save(`bill-summary-${dateRanges.dailyBills.start}-to-${dateRanges.dailyBills.end}.pdf`);
+  };
+
+  const printDailyBillReport = () => {
+    if (!filteredDailyBills || filteredDailyBills.days.length === 0) return;
+    const res = filteredDailyBills;
+    let currentSerNo = 1;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${escapeHtml(res.monthTitle || 'Bill Summary')}</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+            * { box-sizing: border-box; }
+            body {
+              font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+              color: #000;
+              background: #fff;
+              margin: 0;
+              padding: 12mm 10mm;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .header-title {
+              text-align: center;
+              font-size: 16px;
+              font-weight: bold;
+              font-style: italic;
+              text-decoration: underline;
+              margin-bottom: 6px;
+            }
+            .sub-title {
+              text-align: center;
+              font-size: 11px;
+              color: #444;
+              margin-bottom: 14px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 11px;
+            }
+            th, td {
+              border: 1px solid #333;
+              padding: 4px 6px;
+            }
+            th {
+              background-color: #f1f5f9;
+              font-weight: bold;
+              text-align: center;
+              font-size: 11px;
+            }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .day-header-cell {
+              background-color: #e2e8f0;
+              font-weight: bold;
+              font-size: 12px;
+              padding: 5px 8px;
+            }
+            .subtotal-cell {
+              background-color: #f8fafc;
+              font-weight: bold;
+            }
+            .grand-total-cell {
+              background-color: #cbd5e1;
+              font-weight: 900;
+              font-size: 12px;
+            }
+            .cancelled-text {
+              font-style: italic;
+              color: #444;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header-title">${escapeHtml(res.monthTitle || 'Bill Summary')}</div>
+          <div class="sub-title">Period: ${dateRanges.dailyBills.start} to ${dateRanges.dailyBills.end} &bull; Generated: ${new Date().toLocaleString()}</div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 45px;">Ser No</th>
+                <th style="width: 70px;">Bill No</th>
+                <th style="width: 95px;">Date</th>
+                <th class="text-right">Amount</th>
+                <th class="text-right" style="width: 70px;">SGST 2.5%</th>
+                <th class="text-right" style="width: 70px;">CGST 2.5%</th>
+                <th class="text-right">Total Amount</th>
+                <th style="width: 100px;">Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${res.days.map(day => `
+                <tr>
+                  <td colspan="8" class="day-header-cell">${escapeHtml(day.dateHeaderStr)}</td>
+                </tr>
+                ${day.orders.map(order => {
+                  const isCancelled = order.status === 'CANCELLED';
+                  const ser = String(currentSerNo++).padStart(2, '0');
+                  return `
+                    <tr>
+                      <td class="text-center">${ser}.</td>
+                      <td class="text-center" style="font-weight: 600;">${escapeHtml(order.billNo)}</td>
+                      <td class="text-center">${escapeHtml(order.dateStr)}</td>
+                      <td class="text-right">${isCancelled ? '<span class="cancelled-text">cancel</span>' : Number(order.baseAmount).toFixed(2)}</td>
+                      <td class="text-right">${isCancelled ? '-' : Number(order.sgstAmount).toFixed(2)}</td>
+                      <td class="text-right">${isCancelled ? '-' : Number(order.cgstAmount).toFixed(2)}</td>
+                      <td class="text-right" style="font-weight: ${isCancelled ? 'normal' : 'bold'};">${isCancelled ? '-' : Number(order.totalAmount).toFixed(2)}</td>
+                      <td>${escapeHtml(order.remarks || (isCancelled ? 'Cancelled' : ''))}</td>
+                    </tr>
+                  `;
+                }).join('')}
+                <tr>
+                  <td colspan="3" class="subtotal-cell text-right">Day Total (${escapeHtml(day.dateStr)}):</td>
+                  <td class="subtotal-cell text-right">${Number(day.totalBaseAmount).toFixed(2)}</td>
+                  <td class="subtotal-cell text-right">${Number(day.totalSgstAmount).toFixed(2)}</td>
+                  <td class="subtotal-cell text-right">${Number(day.totalCgstAmount).toFixed(2)}</td>
+                  <td class="subtotal-cell text-right">${Number(day.totalAmount).toFixed(2)}</td>
+                  <td class="subtotal-cell">${day.completedOrders} Completed</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" class="grand-total-cell text-right">Grand Total:</td>
+                <td class="grand-total-cell text-right">${Number(res.totalBaseAmount).toFixed(2)}</td>
+                <td class="grand-total-cell text-right">${Number(res.totalSgstAmount).toFixed(2)}</td>
+                <td class="grand-total-cell text-right">${Number(res.totalCgstAmount).toFixed(2)}</td>
+                <td class="grand-total-cell text-right">${Number(res.grandTotalAmount).toFixed(2)}</td>
+                <td class="grand-total-cell">${res.completedOrders} Orders</td>
+              </tr>
+            </tfoot>
+          </table>
+        </body>
+      </html>
+    `;
+    printHtml(html);
+  };
+
+  // Filtered & sorted daily bills summary
+  const filteredDailyBills = useMemo(() => {
+    if (!data.dailyBills) return null;
+    const res = data.dailyBills;
+    const search = dailyBillSearch.trim().toLowerCase();
+
+    const days = res.days.map(day => {
+      const orders = day.orders.filter(order => {
+        if (dailyBillStatusFilter !== 'ALL' && order.status !== dailyBillStatusFilter) {
+          return false;
+        }
+        if (dailyBillPaymentFilter !== 'ALL') {
+          if (order.status === 'CANCELLED') return false;
+          if (order.paymentMode !== dailyBillPaymentFilter) return false;
+        }
+        if (search) {
+          const matchBill = order.billNo.toLowerCase().includes(search);
+          const matchOrder = String(order.orderNumber).includes(search);
+          const matchRemarks = order.remarks.toLowerCase().includes(search);
+          const matchTable = order.tableNumber ? String(order.tableNumber).includes(search) : false;
+          const matchWaiter = order.waiterName ? order.waiterName.toLowerCase().includes(search) : false;
+          if (!matchBill && !matchOrder && !matchRemarks && !matchTable && !matchWaiter) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      let totalBase = 0;
+      let totalSgst = 0;
+      let totalCgst = 0;
+      let totalAmt = 0;
+      let completed = 0;
+      let cancelled = 0;
+
+      orders.forEach(o => {
+        if (o.status === 'CANCELLED') {
+          cancelled += 1;
+        } else {
+          completed += 1;
+          totalBase = Number((totalBase + o.baseAmount).toFixed(2));
+          totalSgst = Number((totalSgst + o.sgstAmount).toFixed(2));
+          totalCgst = Number((totalCgst + o.cgstAmount).toFixed(2));
+          totalAmt = Number((totalAmt + o.totalAmount).toFixed(2));
+        }
+      });
+
+      return {
+        ...day,
+        totalOrders: orders.length,
+        completedOrders: completed,
+        cancelledOrders: cancelled,
+        totalBaseAmount: totalBase,
+        totalSgstAmount: totalSgst,
+        totalCgstAmount: totalCgst,
+        totalAmount: totalAmt,
+        orders,
+      };
+    }).filter(day => day.orders.length > 0);
+
+    let grandBase = 0;
+    let grandSgst = 0;
+    let grandCgst = 0;
+    let grandTotal = 0;
+    let totalCompleted = 0;
+    let totalCancelled = 0;
+    let totalOrdCount = 0;
+
+    days.forEach(d => {
+      grandBase = Number((grandBase + d.totalBaseAmount).toFixed(2));
+      grandSgst = Number((grandSgst + d.totalSgstAmount).toFixed(2));
+      grandCgst = Number((grandCgst + d.totalCgstAmount).toFixed(2));
+      grandTotal = Number((grandTotal + d.totalAmount).toFixed(2));
+      totalCompleted += d.completedOrders;
+      totalCancelled += d.cancelledOrders;
+      totalOrdCount += d.totalOrders;
+    });
+
+    return {
+      ...res,
+      totalOrders: totalOrdCount,
+      completedOrders: totalCompleted,
+      cancelledOrders: totalCancelled,
+      totalBaseAmount: grandBase,
+      totalSgstAmount: grandSgst,
+      totalCgstAmount: grandCgst,
+      grandTotalAmount: grandTotal,
+      days,
+    };
+  }, [data.dailyBills, dailyBillSearch, dailyBillStatusFilter, dailyBillPaymentFilter]);
 
   // Filtered & sorted order items
   const filteredOrderItems = useMemo(() => {
@@ -994,8 +1321,344 @@ export default function AnalysisPage() {
             transition={{ duration: 0.2 }}
             className="space-y-6 sm:space-y-8"
           >
-            {/* Restaurant Revenue Section */}
+            {/* ===================== DAILY BILL SUMMARY SECTION ===================== */}
             <section className="space-y-4 sm:space-y-6">
+              <DateRangeFilter
+                title="Restaurant Bill Summary (Daily Orders & 5% GST Breakdown)"
+                icon={FileSpreadsheet}
+                iconColor="text-emerald-400"
+                color={{ bgLight: 'bg-emerald-500/20', text: 'text-emerald-400', bgHover: 'bg-emerald-500/30', border: 'border-emerald-500/50' }}
+                startDate={dateRanges.dailyBills.start}
+                setStartDate={(v: string) => updateDateRange('dailyBills', 'start', v)}
+                endDate={dateRanges.dailyBills.end}
+                setEndDate={(v: string) => updateDateRange('dailyBills', 'end', v)}
+                onGenerate={fetchDailyBillSummary}
+                loading={loading.dailyBills}
+                setDateRangeType={(type: string) => setPresetDateRange(type, 'dailyBills', getDailyBillSummary)}
+                error={errors.dailyBills}
+                onDownload={downloadDailyBillReport}
+                onPrint={printDailyBillReport}
+                hasData={!!filteredDailyBills && (filteredDailyBills.totalOrders > 0)}
+              />
+
+              {loading.dailyBills ? (
+                <div className="h-48 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : filteredDailyBills ? (
+                <div className="space-y-4 sm:space-y-6">
+                  {/* Summary Stat Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+                    <StatCard
+                      title="Total Orders"
+                      value={`${filteredDailyBills.totalOrders}`}
+                      icon={Receipt}
+                      color="bg-purple-500"
+                    />
+                    <StatCard
+                      title="Total Base Amount"
+                      value={`₹${Number(filteredDailyBills.totalBaseAmount || 0).toFixed(2)}`}
+                      icon={IndianRupee}
+                      color="bg-blue-500"
+                    />
+                    <StatCard
+                      title="SGST (2.5%)"
+                      value={`₹${Number(filteredDailyBills.totalSgstAmount || 0).toFixed(2)}`}
+                      icon={Receipt}
+                      color="bg-amber-500"
+                    />
+                    <StatCard
+                      title="CGST (2.5%)"
+                      value={`₹${Number(filteredDailyBills.totalCgstAmount || 0).toFixed(2)}`}
+                      icon={Receipt}
+                      color="bg-orange-500"
+                    />
+                    <StatCard
+                      title="Grand Total (Inc. GST)"
+                      value={`₹${Number(filteredDailyBills.grandTotalAmount || 0).toFixed(2)}`}
+                      icon={IndianRupee}
+                      color="bg-emerald-500"
+                    />
+                  </div>
+
+                  {/* Filter & Search Bar */}
+                  <div className="bg-surface/30 p-3.5 sm:p-4 rounded-2xl border border-white/10 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 sm:gap-4 shadow-md">
+                    <div className="relative flex-1 max-w-md">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input
+                        type="text"
+                        placeholder="Search by Bill # (e.g. A1-01), table, remarks..."
+                        value={dailyBillSearch}
+                        onChange={(e) => setDailyBillSearch(e.target.value)}
+                        className="w-full bg-surface/60 border border-white/10 text-white pl-10 pr-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-500"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Status Filter */}
+                      <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-xs">
+                        {(['ALL', 'COMPLETED', 'CANCELLED'] as const).map(st => (
+                          <button
+                            key={st}
+                            onClick={() => setDailyBillStatusFilter(st)}
+                            className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                              dailyBillStatusFilter === st
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm'
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            {st === 'ALL' ? 'All Status' : st === 'COMPLETED' ? 'Completed' : 'Cancelled'}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Payment Mode Filter */}
+                      <select
+                        value={dailyBillPaymentFilter}
+                        onChange={(e) => setDailyBillPaymentFilter(e.target.value)}
+                        className="bg-black/40 border border-white/10 text-slate-300 text-xs rounded-xl px-3 py-1.5 outline-none focus:border-emerald-500 font-medium cursor-pointer"
+                      >
+                        <option value="ALL">All Payment Modes</option>
+                        <option value="CASH">Cash</option>
+                        <option value="UPI">UPI</option>
+                        <option value="CARD">Card</option>
+                        <option value="ROOM_TRANSFER">Room Transfer</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Desktop / Tablet Table View */}
+                  <div className="hidden md:block bg-surface/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-xl">
+                    <div className="max-h-[600px] overflow-y-auto overflow-x-auto custom-scrollbar">
+                      <table className="w-full text-sm text-left text-slate-300 min-w-[750px] relative">
+                        <thead className="text-xs text-slate-400 uppercase bg-black/80 backdrop-blur-md border-b border-white/10 sticky top-0 z-20">
+                          <tr>
+                            <th scope="col" className="px-4 py-3.5 w-16 text-center">Ser No</th>
+                            <th scope="col" className="px-4 py-3.5 w-24 text-center">Bill No</th>
+                            <th scope="col" className="px-4 py-3.5 text-center">Date</th>
+                            <th scope="col" className="px-4 py-3.5 text-right">Amount (Base)</th>
+                            <th scope="col" className="px-4 py-3.5 text-right">SGST (2.5%)</th>
+                            <th scope="col" className="px-4 py-3.5 text-right">CGST (2.5%)</th>
+                            <th scope="col" className="px-4 py-3.5 text-right">Total Amount</th>
+                            <th scope="col" className="px-4 py-3.5 text-left">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 font-mono text-xs">
+                          {filteredDailyBills.days.length === 0 ? (
+                            <tr>
+                              <td colSpan={8} className="px-6 py-12 text-center text-slate-500 font-sans">
+                                {dailyBillSearch ? 'No bills match your search filter.' : 'No restaurant orders found in this date range.'}
+                              </td>
+                            </tr>
+                          ) : (
+                            (() => {
+                              let rowSerNo = 1;
+                              return filteredDailyBills.days.map((day) => (
+                                <React.Fragment key={day.dateKey}>
+                                  {/* Day Group Header */}
+                                  <tr className="bg-slate-800/80 border-y border-white/10 font-sans sticky z-10">
+                                    <td colSpan={8} className="px-4 py-2.5 font-bold text-white text-xs">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <Calendar size={14} className="text-emerald-400" />
+                                          <span className="text-sm font-bold text-emerald-300">{day.dateHeaderStr}</span>
+                                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-slate-300 font-normal">
+                                            {day.totalOrders} Orders
+                                          </span>
+                                        </div>
+                                        <div className="text-[11px] font-medium text-slate-300 flex items-center gap-3">
+                                          <span>Base: <strong className="text-white font-mono">₹{day.totalBaseAmount.toFixed(2)}</strong></span>
+                                          <span>GST: <strong className="text-amber-300 font-mono">₹{(day.totalSgstAmount + day.totalCgstAmount).toFixed(2)}</strong></span>
+                                          <span>Total: <strong className="text-emerald-400 font-mono">₹{day.totalAmount.toFixed(2)}</strong></span>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+
+                                  {/* Orders for this day */}
+                                  {day.orders.map((order) => {
+                                    const isCancelled = order.status === 'CANCELLED';
+                                    const ser = String(rowSerNo++).padStart(2, '0');
+
+                                    return (
+                                      <tr
+                                        key={`bill-row-${order.id}`}
+                                        className={`hover:bg-white/5 transition-colors ${isCancelled ? 'opacity-60 bg-red-500/5' : ''}`}
+                                      >
+                                        <td className="px-4 py-2.5 text-center text-slate-500 font-semibold">{ser}.</td>
+                                        <td className="px-4 py-2.5 text-center font-bold text-white tracking-wide">
+                                          {order.billNo}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-center text-slate-300">
+                                          {order.dateStr}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right font-medium text-slate-200">
+                                          {isCancelled ? (
+                                            <span className="text-rose-400 font-bold font-sans text-[11px] px-1.5 py-0.5 rounded bg-rose-500/10">cancel</span>
+                                          ) : (
+                                            `₹${Number(order.baseAmount).toFixed(2)}`
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right text-amber-400/90 font-medium">
+                                          {isCancelled ? '-' : `₹${Number(order.sgstAmount).toFixed(2)}`}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right text-amber-400/90 font-medium">
+                                          {isCancelled ? '-' : `₹${Number(order.cgstAmount).toFixed(2)}`}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right font-bold text-emerald-400">
+                                          {isCancelled ? '-' : `₹${Number(order.totalAmount).toFixed(2)}`}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-left font-sans text-xs">
+                                          {isCancelled ? (
+                                            <span className="text-rose-400 font-medium text-[11px] flex items-center gap-1">
+                                              <XCircle size={12} /> {order.remarks}
+                                            </span>
+                                          ) : (
+                                            <span className="text-slate-300 text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/5 border border-white/5">
+                                              {order.remarks}
+                                            </span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+
+                                  {/* Day Subtotal Row */}
+                                  <tr className="bg-black/40 border-t border-white/10 font-bold font-mono text-xs">
+                                    <td colSpan={3} className="px-4 py-2 text-right text-slate-400 font-sans text-xs">
+                                      Subtotal ({day.dateStr}):
+                                    </td>
+                                    <td className="px-4 py-2 text-right text-slate-200">
+                                      ₹{day.totalBaseAmount.toFixed(2)}
+                                    </td>
+                                    <td className="px-4 py-2 text-right text-amber-400">
+                                      ₹{day.totalSgstAmount.toFixed(2)}
+                                    </td>
+                                    <td className="px-4 py-2 text-right text-amber-400">
+                                      ₹{day.totalCgstAmount.toFixed(2)}
+                                    </td>
+                                    <td className="px-4 py-2 text-right text-emerald-400 text-sm font-black">
+                                      ₹{day.totalAmount.toFixed(2)}
+                                    </td>
+                                    <td className="px-4 py-2 text-slate-400 font-sans text-[11px]">
+                                      {day.completedOrders} Completed
+                                    </td>
+                                  </tr>
+                                </React.Fragment>
+                              ));
+                            })()
+                          )}
+                        </tbody>
+                        {filteredDailyBills.days.length > 0 && (
+                          <tfoot className="bg-black/90 backdrop-blur-md border-t-2 border-emerald-500/40 text-white sticky bottom-0 z-20 font-mono text-xs font-bold">
+                            <tr>
+                              <td colSpan={3} className="px-4 py-3.5 text-right font-sans text-xs uppercase tracking-wider text-emerald-400">
+                                Grand Total:
+                              </td>
+                              <td className="px-4 py-3.5 text-right text-white">
+                                ₹{filteredDailyBills.totalBaseAmount.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-3.5 text-right text-amber-400">
+                                ₹{filteredDailyBills.totalSgstAmount.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-3.5 text-right text-amber-400">
+                                ₹{filteredDailyBills.totalCgstAmount.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-3.5 text-right text-emerald-400 text-base font-black">
+                                ₹{filteredDailyBills.grandTotalAmount.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-3.5 font-sans text-xs text-slate-300">
+                                {filteredDailyBills.completedOrders} Completed Orders
+                              </td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Mobile Grouped Cards View (md:hidden) */}
+                  <div className="block md:hidden space-y-4">
+                    {filteredDailyBills.days.length === 0 ? (
+                      <div className="bg-surface/40 backdrop-blur-md rounded-2xl border border-white/10 p-8 text-center text-slate-500 text-sm">
+                        {dailyBillSearch ? 'No bills match your search filter.' : 'No restaurant orders found in this date range.'}
+                      </div>
+                    ) : (
+                      filteredDailyBills.days.map(day => (
+                        <div key={`mob-day-${day.dateKey}`} className="bg-surface/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-lg space-y-2">
+                          <div className="bg-slate-800/90 px-4 py-3 border-b border-white/10 flex items-center justify-between">
+                            <div>
+                              <h4 className="font-bold text-white text-sm">{day.dateHeaderStr}</h4>
+                              <p className="text-[11px] text-slate-400">{day.totalOrders} Orders</p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-emerald-400 font-bold font-mono text-sm block">₹{day.totalAmount.toFixed(2)}</span>
+                              <span className="text-[10px] text-slate-400">Base: ₹{day.totalBaseAmount.toFixed(2)}</span>
+                            </div>
+                          </div>
+
+                          <div className="p-3 space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+                            {day.orders.map((order) => {
+                              const isCancelled = order.status === 'CANCELLED';
+                              return (
+                                <div
+                                  key={`mob-order-${order.id}`}
+                                  className={`p-3 rounded-xl border transition-colors ${
+                                    isCancelled ? 'bg-rose-500/5 border-rose-500/20' : 'bg-black/30 border-white/5'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-mono font-bold text-white">{order.billNo}</span>
+                                      <span className="text-[10px] text-slate-400">&bull; {order.dateStr}</span>
+                                    </div>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                      isCancelled 
+                                        ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                    }`}>
+                                      {isCancelled ? 'CANCELLED' : (order.paymentMode || 'PAID')}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-4 gap-1 text-[11px] font-mono py-1.5 border-y border-white/5 text-center">
+                                    <div>
+                                      <span className="text-[9px] text-slate-500 font-sans block">Base</span>
+                                      <span className="text-slate-300">{isCancelled ? '-' : `₹${order.baseAmount.toFixed(2)}`}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[9px] text-slate-500 font-sans block">SGST (2.5%)</span>
+                                      <span className="text-amber-400">{isCancelled ? '-' : `₹${order.sgstAmount.toFixed(2)}`}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[9px] text-slate-500 font-sans block">CGST (2.5%)</span>
+                                      <span className="text-amber-400">{isCancelled ? '-' : `₹${order.cgstAmount.toFixed(2)}`}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[9px] text-slate-500 font-sans block">Total</span>
+                                      <span className="text-emerald-400 font-bold">{isCancelled ? '-' : `₹${order.totalAmount.toFixed(2)}`}</span>
+                                    </div>
+                                  </div>
+
+                                  {order.remarks && (
+                                    <div className="text-[10px] text-slate-400 pt-1.5 flex items-center justify-between">
+                                      <span>Remarks: {order.remarks}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
+            {/* Restaurant Revenue Section */}
+            <section className="space-y-4 sm:space-y-6 pt-4 sm:pt-6 border-t border-white/5">
               <DateRangeFilter
                 title="Restaurant Revenue Analysis"
                 icon={TrendingUp}

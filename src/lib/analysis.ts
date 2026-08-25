@@ -83,3 +83,60 @@ export const getOrderItemAnalysis = async (startDate: string, endDate: string): 
   const { data } = await api.get('/analysis/order-items', { params: { startDate, endDate } });
   return data;
 };
+
+export interface DailyBillSummaryItem {
+  id: number;
+  billNo: string;
+  orderNumber: number;
+  createdAt: string;
+  dateStr: string;
+  dateHeaderStr: string;
+  dateKey: string;
+  tableNumber: number | null;
+  status: string;
+  cancellationReason?: string | null;
+  paymentMode: string | null;
+  baseAmount: number;
+  sgstAmount: number;
+  cgstAmount: number;
+  totalAmount: number;
+  discountAmount: number;
+  finalDiscountedAmount: number;
+  waiterName?: string;
+  remarks: string;
+}
+
+export interface DayGroupSummary {
+  dateStr: string;
+  dateHeaderStr: string;
+  dateKey: string;
+  totalOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  totalBaseAmount: number;
+  totalSgstAmount: number;
+  totalCgstAmount: number;
+  totalAmount: number;
+  orders: DailyBillSummaryItem[];
+}
+
+export interface DailyBillSummaryResult {
+  startDate: string;
+  endDate: string;
+  monthTitle: string;
+  totalOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  totalBaseAmount: number;
+  totalSgstAmount: number;
+  totalCgstAmount: number;
+  grandTotalAmount: number;
+  days: DayGroupSummary[];
+  allOrders: DailyBillSummaryItem[];
+}
+
+export const getDailyBillSummary = async (startDate: string, endDate: string): Promise<DailyBillSummaryResult> => {
+  const { data } = await api.get('/analysis/daily-bills', { params: { startDate, endDate } });
+  return data;
+};
+
