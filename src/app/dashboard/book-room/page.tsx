@@ -8,6 +8,7 @@ import { createBooking, BookingPayload, getBookings, checkInBooking, checkOutBoo
 import { printBookingBill } from '../../../utils/printReceipt';
 import EditGuestModal from '../../../components/modals/EditGuestModal';
 import PrintBookingBillModal from '../../../components/modals/PrintBookingBillModal';
+import ChangePaymentModal from '../../../components/modals/ChangePaymentModal';
 
 export default function BookRoomPage() {
   const [formData, setFormData] = useState({
@@ -62,8 +63,18 @@ export default function BookRoomPage() {
   const [extendingCheckout, setExtendingCheckout] = useState(false);
   const [extendModalError, setExtendModalError] = useState('');
   const [editingGuestBooking, setEditingGuestBooking] = useState<any>(null);
+  const [paymentModalBooking, setPaymentModalBooking] = useState<any>(null);
 
   const [modalMode, setModalMode] = useState<'checkin' | 'edit'>('checkin');
+
+  const nights = useMemo(() => {
+    if (!formData.checkIn || !formData.checkOut) return 1;
+    const inDate = new Date(formData.checkIn);
+    const outDate = new Date(formData.checkOut);
+    const diffTime = outDate.getTime() - inDate.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 1;
+  }, [formData.checkIn, formData.checkOut]);
 
   const roomCheckoutTax = useMemo(() => {
     if (!checkoutBooking) return 0;
@@ -388,7 +399,8 @@ export default function BookRoomPage() {
     try {
       const totalAdults = rooms.reduce((sum, room) => sum + Number(room.adults), 0);
       const totalChildren = rooms.reduce((sum, room) => sum + Number(room.children), 0);
-      const baseAmount = rooms.reduce((sum, room) => sum + (Number(room.price) || 0), 0);
+      const dailyBaseAmount = rooms.reduce((sum, room) => sum + (Number(room.price) || 0), 0);
+      const baseAmount = Number((dailyBaseAmount * nights).toFixed(2));
       const taxAmount = Number((baseAmount * 0.05).toFixed(2));
       const totalAmount = Number((baseAmount + taxAmount).toFixed(2));
 
@@ -560,9 +572,14 @@ export default function BookRoomPage() {
                   <label className={labelClass}>Check-out Date</label>
                   <input type="date" name="checkOut" required min={formData.checkIn || todayStr} value={formData.checkOut} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
                   {formData.checkOut && (
-                    <div className="mt-2 text-xs text-slate-400 flex items-center gap-1.5">
-                      <Calendar size={12} className="text-slate-500" />
-                      <span>Estimated checkout: <strong>{new Date(formData.checkOut).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} at 11:00 AM</strong></span>
+                    <div className="mt-2 text-xs text-slate-400 flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar size={12} className="text-slate-500" />
+                        <span>Estimated checkout: <strong>{new Date(formData.checkOut).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} at 11:00 AM</strong></span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-extrabold text-[11px] border border-purple-500/30">
+                        {nights} {nights === 1 ? 'Night' : 'Nights'}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -575,13 +592,14 @@ export default function BookRoomPage() {
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                   <Bed size={18} className="text-emerald-400" /> Room Allocation
                 </h2>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="bg-emerald-500/10 text-emerald-400 text-xs font-bold px-3 py-1 rounded-lg border border-emerald-500/20">
                     {rooms.length} {rooms.length === 1 ? 'Room' : 'Rooms'}
                   </span>
                   {rooms.some(r => Number(r.price) > 0) && (
-                    <span className="bg-emerald-500/20 text-emerald-300 text-xs font-mono font-extrabold px-3 py-1 rounded-lg border border-emerald-500/30">
-                      Total: ₹{rooms.reduce((sum, r) => sum + (Number(r.price) || 0), 0)}
+                    <span className="bg-emerald-500/20 text-emerald-300 text-xs font-mono font-extrabold px-3 py-1 rounded-lg border border-emerald-500/30 flex items-center gap-1.5">
+                      <span>Total: ₹{(rooms.reduce((sum, r) => sum + (Number(r.price) || 0), 0) * nights).toFixed(0)}</span>
+                      {nights > 1 && <span className="text-[10px] text-emerald-400 font-normal">({nights} nights)</span>}
                     </span>
                   )}
                 </div>
@@ -631,23 +649,26 @@ export default function BookRoomPage() {
                               </h3>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-end">
+                              {/* Room Type */}
                               <div className="md:col-span-4">
-                                <label className={labelClass}>Room Type</label>
+                                <div className="h-5 flex items-center mb-1.5 ml-0.5">
+                                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Room Type</label>
+                                </div>
                                 <div className="relative group">
-                                  <Bed size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10" />
+                                  <Bed size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10 pointer-events-none" />
                                   <select
                                     required
                                     value={room.roomCode}
                                     onChange={(e) => handleRoomChange(index, 'roomCode', e.target.value)}
-                                    className={`${inputClass} appearance-none pl-10 bg-black/40`}
+                                    className={`${inputClass} pl-10 bg-black/40 text-xs sm:text-sm`}
                                   >
                                     <option value="" disabled>Select a type...</option>
                                     {roomTypes.map((type) => {
                                       const availForType = availability[type.roomCode];
                                       const availText = checkingAvail
                                         ? ' - Checking...'
-                                        : (typeof availForType === 'number' ? ` - ${availForType} available` : '');
+                                        : (typeof availForType === 'number' ? ` - ${availForType} avail.` : '');
                                       return (
                                         <option key={type.id} value={type.roomCode}>
                                           {type.name}{availText}
@@ -658,33 +679,38 @@ export default function BookRoomPage() {
                                 </div>
                               </div>
 
+                              {/* Rate Plan */}
                               <div className="md:col-span-3">
-                                <label className={labelClass}>Rate Plan</label>
+                                <div className="h-5 flex items-center mb-1.5 ml-0.5">
+                                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Rate Plan</label>
+                                </div>
                                 <div className="relative group">
-                                  <Tag size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10" />
+                                  <Tag size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors z-10 pointer-events-none" />
                                   <select
                                     required
                                     value={room.rateplanCode}
                                     onChange={(e) => handleRoomChange(index, 'rateplanCode', e.target.value)}
-                                    className={`${inputClass} appearance-none pl-10 bg-black/40 disabled:opacity-50`}
+                                    className={`${inputClass} pl-10 bg-black/40 disabled:opacity-50 text-xs sm:text-sm`}
                                     disabled={!room.roomCode || ratePlans.length === 0}
                                   >
                                     <option value="" disabled>Select rate plan...</option>
                                     {ratePlans.map((plan: any) => (
                                       <option key={plan.code} value={plan.code}>
-                                        {plan.code} - ₹{plan.price}
+                                        {plan.code} - ₹{plan.price}/night
                                       </option>
                                     ))}
                                   </select>
                                 </div>
                               </div>
 
-                              <div className="md:col-span-2 sm:col-span-4">
-                                <label className={labelClass}>
-                                  Price (₹) <span className="text-emerald-400 font-normal lowercase">(editable)</span>
-                                </label>
+                              {/* Price / Night */}
+                              <div className="md:col-span-2">
+                                <div className="h-5 flex items-center justify-between mb-1.5 ml-0.5">
+                                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Price / Night</label>
+                                  <span className="text-[10px] text-emerald-400 font-medium lowercase">editable</span>
+                                </div>
                                 <div className="relative group">
-                                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-sm">₹</span>
+                                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-xs pointer-events-none">₹</span>
                                   <input
                                     type="number"
                                     min="0"
@@ -692,38 +718,45 @@ export default function BookRoomPage() {
                                     placeholder="0"
                                     value={room.price ?? ''}
                                     onChange={(e) => handleRoomChange(index, 'price', e.target.value === '' ? '' : Number(e.target.value))}
-                                    className={`${inputClass} pl-8 font-mono font-bold text-emerald-400 bg-black/40`}
+                                    className={`${inputClass} pl-8 font-mono font-bold text-emerald-400 bg-black/40 text-xs sm:text-sm`}
                                   />
                                 </div>
                               </div>
 
-                              <div className="md:col-span-1 sm:col-span-4">
-                                <label className={labelClass}>Adults</label>
-                                <div className="relative group">
-                                  <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    required
-                                    value={room.adults}
-                                    onChange={(e) => handleRoomChange(index, 'adults', parseInt(e.target.value) || 1)}
-                                    className={`${inputClass} pl-8 bg-black/40`}
-                                  />
+                              {/* Adults & Children */}
+                              <div className="md:col-span-3 grid grid-cols-2 gap-2">
+                                <div>
+                                  <div className="h-5 flex items-center mb-1.5 ml-0.5">
+                                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Adults</label>
+                                  </div>
+                                  <div className="relative group">
+                                    <Users size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors pointer-events-none" />
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      required
+                                      value={room.adults}
+                                      onChange={(e) => handleRoomChange(index, 'adults', parseInt(e.target.value) || 1)}
+                                      className={`${inputClass} pl-8 bg-black/40 text-xs sm:text-sm`}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
 
-                              <div className="md:col-span-2 sm:col-span-4">
-                                <label className={labelClass}>Children</label>
-                                <div className="relative group">
-                                  <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    required
-                                    value={room.children}
-                                    onChange={(e) => handleRoomChange(index, 'children', parseInt(e.target.value) || 0)}
-                                    className={`${inputClass} pl-8 bg-black/40`}
-                                  />
+                                <div>
+                                  <div className="h-5 flex items-center mb-1.5 ml-0.5">
+                                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Children</label>
+                                  </div>
+                                  <div className="relative group">
+                                    <Users size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors pointer-events-none" />
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      required
+                                      value={room.children}
+                                      onChange={(e) => handleRoomChange(index, 'children', parseInt(e.target.value) || 0)}
+                                      className={`${inputClass} pl-8 bg-black/40 text-xs sm:text-sm`}
+                                    />
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -763,20 +796,30 @@ export default function BookRoomPage() {
 
               {/* Room Price Summary & Tax Breakdown */}
               {(() => {
-                const formBaseAmount = rooms.reduce((sum, r) => sum + (Number(r.price) || 0), 0);
+                const totalDailyPrice = rooms.reduce((sum, r) => sum + (Number(r.price) || 0), 0);
+                const formBaseAmount = Number((totalDailyPrice * nights).toFixed(2));
                 const formTaxAmount = Number((formBaseAmount * 0.05).toFixed(2));
                 const formTotalAmount = Number((formBaseAmount + formTaxAmount).toFixed(2));
 
-                if (formBaseAmount <= 0) return null;
+                if (totalDailyPrice <= 0) return null;
 
                 return (
-                  <div className="mt-6 p-4 rounded-2xl bg-gradient-to-r from-violet-500/10 via-primary/5 to-transparent border border-primary/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="space-y-1">
-                      <div className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <div className="mt-6 p-4.5 rounded-2xl bg-gradient-to-r from-violet-500/10 via-primary/5 to-transparent border border-primary/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
                         <Tag size={14} className="text-primary" /> Room Price Summary
+                        <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px] font-bold">
+                          {nights} {nights === 1 ? 'Night' : 'Nights'}
+                        </span>
                       </div>
                       <div className="text-xs text-slate-400 flex items-center gap-2 sm:gap-3 flex-wrap">
-                        <span>Base Amount: <strong className="text-slate-200 font-mono font-bold">₹{formBaseAmount.toFixed(2)}</strong></span>
+                        {nights > 1 && (
+                          <>
+                            <span>Daily Rate: <strong className="text-slate-300 font-mono font-bold">₹{totalDailyPrice.toFixed(2)}/night</strong></span>
+                            <span>&bull;</span>
+                          </>
+                        )}
+                        <span>Base Amount ({nights}N): <strong className="text-slate-200 font-mono font-bold">₹{formBaseAmount.toFixed(2)}</strong></span>
                         <span>&bull;</span>
                         <span>GST (5%): <strong className="text-emerald-400 font-mono font-bold">+₹{formTaxAmount.toFixed(2)}</strong></span>
                       </div>
@@ -1023,7 +1066,7 @@ export default function BookRoomPage() {
                               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
                                 <CreditCard size={12} className="text-amber-400" /> Payment
                               </div>
-                              <div className="flex items-center gap-1.5 mt-0.5">
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                                 <span className="text-white font-mono font-black text-xs">₹{Number(b.totalAmount || 0).toFixed(0)}</span>
                                 <span className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold uppercase tracking-wide border ${
                                   isPaid
@@ -1032,6 +1075,11 @@ export default function BookRoomPage() {
                                 }`}>
                                   {b.paymentStatus}
                                 </span>
+                                {b.paymentMode && (
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-white/10 text-slate-300 border border-white/15">
+                                    {b.paymentMode}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1149,20 +1197,39 @@ export default function BookRoomPage() {
                                 <Calendar size={14} className="shrink-0" />
                                 <span>Extend Stay</span>
                               </button>
+
+                              {!isPaid && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPaymentModalBooking(b)}
+                                  disabled={searchingBookings || openingModalBookingId === b.id}
+                                  className="col-span-2 h-10 px-4 rounded-xl bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-emerald-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 active:scale-[0.98] text-emerald-300 border border-emerald-500/40 font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm shadow-emerald-500/15 cursor-pointer disabled:opacity-50"
+                                >
+                                  <CreditCard size={15} className="shrink-0 text-emerald-400" />
+                                  <span>Update Payment (Pending)</span>
+                                </button>
+                              )}
+
                               <button
                                 type="button"
                                 onClick={() => {
+                                  if (!isPaid) return;
                                   setCheckoutBooking(b);
                                   setRoomCheckoutDiscountType('FLAT');
                                   setRoomCheckoutDiscountValue('');
                                   setFoodCheckoutDiscountType('FLAT');
                                   setFoodCheckoutDiscountValue('');
                                 }}
-                                disabled={searchingBookings || openingModalBookingId === b.id}
-                                className="col-span-2 h-10 px-4 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-orange-500/30 active:scale-[0.98] text-amber-300 border border-amber-500/30 font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm shadow-amber-500/10 disabled:opacity-50"
+                                disabled={searchingBookings || openingModalBookingId === b.id || !isPaid}
+                                className={`col-span-2 h-10 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm ${
+                                  !isPaid
+                                    ? 'bg-slate-800/40 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
+                                    : 'bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-orange-500/30 active:scale-[0.98] text-amber-300 border border-amber-500/30 shadow-amber-500/10 cursor-pointer'
+                                }`}
+                                title={!isPaid ? 'Payment must be marked as PAID before checkout is enabled' : 'Check out booking'}
                               >
                                 <CheckCircle size={15} className="shrink-0" />
-                                <span>Check Out</span>
+                                <span>Check Out {!isPaid ? '(Payment Required)' : ''}</span>
                               </button>
                             </div>
                           )}
@@ -1937,6 +2004,20 @@ export default function BookRoomPage() {
         booking={printBillModalData?.booking}
         roomDiscount={printBillModalData?.roomDiscount}
         foodDiscount={printBillModalData?.foodDiscount}
+      />
+
+      <ChangePaymentModal
+        isOpen={!!paymentModalBooking}
+        onClose={() => setPaymentModalBooking(null)}
+        booking={paymentModalBooking}
+        onSuccess={(updated) => {
+          setFormSuccess("Payment status updated to PAID successfully!");
+          if (updated && updated.id) {
+            setManagedBookings(prev => prev.map(b => b.id === updated.id ? { ...b, ...updated } : b));
+          } else {
+            handleSearchBookings();
+          }
+        }}
       />
 
     </div>

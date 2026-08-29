@@ -68,3 +68,8 @@ export const updateBookingGuestDetails = async (id: number, data: { guestName: s
   const res = await api.patch(`/bookings/${id}/guest-details`, data);
   return res.data;
 };
+
+export const updateBookingPaymentStatus = async (id: number, data: { paymentStatus: 'PENDING' | 'PAID'; paymentMode: 'CASH' | 'CARD' | 'UPI' }) => {
+  const res = await api.patch(`/bookings/${id}/payment`, data);
+  return res.data;
+};

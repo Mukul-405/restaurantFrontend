@@ -7,6 +7,7 @@ import { printBookingBill } from '../../utils/printReceipt';
 import toast from 'react-hot-toast';
 import EditGuestModal from './EditGuestModal';
 import PrintBookingBillModal from './PrintBookingBillModal';
+import ChangePaymentModal from './ChangePaymentModal';
 
 interface GuestDetailsModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
   const [booking, setBooking] = useState<any>(null);
   const [isEditGuestModalOpen, setIsEditGuestModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   
   // Views inside modal
   const [mode, setMode] = useState<'view' | 'editRooms' | 'checkout' | 'cancel'>('view');
@@ -500,6 +502,22 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                     </div>
                   </div>
 
+                  {booking.paymentStatus !== 'PAID' && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between gap-3 text-xs text-amber-300">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle size={16} className="shrink-0 text-amber-400" />
+                        <span>Payment is <strong>PENDING</strong>. Please select payment mode to enable checkout.</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsPaymentModalOpen(true)}
+                        className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs shrink-0 cursor-pointer shadow-sm transition-all"
+                      >
+                        Collect Payment
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex gap-2.5 pt-2">
                     <button
                       onClick={() => setMode('view')}
@@ -515,8 +533,13 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                     </button>
                     <button
                       onClick={handleConfirmCheckout}
-                      disabled={submitting}
-                      className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={submitting || booking.paymentStatus !== 'PAID'}
+                      className={`flex-1 py-2.5 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg transition-all ${
+                        booking.paymentStatus !== 'PAID'
+                          ? 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
+                          : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-emerald-500/20 cursor-pointer'
+                      }`}
+                      title={booking.paymentStatus !== 'PAID' ? 'Payment must be marked as PAID before checkout' : 'Confirm Checkout'}
                     >
                       {submitting ? (
                         <>
@@ -526,7 +549,7 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                       ) : (
                         <>
                           <CheckCircle size={14} />
-                          <span>Confirm Checkout</span>
+                          <span>Confirm Checkout {booking.paymentStatus !== 'PAID' ? '(Payment Required)' : ''}</span>
                         </>
                       )}
                     </button>
@@ -645,18 +668,34 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
 
                   {/* Billing Summary Section */}
                   <div className="bg-black/30 border border-white/10 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-2 text-sm font-bold text-slate-200">
                         <CreditCard size={18} className="text-primary" />
                         <span>Billing Summary</span>
                       </div>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
-                        booking.paymentStatus === 'PAID'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                      }`}>
-                        {booking.paymentStatus}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                          booking.paymentStatus === 'PAID'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                          {booking.paymentStatus}
+                        </span>
+                        {booking.paymentMode && (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-white/10 text-slate-300 border border-white/15">
+                            {booking.paymentMode}
+                          </span>
+                        )}
+                        {booking.paymentStatus !== 'PAID' && (
+                          <button
+                            type="button"
+                            onClick={() => setIsPaymentModalOpen(true)}
+                            className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all cursor-pointer"
+                          >
+                            Update Mode
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
@@ -739,25 +778,48 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
 
                   {/* Actions for Checked-In Booking */}
                   {isCheckedIn && (
-                    <div className="pt-2 flex items-center gap-3">
-                      <button
-                        onClick={handleOpenEditRooms}
-                        className="flex-1 py-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 font-bold text-xs transition-all flex items-center justify-center gap-2"
-                      >
-                        <Edit2 size={15} /> Change Room
-                      </button>
-                      <button
-                        onClick={() => setIsPrintModalOpen(true)}
-                        className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 font-bold text-xs transition-all flex items-center justify-center gap-2"
-                      >
-                        <Printer size={15} /> Print
-                      </button>
-                      <button
-                        onClick={() => setMode('checkout')}
-                        className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs transition-all shadow-lg shadow-red-500/20 flex items-center justify-center gap-2"
-                      >
-                        <CheckCircle size={15} /> Check Out
-                      </button>
+                    <div className="pt-2 space-y-2">
+                      {booking.paymentStatus !== 'PAID' && (
+                        <button
+                          type="button"
+                          onClick={() => setIsPaymentModalOpen(true)}
+                          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-emerald-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 active:scale-[0.98] text-emerald-300 border border-emerald-500/40 font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm shadow-emerald-500/15 cursor-pointer"
+                        >
+                          <CreditCard size={15} className="shrink-0 text-emerald-400" />
+                          <span>Update Payment Status (Pending)</span>
+                        </button>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={handleOpenEditRooms}
+                          className="flex-1 py-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <Edit2 size={15} /> Change Room
+                        </button>
+                        <button
+                          onClick={() => setIsPrintModalOpen(true)}
+                          className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <Printer size={15} /> Print
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (booking.paymentStatus !== 'PAID') {
+                              setIsPaymentModalOpen(true);
+                              return;
+                            }
+                            setMode('checkout');
+                          }}
+                          className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg ${
+                            booking.paymentStatus !== 'PAID'
+                              ? 'bg-slate-800 text-slate-400 border border-white/5 opacity-80 cursor-pointer'
+                              : 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20 cursor-pointer'
+                          }`}
+                          title={booking.paymentStatus !== 'PAID' ? 'Payment required before checkout' : 'Check out'}
+                        >
+                          <CheckCircle size={15} /> Check Out {booking.paymentStatus !== 'PAID' ? '(Payment Req.)' : ''}
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -765,7 +827,7 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                     <div className="pt-2 flex items-center justify-end">
                       <button
                         onClick={() => setIsPrintModalOpen(true)}
-                        className="py-3 px-6 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 font-bold text-xs transition-all flex items-center justify-center gap-2"
+                        className="py-3 px-6 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <Printer size={15} /> Print Bill
                       </button>
@@ -777,18 +839,24 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                     <div className="pt-2 flex items-center justify-between gap-3">
                       <button
                         onClick={() => setIsPrintModalOpen(true)}
-                        className="py-3 px-5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 font-bold text-xs transition-all flex items-center justify-center gap-2"
+                        className="py-3 px-5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
                       >
-                        <Printer size={15} /> Print Bill
+                        <Printer size={15} /> Print
                       </button>
-                      <button
-                        onClick={handleCancelBooking}
-                        disabled={submitting}
-                        className="py-3 px-6 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        {submitting ? <Loader2 size={15} className="animate-spin" /> : <X size={15} />}
-                        Cancel Booking
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setMode('cancel')}
+                          className="py-3 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <X size={15} /> Cancel
+                        </button>
+                        <button
+                          onClick={handleOpenEditRooms}
+                          className="py-3 px-5 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-xs transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <Edit2 size={15} /> Assign Rooms
+                        </button>
+                      </div>
                     </div>
                   )}
                 </>
@@ -815,6 +883,17 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
       booking={booking}
       roomDiscount={roomDiscountAmount}
       foodDiscount={foodDiscountAmount}
+    />
+
+    <ChangePaymentModal
+      isOpen={isPaymentModalOpen}
+      onClose={() => setIsPaymentModalOpen(false)}
+      booking={booking}
+      onSuccess={async () => {
+        toast.success("Payment status updated to PAID!");
+        await fetchBooking();
+        onRefresh?.();
+      }}
     />
     </>
   );
