@@ -974,6 +974,13 @@ export default function BookRoomPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {managedBookings.map(b => {
                     const isPaid = b.paymentStatus === 'PAID';
+                    
+                    const finalTotal = Math.max(0, 
+                      Number(b.totalAmount || 0) 
+                      + Number(b.foodTotalAmount || 0) 
+                      - Number(b.roomDiscountAmount || 0) 
+                      - Number(b.foodDiscountAmount || 0)
+                    );
 
                     return (
                       <div key={b.id} className="bg-[#15171e]/90 hover:bg-[#181a22] border border-white/10 hover:border-primary/40 rounded-3xl p-4 sm:p-5 shadow-2xl transition-all duration-300 space-y-4 relative overflow-hidden group backdrop-blur-xl flex flex-col justify-between">
@@ -1068,7 +1075,7 @@ export default function BookRoomPage() {
                                 <CreditCard size={12} className="text-amber-400" /> Payment
                               </div>
                               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                <span className="text-white font-mono font-black text-xs">₹{Number(b.totalAmount || 0).toFixed(0)}</span>
+                                <span className="text-white font-mono font-black text-xs">₹{finalTotal.toFixed(0)}</span>
                                 <span className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold uppercase tracking-wide border ${
                                   isPaid
                                     ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30'
@@ -1221,8 +1228,13 @@ export default function BookRoomPage() {
                                   setFoodCheckoutDiscountType('FLAT');
                                   setFoodCheckoutDiscountValue('');
                                 }}
-                                disabled={searchingBookings || openingModalBookingId === b.id}
-                                className="col-span-2 h-10 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-orange-500/30 active:scale-[0.98] text-amber-300 border border-amber-500/30 shadow-amber-500/10 cursor-pointer disabled:opacity-50"
+                                disabled={searchingBookings || openingModalBookingId === b.id || !isPaid}
+                                className={`col-span-2 h-10 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm border ${
+                                  isPaid 
+                                    ? 'bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-orange-500/30 active:scale-[0.98] text-amber-300 border-amber-500/30 shadow-amber-500/10 cursor-pointer' 
+                                    : 'bg-white/5 text-slate-500 border-white/10 cursor-not-allowed'
+                                }`}
+                                title={!isPaid ? 'Payment must be completed before check-out' : ''}
                               >
                                 <CheckCircle size={15} className="shrink-0" />
                                 <span>Check Out</span>
