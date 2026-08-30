@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Phone, Calendar, User, Mail, Bed, Building2, CheckCircle, CreditCard, Printer, Edit2, Tag, AlertCircle } from 'lucide-react';
+import { X, Loader2, Phone, Calendar, User, Mail, Bed, Building2, CheckCircle, CreditCard, Printer, Edit2, Tag, AlertCircle, Banknote, Smartphone } from 'lucide-react';
 import { getBookingById, checkOutBooking, editBookingRooms, cancelBooking } from '../../lib/roomBookApi';
 import { getRoomTypes, RoomType } from '../../lib/roomsApi';
 import { printBookingBill } from '../../utils/printReceipt';
@@ -28,6 +28,7 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
   const [mode, setMode] = useState<'view' | 'editRooms' | 'checkout' | 'cancel'>('view');
   
   // Checkout state
+  const [checkoutPaymentMode, setCheckoutPaymentMode] = useState<'CASH' | 'CARD' | 'UPI'>('CASH');
   const [roomDiscountType, setRoomDiscountType] = useState<'FLAT' | 'PERCENT'>('FLAT');
   const [roomDiscountValue, setRoomDiscountValue] = useState<number | ''>('');
 
@@ -170,13 +171,13 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
   const handleConfirmCheckout = async () => {
     setSubmitting(true);
     try {
-      await checkOutBooking(bookingId!, roomDiscountAmount, foodDiscountAmount);
+      await checkOutBooking(bookingId!, roomDiscountAmount, foodDiscountAmount, checkoutPaymentMode);
       toast.success('Guest checked out successfully');
       if (onRefresh) onRefresh();
       onClose();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.error || 'Failed to checkout guest');
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Failed to checkout guest');
     } finally {
       setSubmitting(false);
     }
@@ -328,10 +329,10 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                     )}
 
                     {/* Room Bill Discount Controls */}
-                    {booking.paymentStatus !== 'PAID' && (
+                    {roomBase > 0 && (
                       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-400 font-medium">Discount Mode:</span>
+                          <span className="text-xs text-slate-400 font-medium">Room Discount:</span>
                           <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/10 text-[11px] font-bold">
                             <button
                               type="button"
@@ -367,7 +368,7 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                             )}
                             <input 
                               type="number" 
-                              min="0"
+                              min="0" 
                               max={roomDiscountType === 'PERCENT' ? 100 : roomBase}
                               value={roomDiscountValue}
                               onChange={(e) => setRoomDiscountValue(e.target.value === '' ? '' : Number(e.target.value))}
@@ -422,7 +423,7 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                           {foodTotalIncTax > 0 && (
                             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-400 font-medium">Discount Mode:</span>
+                                <span className="text-xs text-slate-400 font-medium">Food Discount:</span>
                                 <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/10 text-[11px] font-bold">
                                   <button
                                     type="button"
@@ -458,7 +459,7 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                                   )}
                                   <input 
                                     type="number" 
-                                    min="0"
+                                    min="0" 
                                     max={foodDiscountType === 'PERCENT' ? 100 : foodBase}
                                     value={foodDiscountValue}
                                     onChange={(e) => setFoodDiscountValue(e.target.value === '' ? '' : Number(e.target.value))}
@@ -485,38 +486,54 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                         </div>
                       );
                     })()}
+
+                    {/* Payment Mode Selector in Checkout */}
+                    <div className="pt-3 border-t border-white/5 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                        <span className="flex items-center gap-1.5">
+                          <CreditCard size={15} className="text-emerald-400" />
+                          <span>Payment Mode</span>
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-normal">
+                          Select method to finalize bill
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(['CASH', 'CARD', 'UPI'] as const).map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setCheckoutPaymentMode(m)}
+                            className={`py-2 px-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                              checkoutPaymentMode === m
+                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm shadow-emerald-500/20'
+                                : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/10 hover:border-white/20'
+                            }`}
+                          >
+                            {m === 'CASH' && <Banknote size={14} className="text-emerald-400 shrink-0" />}
+                            {m === 'CARD' && <CreditCard size={14} className="text-blue-400 shrink-0" />}
+                            {m === 'UPI' && <Smartphone size={14} className="text-purple-400 shrink-0" />}
+                            <span>{m === 'CASH' ? 'Cash' : m === 'CARD' ? 'Card' : 'UPI'}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 rounded-2xl p-4 flex justify-between items-center">
                     <div>
                       <div className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-0.5">Final Amount Due</div>
                       <div className="text-[11px] text-slate-500">
-                        {booking.paymentStatus === 'PAID' ? 'Room bill paid (food balance)' : 'Includes Room + Restaurant - Discounts'}
+                        {booking.paymentStatus === 'PAID' ? 'Includes Room & Restaurant after discounts' : 'Includes Room + Restaurant - All Discounts'}
                       </div>
                     </div>
                     <div className="text-emerald-400 font-black text-2xl font-mono tracking-tight">
                       ₹{Math.max(0, (
-                        (booking.paymentStatus !== 'PAID' ? Math.max(0, roomTotal - (roomDiscountAmount || 0)) : 0) +
+                        Math.max(0, roomTotal - (roomDiscountAmount || 0)) +
                         Math.max(0, Number(booking.foodTotalAmount || 0) - (foodDiscountAmount || 0))
                       )).toFixed(2)}
                     </div>
                   </div>
-
-                  {booking.paymentStatus !== 'PAID' && (
-                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between gap-3 text-xs text-amber-300">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle size={16} className="shrink-0 text-amber-400" />
-                        <span>Payment is <strong>PENDING</strong>. Please select payment mode to enable checkout.</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsPaymentModalOpen(true)}
-                        className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs shrink-0 cursor-pointer shadow-sm transition-all"
-                      >
-                        Collect Payment
-                      </button>
-                    </div>
-                  )}
 
                   <div className="flex gap-2.5 pt-2">
                     <button
@@ -533,13 +550,8 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                     </button>
                     <button
                       onClick={handleConfirmCheckout}
-                      disabled={submitting || booking.paymentStatus !== 'PAID'}
-                      className={`flex-1 py-2.5 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg transition-all ${
-                        booking.paymentStatus !== 'PAID'
-                          ? 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
-                          : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-emerald-500/20 cursor-pointer'
-                      }`}
-                      title={booking.paymentStatus !== 'PAID' ? 'Payment must be marked as PAID before checkout' : 'Confirm Checkout'}
+                      disabled={submitting}
+                      className="flex-1 py-2.5 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg transition-all bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
                     >
                       {submitting ? (
                         <>
@@ -549,7 +561,7 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                       ) : (
                         <>
                           <CheckCircle size={14} />
-                          <span>Confirm Checkout {booking.paymentStatus !== 'PAID' ? '(Payment Required)' : ''}</span>
+                          <span>Confirm Checkout</span>
                         </>
                       )}
                     </button>
@@ -804,20 +816,12 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                         </button>
                         <button
                           onClick={() => {
-                            if (booking.paymentStatus !== 'PAID') {
-                              setIsPaymentModalOpen(true);
-                              return;
-                            }
+                            setCheckoutPaymentMode(booking?.paymentMode || 'CASH');
                             setMode('checkout');
                           }}
-                          className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg ${
-                            booking.paymentStatus !== 'PAID'
-                              ? 'bg-slate-800 text-slate-400 border border-white/5 opacity-80 cursor-pointer'
-                              : 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20 cursor-pointer'
-                          }`}
-                          title={booking.paymentStatus !== 'PAID' ? 'Payment required before checkout' : 'Check out'}
+                          className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs transition-all shadow-lg shadow-red-500/20 flex items-center justify-center gap-2 cursor-pointer"
                         >
-                          <CheckCircle size={15} /> Check Out {booking.paymentStatus !== 'PAID' ? '(Payment Req.)' : ''}
+                          <CheckCircle size={15} /> Check Out
                         </button>
                       </div>
                     </div>

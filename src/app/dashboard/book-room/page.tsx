@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Printer, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react';
+import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Printer, ChevronLeft, ChevronRight, Edit2, Banknote, Smartphone } from 'lucide-react';
 import { getRoomTypes, RoomType, getAvailability } from '../../../lib/roomsApi';
 import { createBooking, BookingPayload, getBookings, checkInBooking, checkOutBooking, editBookingRooms, cancelBooking, extendCheckoutBooking } from '../../../lib/roomBookApi';
 import { printBookingBill } from '../../../utils/printReceipt';
@@ -50,6 +50,7 @@ export default function BookRoomPage() {
 
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   const [checkoutBooking, setCheckoutBooking] = useState<any>(null);
+  const [checkoutPaymentMode, setCheckoutPaymentMode] = useState<'CASH' | 'CARD' | 'UPI'>('CASH');
   const [roomCheckoutDiscountType, setRoomCheckoutDiscountType] = useState<'FLAT' | 'PERCENT'>('FLAT');
   const [roomCheckoutDiscountValue, setRoomCheckoutDiscountValue] = useState<number | ''>('');
 
@@ -261,7 +262,7 @@ export default function BookRoomPage() {
   const handleCheckoutSubmit = async () => {
     setSubmitting(true);
     try {
-      await checkOutBooking(checkoutBooking.id, roomCheckoutDiscountAmount, foodCheckoutDiscountAmount);
+      await checkOutBooking(checkoutBooking.id, roomCheckoutDiscountAmount, foodCheckoutDiscountAmount, checkoutPaymentMode);
       setFormSuccess('Booking checked out successfully');
       setCheckoutBooking(null);
       handleSearchBookings();
@@ -1213,23 +1214,18 @@ export default function BookRoomPage() {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (!isPaid) return;
                                   setCheckoutBooking(b);
+                                  setCheckoutPaymentMode(b.paymentMode || 'CASH');
                                   setRoomCheckoutDiscountType('FLAT');
                                   setRoomCheckoutDiscountValue('');
                                   setFoodCheckoutDiscountType('FLAT');
                                   setFoodCheckoutDiscountValue('');
                                 }}
-                                disabled={searchingBookings || openingModalBookingId === b.id || !isPaid}
-                                className={`col-span-2 h-10 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm ${
-                                  !isPaid
-                                    ? 'bg-slate-800/40 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
-                                    : 'bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-orange-500/30 active:scale-[0.98] text-amber-300 border border-amber-500/30 shadow-amber-500/10 cursor-pointer'
-                                }`}
-                                title={!isPaid ? 'Payment must be marked as PAID before checkout is enabled' : 'Check out booking'}
+                                disabled={searchingBookings || openingModalBookingId === b.id}
+                                className="col-span-2 h-10 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-orange-500/30 active:scale-[0.98] text-amber-300 border border-amber-500/30 shadow-amber-500/10 cursor-pointer disabled:opacity-50"
                               >
                                 <CheckCircle size={15} className="shrink-0" />
-                                <span>Check Out {!isPaid ? '(Payment Required)' : ''}</span>
+                                <span>Check Out</span>
                               </button>
                             </div>
                           )}
@@ -1502,10 +1498,10 @@ export default function BookRoomPage() {
                   )}
 
                   {/* Room Discount Controls */}
-                  {checkoutBooking.paymentStatus !== 'PAID' && (
+                  {roomCheckoutBase > 0 && (
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 font-medium">Discount Mode:</span>
+                        <span className="text-xs text-slate-400 font-medium">Room Discount:</span>
                         <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/10 text-[11px] font-bold">
                           <button
                             type="button"
@@ -1541,7 +1537,7 @@ export default function BookRoomPage() {
                           )}
                           <input 
                             type="number" 
-                            min="0"
+                            min="0" 
                             max={roomCheckoutDiscountType === 'PERCENT' ? 100 : roomCheckoutBase}
                             value={roomCheckoutDiscountValue}
                             onChange={(e) => setRoomCheckoutDiscountValue(e.target.value === '' ? '' : Number(e.target.value))}
@@ -1596,7 +1592,7 @@ export default function BookRoomPage() {
                         {foodTotalIncTax > 0 && (
                           <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-slate-400 font-medium">Discount Mode:</span>
+                              <span className="text-xs text-slate-400 font-medium">Food Discount:</span>
                               <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/10 text-[11px] font-bold">
                                 <button
                                   type="button"
@@ -1632,7 +1628,7 @@ export default function BookRoomPage() {
                                 )}
                                 <input 
                                   type="number" 
-                                  min="0"
+                                  min="0" 
                                   max={foodCheckoutDiscountType === 'PERCENT' ? 100 : foodCheckoutBase}
                                   value={foodCheckoutDiscountValue}
                                   onChange={(e) => setFoodCheckoutDiscountValue(e.target.value === '' ? '' : Number(e.target.value))}
@@ -1659,6 +1655,38 @@ export default function BookRoomPage() {
                       </div>
                     );
                   })()}
+
+                  {/* Payment Mode Selector in Checkout */}
+                  <div className="pt-3 border-t border-white/5 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                      <span className="flex items-center gap-1.5">
+                        <CreditCard size={15} className="text-emerald-400" />
+                        <span>Payment Mode</span>
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-normal">
+                        Select method to finalize bill
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['CASH', 'CARD', 'UPI'] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setCheckoutPaymentMode(mode)}
+                          className={`py-2.5 px-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                            checkoutPaymentMode === mode
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm shadow-emerald-500/20'
+                              : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/10 hover:border-white/20'
+                          }`}
+                        >
+                          {mode === 'CASH' && <Banknote size={14} className="text-emerald-400 shrink-0" />}
+                          {mode === 'CARD' && <CreditCard size={14} className="text-blue-400 shrink-0" />}
+                          {mode === 'UPI' && <Smartphone size={14} className="text-purple-400 shrink-0" />}
+                          <span>{mode === 'CASH' ? 'Cash' : mode === 'CARD' ? 'Card / POS' : 'UPI / QR'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Final Total */}
@@ -1666,12 +1694,14 @@ export default function BookRoomPage() {
                   <div>
                     <div className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-0.5">Final Amount Due</div>
                     <div className="text-[11px] text-slate-500">
-                      {checkoutBooking.paymentStatus === 'PAID' ? 'Room bill paid' : 'Includes Room + Restaurant - Discounts'}
+                      {checkoutBooking.paymentStatus === 'PAID'
+                        ? 'Includes Room & Restaurant after discounts'
+                        : 'Includes Room + Restaurant - All Discounts'}
                     </div>
                   </div>
                   <div className="text-emerald-400 font-black text-2xl font-mono tracking-tight">
                     ₹{Math.max(0, (
-                      (checkoutBooking.paymentStatus !== 'PAID' ? Math.max(0, roomCheckoutTotal - roomCheckoutDiscountAmount) : 0) +
+                      Math.max(0, roomCheckoutTotal - roomCheckoutDiscountAmount) +
                       Math.max(0, (foodCheckoutBase + foodCheckoutBase * 0.05) - foodCheckoutDiscountAmount)
                     )).toFixed(2)}
                   </div>

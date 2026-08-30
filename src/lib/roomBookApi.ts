@@ -44,8 +44,17 @@ export const checkInBooking = async (id: number, rooms: { roomCode: string, room
   return data;
 };
 
-export const checkOutBooking = async (id: number, roomDiscountAmount: number = 0, foodDiscountAmount: number = 0) => {
-  const { data } = await api.patch(`/bookings/${id}/check-out`, { roomDiscountAmount, foodDiscountAmount });
+export const checkOutBooking = async (
+  id: number, 
+  roomDiscountAmount: number = 0, 
+  foodDiscountAmount: number = 0,
+  paymentMode?: 'CASH' | 'CARD' | 'UPI'
+) => {
+  const { data } = await api.patch(`/bookings/${id}/check-out`, { 
+    roomDiscountAmount, 
+    foodDiscountAmount,
+    paymentMode 
+  });
   return data;
 };
 
