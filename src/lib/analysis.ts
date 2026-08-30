@@ -97,10 +97,12 @@ export interface DailyBillSummaryItem {
   cancellationReason?: string | null;
   paymentMode: string | null;
   baseAmount: number;
+  originalBaseAmount?: number;
+  discountAmount: number;
+  taxableAmount: number;
   sgstAmount: number;
   cgstAmount: number;
   totalAmount: number;
-  discountAmount: number;
   finalDiscountedAmount: number;
   waiterName?: string;
   remarks: string;
@@ -114,9 +116,10 @@ export interface DayGroupSummary {
   completedOrders: number;
   cancelledOrders: number;
   totalBaseAmount: number;
+  totalDiscountAmount: number;
+  totalTaxableAmount: number;
   totalSgstAmount: number;
   totalCgstAmount: number;
-  totalDiscountAmount: number;
   totalAmount: number;
   orders: DailyBillSummaryItem[];
 }
@@ -129,12 +132,13 @@ export interface DailyBillSummaryResult {
   completedOrders: number;
   cancelledOrders: number;
   totalBaseAmount: number;
+  totalDiscountAmount: number;
+  totalTaxableAmount: number;
   totalSgstAmount: number;
   totalCgstAmount: number;
-  totalDiscountAmount: number;
   grandTotalAmount: number;
   days: DayGroupSummary[];
-  allOrders: DailyBillSummaryItem[];
+  allOrders?: DailyBillSummaryItem[];
 }
 
 export const getDailyBillSummary = async (startDate: string, endDate: string): Promise<DailyBillSummaryResult> => {
