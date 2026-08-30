@@ -116,6 +116,7 @@ export interface DayGroupSummary {
   totalBaseAmount: number;
   totalSgstAmount: number;
   totalCgstAmount: number;
+  totalDiscountAmount: number;
   totalAmount: number;
   orders: DailyBillSummaryItem[];
 }
@@ -130,6 +131,7 @@ export interface DailyBillSummaryResult {
   totalBaseAmount: number;
   totalSgstAmount: number;
   totalCgstAmount: number;
+  totalDiscountAmount: number;
   grandTotalAmount: number;
   days: DayGroupSummary[];
   allOrders: DailyBillSummaryItem[];

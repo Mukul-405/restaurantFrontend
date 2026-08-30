@@ -6,7 +6,7 @@ import {
   IndianRupee, Receipt, TrendingUp, Users, Bed, Building2, Calendar, 
   AlertCircle, Banknote, CreditCard, QrCode, Download, Printer, 
   UtensilsCrossed, ShoppingBag, Search, ArrowUpDown, Sparkles, Hotel,
-  FileSpreadsheet, CheckCircle2, XCircle, FileText, Check, Layers
+  FileSpreadsheet, CheckCircle2, XCircle, FileText, Check, Layers, Tag, Percent
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { 
@@ -826,11 +826,12 @@ export default function AnalysisPage() {
     res.days.forEach(day => {
       // Day header row
       tableBody.push([
-        { content: day.dateHeaderStr, colSpan: 8, styles: { fillColor: [226, 232, 240], fontStyle: 'bold', textColor: [15, 23, 42] } }
+        { content: day.dateHeaderStr, colSpan: 9, styles: { fillColor: [226, 232, 240], fontStyle: 'bold', textColor: [15, 23, 42] } }
       ]);
 
       day.orders.forEach(order => {
         const isCancelled = order.status === 'CANCELLED';
+        const disc = Number(order.discountAmount || 0);
         tableBody.push([
           String(currentSerNo++).padStart(2, '0'),
           order.billNo,
@@ -838,6 +839,7 @@ export default function AnalysisPage() {
           isCancelled ? 'cancel' : Number(order.baseAmount).toFixed(2),
           isCancelled ? '-' : Number(order.sgstAmount).toFixed(2),
           isCancelled ? '-' : Number(order.cgstAmount).toFixed(2),
+          isCancelled ? '-' : (disc > 0 ? Number(disc).toFixed(2) : '-'),
           isCancelled ? '-' : Number(order.totalAmount).toFixed(2),
           order.remarks || (isCancelled ? 'Cancelled' : (order.paymentMode || '-'))
         ]);
@@ -849,6 +851,7 @@ export default function AnalysisPage() {
         { content: Number(day.totalBaseAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 252] } },
         { content: Number(day.totalSgstAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 252] } },
         { content: Number(day.totalCgstAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 252] } },
+        { content: day.totalDiscountAmount > 0 ? Number(day.totalDiscountAmount).toFixed(2) : '-', styles: { fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 252] } },
         { content: Number(day.totalAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [248, 250, 252] } },
         { content: `${day.completedOrders} Orders`, styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } }
       ]);
@@ -860,16 +863,17 @@ export default function AnalysisPage() {
       headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
       styles: { fontSize: 8, cellPadding: 2.5 },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 16 },
-        1: { halign: 'center', cellWidth: 20 },
-        2: { halign: 'center', cellWidth: 24 },
+        0: { halign: 'center', cellWidth: 14 },
+        1: { halign: 'center', cellWidth: 18 },
+        2: { halign: 'center', cellWidth: 22 },
         3: { halign: 'right' },
         4: { halign: 'right' },
         5: { halign: 'right' },
         6: { halign: 'right' },
-        7: { cellWidth: 34 },
+        7: { halign: 'right' },
+        8: { cellWidth: 30 },
       },
-      head: [['Ser No', 'Bill No', 'Date', 'Amount', 'SGST 2.5%', 'CGST 2.5%', 'Total Amount', 'Remarks']],
+      head: [['Ser No', 'Bill No', 'Date', 'Amount', 'SGST 2.5%', 'CGST 2.5%', 'Discount', 'Total Amount', 'Remarks']],
       body: tableBody,
       foot: [
         [
@@ -877,6 +881,7 @@ export default function AnalysisPage() {
           { content: Number(res.totalBaseAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [226, 232, 240] } },
           { content: Number(res.totalSgstAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [226, 232, 240] } },
           { content: Number(res.totalCgstAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [226, 232, 240] } },
+          { content: Number(res.totalDiscountAmount || 0).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [226, 232, 240] } },
           { content: Number(res.grandTotalAmount).toFixed(2), styles: { fontStyle: 'bold', halign: 'right', fillColor: [226, 232, 240] } },
           { content: `${res.completedOrders} Completed`, styles: { fontStyle: 'bold', fillColor: [226, 232, 240] } }
         ]
@@ -984,23 +989,25 @@ export default function AnalysisPage() {
           <table>
             <thead>
               <tr>
-                <th style="width: 45px;">Ser No</th>
-                <th style="width: 70px;">Bill No</th>
-                <th style="width: 95px;">Date</th>
+                <th style="width: 40px;">Ser No</th>
+                <th style="width: 65px;">Bill No</th>
+                <th style="width: 90px;">Date</th>
                 <th class="text-right">Amount</th>
-                <th class="text-right" style="width: 70px;">SGST 2.5%</th>
-                <th class="text-right" style="width: 70px;">CGST 2.5%</th>
+                <th class="text-right" style="width: 65px;">SGST 2.5%</th>
+                <th class="text-right" style="width: 65px;">CGST 2.5%</th>
+                <th class="text-right" style="width: 65px;">Discount</th>
                 <th class="text-right">Total Amount</th>
-                <th style="width: 100px;">Remarks</th>
+                <th style="width: 95px;">Remarks</th>
               </tr>
             </thead>
             <tbody>
               ${res.days.map(day => `
                 <tr>
-                  <td colspan="8" class="day-header-cell">${escapeHtml(day.dateHeaderStr)}</td>
+                  <td colspan="9" class="day-header-cell">${escapeHtml(day.dateHeaderStr)}</td>
                 </tr>
                 ${day.orders.map(order => {
                   const isCancelled = order.status === 'CANCELLED';
+                  const disc = Number(order.discountAmount || 0);
                   const ser = String(currentSerNo++).padStart(2, '0');
                   return `
                     <tr>
@@ -1010,6 +1017,7 @@ export default function AnalysisPage() {
                       <td class="text-right">${isCancelled ? '<span class="cancelled-text">cancel</span>' : Number(order.baseAmount).toFixed(2)}</td>
                       <td class="text-right">${isCancelled ? '-' : Number(order.sgstAmount).toFixed(2)}</td>
                       <td class="text-right">${isCancelled ? '-' : Number(order.cgstAmount).toFixed(2)}</td>
+                      <td class="text-right" style="color: #be123c;">${isCancelled ? '-' : (disc > 0 ? Number(disc).toFixed(2) : '-')}</td>
                       <td class="text-right" style="font-weight: ${isCancelled ? 'normal' : 'bold'};">${isCancelled ? '-' : Number(order.totalAmount).toFixed(2)}</td>
                       <td>${escapeHtml(order.remarks || (isCancelled ? 'Cancelled' : ''))}</td>
                     </tr>
@@ -1020,6 +1028,7 @@ export default function AnalysisPage() {
                   <td class="subtotal-cell text-right">${Number(day.totalBaseAmount).toFixed(2)}</td>
                   <td class="subtotal-cell text-right">${Number(day.totalSgstAmount).toFixed(2)}</td>
                   <td class="subtotal-cell text-right">${Number(day.totalCgstAmount).toFixed(2)}</td>
+                  <td class="subtotal-cell text-right" style="color: #be123c;">${day.totalDiscountAmount > 0 ? Number(day.totalDiscountAmount).toFixed(2) : '-'}</td>
                   <td class="subtotal-cell text-right">${Number(day.totalAmount).toFixed(2)}</td>
                   <td class="subtotal-cell">${day.completedOrders} Completed</td>
                 </tr>
@@ -1029,6 +1038,7 @@ export default function AnalysisPage() {
                 <td class="grand-total-cell text-right">${Number(res.totalBaseAmount).toFixed(2)}</td>
                 <td class="grand-total-cell text-right">${Number(res.totalSgstAmount).toFixed(2)}</td>
                 <td class="grand-total-cell text-right">${Number(res.totalCgstAmount).toFixed(2)}</td>
+                <td class="grand-total-cell text-right" style="color: #be123c;">${Number(res.totalDiscountAmount || 0).toFixed(2)}</td>
                 <td class="grand-total-cell text-right">${Number(res.grandTotalAmount).toFixed(2)}</td>
                 <td class="grand-total-cell">${res.completedOrders} Orders</td>
               </tr>
@@ -1071,6 +1081,7 @@ export default function AnalysisPage() {
       let totalBase = 0;
       let totalSgst = 0;
       let totalCgst = 0;
+      let totalDiscount = 0;
       let totalAmt = 0;
       let completed = 0;
       let cancelled = 0;
@@ -1080,10 +1091,18 @@ export default function AnalysisPage() {
           cancelled += 1;
         } else {
           completed += 1;
-          totalBase = Number((totalBase + o.baseAmount).toFixed(2));
-          totalSgst = Number((totalSgst + o.sgstAmount).toFixed(2));
-          totalCgst = Number((totalCgst + o.cgstAmount).toFixed(2));
-          totalAmt = Number((totalAmt + o.totalAmount).toFixed(2));
+          const base = Number(o.baseAmount || 0);
+          const sgst = Number(o.sgstAmount || 0);
+          const cgst = Number(o.cgstAmount || 0);
+          const disc = Number(o.discountAmount || 0);
+          const finalTot = Number(Math.max(0, base + sgst + cgst - disc).toFixed(2));
+          o.totalAmount = finalTot;
+
+          totalBase = Number((totalBase + base).toFixed(2));
+          totalSgst = Number((totalSgst + sgst).toFixed(2));
+          totalCgst = Number((totalCgst + cgst).toFixed(2));
+          totalDiscount = Number((totalDiscount + disc).toFixed(2));
+          totalAmt = Number((totalAmt + finalTot).toFixed(2));
         }
       });
 
@@ -1095,6 +1114,7 @@ export default function AnalysisPage() {
         totalBaseAmount: totalBase,
         totalSgstAmount: totalSgst,
         totalCgstAmount: totalCgst,
+        totalDiscountAmount: totalDiscount,
         totalAmount: totalAmt,
         orders,
       };
@@ -1103,6 +1123,7 @@ export default function AnalysisPage() {
     let grandBase = 0;
     let grandSgst = 0;
     let grandCgst = 0;
+    let grandDiscount = 0;
     let grandTotal = 0;
     let totalCompleted = 0;
     let totalCancelled = 0;
@@ -1112,6 +1133,7 @@ export default function AnalysisPage() {
       grandBase = Number((grandBase + d.totalBaseAmount).toFixed(2));
       grandSgst = Number((grandSgst + d.totalSgstAmount).toFixed(2));
       grandCgst = Number((grandCgst + d.totalCgstAmount).toFixed(2));
+      grandDiscount = Number((grandDiscount + (d.totalDiscountAmount || 0)).toFixed(2));
       grandTotal = Number((grandTotal + d.totalAmount).toFixed(2));
       totalCompleted += d.completedOrders;
       totalCancelled += d.cancelledOrders;
@@ -1126,6 +1148,7 @@ export default function AnalysisPage() {
       totalBaseAmount: grandBase,
       totalSgstAmount: grandSgst,
       totalCgstAmount: grandCgst,
+      totalDiscountAmount: grandDiscount,
       grandTotalAmount: grandTotal,
       days,
     };
@@ -1360,7 +1383,7 @@ export default function AnalysisPage() {
               ) : filteredDailyBills ? (
                 <div className="space-y-4 sm:space-y-6">
                   {/* Summary Stat Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
                     <StatCard
                       title="Total Orders"
                       value={`${filteredDailyBills.totalOrders}`}
@@ -1386,7 +1409,13 @@ export default function AnalysisPage() {
                       color="bg-orange-500"
                     />
                     <StatCard
-                      title="Grand Total (Inc. GST)"
+                      title="Total Discount"
+                      value={`₹${Number(filteredDailyBills.totalDiscountAmount || 0).toFixed(2)}`}
+                      icon={Tag}
+                      color="bg-rose-500"
+                    />
+                    <StatCard
+                      title="Grand Total"
                       value={`₹${Number(filteredDailyBills.grandTotalAmount || 0).toFixed(2)}`}
                       icon={IndianRupee}
                       color="bg-emerald-500"
@@ -1442,23 +1471,24 @@ export default function AnalysisPage() {
                   {/* Desktop / Tablet Table View */}
                   <div className="hidden md:block bg-surface/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-xl">
                     <div className="max-h-[600px] overflow-y-auto overflow-x-auto custom-scrollbar">
-                      <table className="w-full text-sm text-left text-slate-300 min-w-[750px] relative">
+                      <table className="w-full text-sm text-left text-slate-300 min-w-[850px] relative">
                         <thead className="text-xs text-slate-400 uppercase bg-black/80 backdrop-blur-md border-b border-white/10 sticky top-0 z-20">
                           <tr>
-                            <th scope="col" className="px-4 py-3.5 w-16 text-center">Ser No</th>
-                            <th scope="col" className="px-4 py-3.5 w-24 text-center">Bill No</th>
-                            <th scope="col" className="px-4 py-3.5 text-center">Date</th>
-                            <th scope="col" className="px-4 py-3.5 text-right">Amount (Base)</th>
-                            <th scope="col" className="px-4 py-3.5 text-right">SGST (2.5%)</th>
-                            <th scope="col" className="px-4 py-3.5 text-right">CGST (2.5%)</th>
-                            <th scope="col" className="px-4 py-3.5 text-right">Total Amount</th>
-                            <th scope="col" className="px-4 py-3.5 text-left">Remarks</th>
+                            <th scope="col" className="px-3.5 py-3.5 w-14 text-center">Ser No</th>
+                            <th scope="col" className="px-3.5 py-3.5 w-24 text-center">Bill No</th>
+                            <th scope="col" className="px-3.5 py-3.5 text-center">Date</th>
+                            <th scope="col" className="px-3.5 py-3.5 text-right">Amount (Base)</th>
+                            <th scope="col" className="px-3.5 py-3.5 text-right">SGST (2.5%)</th>
+                            <th scope="col" className="px-3.5 py-3.5 text-right">CGST (2.5%)</th>
+                            <th scope="col" className="px-3.5 py-3.5 text-right text-rose-400">Discount</th>
+                            <th scope="col" className="px-3.5 py-3.5 text-right text-emerald-400">Total Amount</th>
+                            <th scope="col" className="px-3.5 py-3.5 text-left">Remarks</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 font-mono text-xs">
                           {filteredDailyBills.days.length === 0 ? (
                             <tr>
-                              <td colSpan={8} className="px-6 py-12 text-center text-slate-500 font-sans">
+                              <td colSpan={9} className="px-6 py-12 text-center text-slate-500 font-sans">
                                 {dailyBillSearch ? 'No bills match your search filter.' : 'No restaurant orders found in this date range.'}
                               </td>
                             </tr>
@@ -1469,7 +1499,7 @@ export default function AnalysisPage() {
                                 <React.Fragment key={day.dateKey}>
                                   {/* Day Group Header */}
                                   <tr className="bg-slate-800/80 border-y border-white/10 font-sans sticky z-10">
-                                    <td colSpan={8} className="px-4 py-2.5 font-bold text-white text-xs">
+                                    <td colSpan={9} className="px-4 py-2.5 font-bold text-white text-xs">
                                       <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                           <Calendar size={14} className="text-emerald-400" />
@@ -1481,6 +1511,9 @@ export default function AnalysisPage() {
                                         <div className="text-[11px] font-medium text-slate-300 flex items-center gap-3">
                                           <span>Base: <strong className="text-white font-mono">₹{day.totalBaseAmount.toFixed(2)}</strong></span>
                                           <span>GST: <strong className="text-amber-300 font-mono">₹{(day.totalSgstAmount + day.totalCgstAmount).toFixed(2)}</strong></span>
+                                          {day.totalDiscountAmount > 0 && (
+                                            <span>Discount: <strong className="text-rose-400 font-mono">-₹{day.totalDiscountAmount.toFixed(2)}</strong></span>
+                                          )}
                                           <span>Total: <strong className="text-emerald-400 font-mono">₹{day.totalAmount.toFixed(2)}</strong></span>
                                         </div>
                                       </div>
@@ -1490,6 +1523,7 @@ export default function AnalysisPage() {
                                   {/* Orders for this day */}
                                   {day.orders.map((order) => {
                                     const isCancelled = order.status === 'CANCELLED';
+                                    const disc = Number(order.discountAmount || 0);
                                     const ser = String(rowSerNo++).padStart(2, '0');
 
                                     return (
@@ -1497,30 +1531,33 @@ export default function AnalysisPage() {
                                         key={`bill-row-${order.id}`}
                                         className={`hover:bg-white/5 transition-colors ${isCancelled ? 'opacity-60 bg-red-500/5' : ''}`}
                                       >
-                                        <td className="px-4 py-2.5 text-center text-slate-500 font-semibold">{ser}.</td>
-                                        <td className="px-4 py-2.5 text-center font-bold text-white tracking-wide">
+                                        <td className="px-3.5 py-2.5 text-center text-slate-500 font-semibold">{ser}.</td>
+                                        <td className="px-3.5 py-2.5 text-center font-bold text-white tracking-wide">
                                           {order.billNo}
                                         </td>
-                                        <td className="px-4 py-2.5 text-center text-slate-300">
+                                        <td className="px-3.5 py-2.5 text-center text-slate-300">
                                           {order.dateStr}
                                         </td>
-                                        <td className="px-4 py-2.5 text-right font-medium text-slate-200">
+                                        <td className="px-3.5 py-2.5 text-right font-medium text-slate-200">
                                           {isCancelled ? (
                                             <span className="text-rose-400 font-bold font-sans text-[11px] px-1.5 py-0.5 rounded bg-rose-500/10">cancel</span>
                                           ) : (
                                             `₹${Number(order.baseAmount).toFixed(2)}`
                                           )}
                                         </td>
-                                        <td className="px-4 py-2.5 text-right text-amber-400/90 font-medium">
+                                        <td className="px-3.5 py-2.5 text-right text-amber-400/90 font-medium">
                                           {isCancelled ? '-' : `₹${Number(order.sgstAmount).toFixed(2)}`}
                                         </td>
-                                        <td className="px-4 py-2.5 text-right text-amber-400/90 font-medium">
+                                        <td className="px-3.5 py-2.5 text-right text-amber-400/90 font-medium">
                                           {isCancelled ? '-' : `₹${Number(order.cgstAmount).toFixed(2)}`}
                                         </td>
-                                        <td className="px-4 py-2.5 text-right font-bold text-emerald-400">
+                                        <td className="px-3.5 py-2.5 text-right font-medium text-rose-400">
+                                          {isCancelled ? '-' : (disc > 0 ? `₹${disc.toFixed(2)}` : '-')}
+                                        </td>
+                                        <td className="px-3.5 py-2.5 text-right font-bold text-emerald-400">
                                           {isCancelled ? '-' : `₹${Number(order.totalAmount).toFixed(2)}`}
                                         </td>
-                                        <td className="px-4 py-2.5 text-left font-sans text-xs">
+                                        <td className="px-3.5 py-2.5 text-left font-sans text-xs">
                                           {isCancelled ? (
                                             <span className="text-rose-400 font-medium text-[11px] flex items-center gap-1">
                                               <XCircle size={12} /> {order.remarks}
@@ -1537,22 +1574,25 @@ export default function AnalysisPage() {
 
                                   {/* Day Subtotal Row */}
                                   <tr className="bg-black/40 border-t border-white/10 font-bold font-mono text-xs">
-                                    <td colSpan={3} className="px-4 py-2 text-right text-slate-400 font-sans text-xs">
+                                    <td colSpan={3} className="px-3.5 py-2 text-right text-slate-400 font-sans text-xs">
                                       Subtotal ({day.dateStr}):
                                     </td>
-                                    <td className="px-4 py-2 text-right text-slate-200">
+                                    <td className="px-3.5 py-2 text-right text-slate-200">
                                       ₹{day.totalBaseAmount.toFixed(2)}
                                     </td>
-                                    <td className="px-4 py-2 text-right text-amber-400">
+                                    <td className="px-3.5 py-2 text-right text-amber-400">
                                       ₹{day.totalSgstAmount.toFixed(2)}
                                     </td>
-                                    <td className="px-4 py-2 text-right text-amber-400">
+                                    <td className="px-3.5 py-2 text-right text-amber-400">
                                       ₹{day.totalCgstAmount.toFixed(2)}
                                     </td>
-                                    <td className="px-4 py-2 text-right text-emerald-400 text-sm font-black">
+                                    <td className="px-3.5 py-2 text-right text-rose-400">
+                                      {day.totalDiscountAmount > 0 ? `₹${day.totalDiscountAmount.toFixed(2)}` : '-'}
+                                    </td>
+                                    <td className="px-3.5 py-2 text-right text-emerald-400 text-sm font-black">
                                       ₹{day.totalAmount.toFixed(2)}
                                     </td>
-                                    <td className="px-4 py-2 text-slate-400 font-sans text-[11px]">
+                                    <td className="px-3.5 py-2 text-slate-400 font-sans text-[11px]">
                                       {day.completedOrders} Completed
                                     </td>
                                   </tr>
@@ -1564,22 +1604,25 @@ export default function AnalysisPage() {
                         {filteredDailyBills.days.length > 0 && (
                           <tfoot className="bg-black/90 backdrop-blur-md border-t-2 border-emerald-500/40 text-white sticky bottom-0 z-20 font-mono text-xs font-bold">
                             <tr>
-                              <td colSpan={3} className="px-4 py-3.5 text-right font-sans text-xs uppercase tracking-wider text-emerald-400">
+                              <td colSpan={3} className="px-3.5 py-3.5 text-right font-sans text-xs uppercase tracking-wider text-emerald-400">
                                 Grand Total:
                               </td>
-                              <td className="px-4 py-3.5 text-right text-white">
+                              <td className="px-3.5 py-3.5 text-right text-white">
                                 ₹{filteredDailyBills.totalBaseAmount.toFixed(2)}
                               </td>
-                              <td className="px-4 py-3.5 text-right text-amber-400">
+                              <td className="px-3.5 py-3.5 text-right text-amber-400">
                                 ₹{filteredDailyBills.totalSgstAmount.toFixed(2)}
                               </td>
-                              <td className="px-4 py-3.5 text-right text-amber-400">
+                              <td className="px-3.5 py-3.5 text-right text-amber-400">
                                 ₹{filteredDailyBills.totalCgstAmount.toFixed(2)}
                               </td>
-                              <td className="px-4 py-3.5 text-right text-emerald-400 text-base font-black">
+                              <td className="px-3.5 py-3.5 text-right text-rose-400">
+                                ₹{filteredDailyBills.totalDiscountAmount.toFixed(2)}
+                              </td>
+                              <td className="px-3.5 py-3.5 text-right text-emerald-400 text-base font-black">
                                 ₹{filteredDailyBills.grandTotalAmount.toFixed(2)}
                               </td>
-                              <td className="px-4 py-3.5 font-sans text-xs text-slate-300">
+                              <td className="px-3.5 py-3.5 font-sans text-xs text-slate-300">
                                 {filteredDailyBills.completedOrders} Completed Orders
                               </td>
                             </tr>
@@ -1612,6 +1655,7 @@ export default function AnalysisPage() {
                           <div className="p-3 space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
                             {day.orders.map((order) => {
                               const isCancelled = order.status === 'CANCELLED';
+                              const disc = Number(order.discountAmount || 0);
                               return (
                                 <div
                                   key={`mob-order-${order.id}`}
@@ -1633,18 +1677,22 @@ export default function AnalysisPage() {
                                     </span>
                                   </div>
 
-                                  <div className="grid grid-cols-4 gap-1 text-[11px] font-mono py-1.5 border-y border-white/5 text-center">
+                                  <div className="grid grid-cols-5 gap-1 text-[11px] font-mono py-1.5 border-y border-white/5 text-center">
                                     <div>
                                       <span className="text-[9px] text-slate-500 font-sans block">Base</span>
                                       <span className="text-slate-300">{isCancelled ? '-' : `₹${order.baseAmount.toFixed(2)}`}</span>
                                     </div>
                                     <div>
-                                      <span className="text-[9px] text-slate-500 font-sans block">SGST (2.5%)</span>
+                                      <span className="text-[9px] text-slate-500 font-sans block">SGST</span>
                                       <span className="text-amber-400">{isCancelled ? '-' : `₹${order.sgstAmount.toFixed(2)}`}</span>
                                     </div>
                                     <div>
-                                      <span className="text-[9px] text-slate-500 font-sans block">CGST (2.5%)</span>
+                                      <span className="text-[9px] text-slate-500 font-sans block">CGST</span>
                                       <span className="text-amber-400">{isCancelled ? '-' : `₹${order.cgstAmount.toFixed(2)}`}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[9px] text-slate-500 font-sans block">Disc.</span>
+                                      <span className="text-rose-400">{isCancelled ? '-' : (disc > 0 ? `₹${disc.toFixed(2)}` : '-')}</span>
                                     </div>
                                     <div>
                                       <span className="text-[9px] text-slate-500 font-sans block">Total</span>
