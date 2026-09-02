@@ -6,7 +6,8 @@ import { fetchOrderById, updateOrder, transferOrderToRoom } from '../../store/sl
 import CancelOrderModal from './CancelOrderModal';
 import TransferToRoomModal from './TransferToRoomModal';
 import DiscountModal from './DiscountModal';
-import { printReceipt } from '../../utils/printReceipt';
+import { ConfirmPrintModal } from './ConfirmPrintModal';
+import { printReceipt, printKOT } from '../../utils/printReceipt';
 
 interface OrderDetailsModalProps {
   isOpen: boolean;
@@ -21,12 +22,35 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [confirmKotModal, setConfirmKotModal] = useState<{ isOpen: boolean; orderId: number | null }>({ isOpen: false, orderId: null });
 
   useEffect(() => {
     if (isOpen && orderId) {
       dispatch(fetchOrderById(orderId));
     }
   }, [isOpen, orderId, dispatch]);
+
+  const handlePrintKOTAction = (order: any) => {
+    const success = printKOT(order);
+    if (success && order.kotHistory && order.kotHistory.length > 0) {
+      setConfirmKotModal({ isOpen: true, orderId: order.id });
+    }
+  };
+
+  const handleConfirmKotResult = async (didPrint: boolean) => {
+    if (didPrint && confirmKotModal.orderId) {
+      try {
+        await dispatch(updateOrder({
+          id: confirmKotModal.orderId,
+          data: { kotHistory: [] }
+        })).unwrap();
+        dispatch(fetchOrderById(confirmKotModal.orderId));
+      } catch (err) {
+        console.error('Failed to clear KOT status', err);
+      }
+    }
+    setConfirmKotModal({ isOpen: false, orderId: null });
+  };
 
   const handleStatusChange = async (newStatus: string) => {
     if (selectedOrder) {
@@ -58,17 +82,28 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
               <h2 className="text-xl font-bold text-slate-100">Order Details #{orderId}</h2>
               <div className="flex items-center gap-2">
                 {selectedOrder && (
-                  <button
-                    onClick={() => printReceipt(selectedOrder)}
-                    className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors px-3 py-2 rounded-lg text-sm font-bold"
-                  >
-                    <Printer size={16} />
-                    <span className="hidden sm:inline">Print Bill</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handlePrintKOTAction(selectedOrder)}
+                      className="flex items-center gap-1.5 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors px-3 py-2 rounded-lg text-sm font-bold cursor-pointer"
+                      title="Print KOT"
+                    >
+                      <Printer size={16} />
+                      <span className="hidden sm:inline">Print KOT</span>
+                    </button>
+                    <button
+                      onClick={() => printReceipt(selectedOrder)}
+                      className="flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors px-3 py-2 rounded-lg text-sm font-bold cursor-pointer"
+                      title="Print Bill"
+                    >
+                      <Printer size={16} />
+                      <span className="hidden sm:inline">Print Bill</span>
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={onClose}
-                  className="text-slate-400 hover:text-slate-200 transition-colors p-2 rounded-lg hover:bg-white/5"
+                  className="text-slate-400 hover:text-slate-200 transition-colors p-2 rounded-lg hover:bg-white/5 cursor-pointer"
                 >
                   <X size={20} />
                 </button>
@@ -124,27 +159,27 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                         <button
                           onClick={() => setIsCancelModalOpen(true)}
-                          className="py-2.5 px-3 bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 rounded-xl font-bold text-sm transition-all"
+                          className="py-2.5 px-3 bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 rounded-xl font-bold text-sm transition-all cursor-pointer"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={() => setIsDiscountModalOpen(true)}
-                          className="py-2.5 px-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-1.5"
+                          className="py-2.5 px-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <Tag size={15} />
                           <span>Discount</span>
                         </button>
                         <button
                           onClick={() => setIsTransferModalOpen(true)}
-                          className="py-2.5 px-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-xl font-bold text-sm transition-all"
+                          className="py-2.5 px-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-xl font-bold text-sm transition-all cursor-pointer"
                         >
                           Transfer Room
                         </button>
                         <button
                           onClick={() => handleStatusChange('COMPLETED')}
                           disabled={isUpdatingStatus}
-                          className="py-2.5 px-3 bg-emerald-600 border border-emerald-500/20 text-white hover:bg-emerald-700 rounded-xl font-bold text-sm transition-all shadow-[0_4px_14px_0_rgba(16,185,129,0.39)] disabled:opacity-50 flex items-center justify-center gap-1.5"
+                          className="py-2.5 px-3 bg-emerald-600 border border-emerald-500/20 text-white hover:bg-emerald-700 rounded-xl font-bold text-sm transition-all shadow-[0_4px_14px_0_rgba(16,185,129,0.39)] disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           {isUpdatingStatus && <Loader2 className="animate-spin" size={15} />}
                           <span>Mark Done</span>
@@ -259,6 +294,11 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
           }}
         />
       )}
+
+      <ConfirmPrintModal
+        isOpen={confirmKotModal.isOpen}
+        onConfirm={handleConfirmKotResult}
+      />
     </>
   );
 }

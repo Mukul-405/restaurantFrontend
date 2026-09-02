@@ -775,3 +775,75 @@ export const printBookingBill = (
 
   printHtml(html);
 };
+
+export const printKOT = (order: any) => {
+  try {
+    const itemsToPrint = Array.isArray(order.kotHistory)
+      ? order.kotHistory
+      : (order.items || []);
+
+    if (!itemsToPrint || itemsToPrint.length === 0) {
+      toast.error('No items to print in KOT');
+      return false;
+    }
+
+    const itemsHtml = itemsToPrint.map((item: any) => {
+      const qty = item.qty ?? item.quantity ?? 1;
+      return `
+        <tr style="font-size: 16px;">
+          <td style="padding: 4px 0; font-weight: bold; vertical-align: top; width: 45px;">${escapeHtml(qty)}</td>
+          <td style="padding: 4px 0; font-weight: bold; vertical-align: top;">${escapeHtml(item.name)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
+          <title>Print KOT</title>
+          <style>
+            @page { margin: 0; size: 80mm auto; }
+            body { font-family: monospace; padding: 8px; width: 100%; box-sizing: border-box; color: #000; margin: 0; }
+            .header { text-align: center; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 8px; }
+            .footer { text-align: center; margin-top: 12px; border-top: 1px dashed #000; padding-top: 8px; }
+            h2 { margin: 0 0 4px 0; font-size: 22px; }
+            p { margin: 2px 0; font-size: 13px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            th { border-bottom: 1px dashed #000; text-align: left; padding-bottom: 4px; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>KOT</h2>
+            <p>Order #${order.id} | Table: ${escapeHtml(order.tableNumber) || '-'}</p>
+            <p>Waiter: ${escapeHtml(order.user?.name) || '-'}</p>
+            <p>Time: ${new Date().toLocaleTimeString()}</p>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 45px;">QTY</th>
+                <th>ITEM</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+          <div class="footer">
+            <p>*** END OF KOT ***</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printHtml(printContent);
+    return true;
+  } catch (err) {
+    console.error('Failed to print KOT', err);
+    toast.error('Failed to print KOT.');
+    return false;
+  }
+};

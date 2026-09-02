@@ -11,7 +11,8 @@ import OrderDetailsModal from '../../../components/modals/OrderDetailsModal';
 import CancelOrderModal from '../../../components/modals/CancelOrderModal';
 import ReceiptModal from '../../../components/modals/ReceiptModal';
 import DiscountModal from '../../../components/modals/DiscountModal';
-import { printReceipt } from '../../../utils/printReceipt';
+import { printReceipt, printKOT } from '../../../utils/printReceipt';
+import { ConfirmPrintModal } from '../../../components/modals/ConfirmPrintModal';
 import { useAuth } from '../../../context/AuthContext';
 
 export default function OrdersPage() {
@@ -87,6 +88,30 @@ export default function OrdersPage() {
     
     // Explicitly fetch to reflect reset immediately
     dispatch(fetchOrders({ status: 'PENDING', page: 1, limit: 10 }));
+  };
+
+  const [confirmKotModal, setConfirmKotModal] = useState<{ isOpen: boolean; orderId: number | null }>({ isOpen: false, orderId: null });
+
+  const handlePrintKOTAction = (order: Order) => {
+    const success = printKOT(order);
+    if (success && order.kotHistory && order.kotHistory.length > 0) {
+      setConfirmKotModal({ isOpen: true, orderId: order.id });
+    }
+  };
+
+  const handleConfirmKotResult = async (didPrint: boolean) => {
+    if (didPrint && confirmKotModal.orderId) {
+      try {
+        await dispatch(updateOrder({
+          id: confirmKotModal.orderId,
+          data: { kotHistory: [] }
+        })).unwrap();
+        fetchOrdersData(currentPage);
+      } catch (err) {
+        console.error('Failed to clear KOT status', err);
+      }
+    }
+    setConfirmKotModal({ isOpen: false, orderId: null });
   };
 
   const handleStatusChange = async (id: number, newStatus: string) => {
@@ -319,38 +344,48 @@ export default function OrdersPage() {
                         <div className="grid grid-cols-3 gap-2">
                           <button
                             onClick={() => handleOpenEdit(order)}
-                            className="h-9 px-2.5 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5 active:scale-[0.98]"
+                            className="h-9 px-2 text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
+                            title="Edit Order"
                           >
                             <Edit2 size={13} className="text-slate-400" />
                             <span>Edit</span>
                           </button>
                           <button
                             onClick={() => setOrderToDiscount(order)}
-                            className="h-9 px-2.5 text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                            className="h-9 px-2 text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
+                            title="Discount"
                           >
-                            <Tag size={13} />
+                            <Tag size={13} className="text-amber-400" />
                             <span>Discount</span>
                           </button>
                           <button
-                            onClick={() => handleOpenDetails(order)}
-                            className="h-9 px-2.5 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5 active:scale-[0.98]"
+                            onClick={() => handlePrintKOTAction(order)}
+                            className="h-9 px-2 text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
+                            title="Print KOT"
                           >
-                            <Eye size={13} className="text-slate-400" />
-                            <span>View</span>
+                            <Printer size={13} className="text-sky-400" />
+                            <span>Print KOT</span>
                           </button>
                         </div>
 
                         <div className="grid grid-cols-3 gap-2">
                           <button
                             onClick={() => setOrderToCancel(order.id)}
-                            className="h-9 px-3 text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-all flex items-center justify-center gap-1 active:scale-[0.98]"
+                            className="h-9 px-2 text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
                           >
-                            <X size={13} />
+                            <X size={14} />
                             <span>Cancel</span>
                           </button>
                           <button
+                            onClick={() => handleOpenDetails(order)}
+                            className="h-9 px-2 text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
+                          >
+                            <Eye size={13} className="text-slate-400" />
+                            <span>View</span>
+                          </button>
+                          <button
                             onClick={() => setOrderToComplete(order)}
-                            className="col-span-2 h-9 px-3 text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                            className="h-9 px-2 text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl transition-all shadow-[0_4px_14px_rgba(16,185,129,0.3)] flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
                           >
                             <CheckCircle size={14} />
                             <span>Mark Done</span>
@@ -360,33 +395,51 @@ export default function OrdersPage() {
                     )}
 
                     {order.status === 'COMPLETED' && (
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
                         <button
                           onClick={() => handleOpenDetails(order)}
-                          className="h-9 px-3 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5"
+                          className="h-9 px-2 text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <Eye size={14} className="text-slate-400" />
-                          <span>View Details</span>
+                          <Eye size={13} className="text-slate-400" />
+                          <span>View</span>
+                        </button>
+                        <button
+                          onClick={() => handlePrintKOTAction(order)}
+                          className="h-9 px-2 text-xs font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          title="Print KOT"
+                        >
+                          <Printer size={13} />
+                          <span>Print KOT</span>
                         </button>
                         <button
                           onClick={() => printReceipt(order)}
-                          className="h-9 px-3 text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                          className="h-9 px-2 text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-[0_2px_10px_rgba(16,185,129,0.15)] cursor-pointer"
                           title="Print Bill"
                         >
-                          <Printer size={14} />
+                          <Printer size={13} />
                           <span>Print Bill</span>
                         </button>
                       </div>
                     )}
 
                     {order.status === 'CANCELLED' && (
-                      <button
-                        onClick={() => handleOpenDetails(order)}
-                        className="w-full h-9 px-3 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5"
-                      >
-                        <Eye size={14} className="text-slate-400" />
-                        <span>View Details</span>
-                      </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => handleOpenDetails(order)}
+                          className="h-9 px-3 text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Eye size={14} className="text-slate-400" />
+                          <span>View Details</span>
+                        </button>
+                        <button
+                          onClick={() => handlePrintKOTAction(order)}
+                          className="h-9 px-3 text-xs font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          title="Print KOT"
+                        >
+                          <Printer size={14} />
+                          <span>Print KOT</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </motion.div>
@@ -453,77 +506,101 @@ export default function OrdersPage() {
 
                         <div className="flex flex-col gap-2">
                           {order.status === 'PENDING' && (
-                            <>
-                              <div className="grid grid-cols-3 gap-2">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleOpenEdit(order); }}
-                                  className="h-9 px-2 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5"
-                                >
-                                  <Edit2 size={13} className="text-slate-400" />
-                                  <span>Edit</span>
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setOrderToDiscount(order); }}
-                                  className="h-9 px-2 text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5"
-                                >
-                                  <Tag size={13} />
-                                  <span>Discount</span>
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleOpenDetails(order); }}
-                                  className="h-9 px-2 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5"
-                                >
-                                  <Eye size={13} className="text-slate-400" />
-                                  <span>View</span>
-                                </button>
-                              </div>
-
-                              <div className="grid grid-cols-3 gap-2">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setOrderToCancel(order.id); }}
-                                  className="h-9 px-3 text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-all flex items-center justify-center gap-1"
-                                >
-                                  <X size={13} />
-                                  <span>Cancel</span>
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setOrderToComplete(order); }}
-                                  className="col-span-2 h-9 px-3 text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5"
-                                >
-                                  <CheckCircle size={14} />
-                                  <span>Mark Done</span>
-                                </button>
-                              </div>
-                            </>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleOpenEdit(order); }}
+                                className="h-9 px-2 text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
+                                title="Edit Order"
+                              >
+                                <Edit2 size={13} className="text-slate-400" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setOrderToDiscount(order); }}
+                                className="h-9 px-2 text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
+                                title="Discount"
+                              >
+                                <Tag size={13} className="text-amber-400" />
+                                <span>Discount</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handlePrintKOTAction(order); }}
+                                className="h-9 px-2 text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
+                                title="Print KOT"
+                              >
+                                <Printer size={13} className="text-sky-400" />
+                                <span>Print KOT</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setOrderToCancel(order.id); }}
+                                className="h-9 px-2 text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
+                              >
+                                <X size={14} />
+                                <span>Cancel</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleOpenDetails(order); }}
+                                className="h-9 px-2 text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
+                              >
+                                <Eye size={13} className="text-slate-400" />
+                                <span>View</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setOrderToComplete(order); }}
+                                className="h-9 px-2 text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl transition-all shadow-[0_4px_14px_rgba(16,185,129,0.3)] flex items-center justify-center gap-1.5 active:scale-[0.97] cursor-pointer"
+                              >
+                                <CheckCircle size={14} />
+                                <span>Mark Done</span>
+                              </button>
+                            </div>
                           )}
 
                           {order.status === 'COMPLETED' && (
                             <div className="grid grid-cols-2 gap-2">
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleOpenDetails(order); }}
-                                className="h-9 px-3 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5"
+                                className="h-9 px-2 text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                               >
-                                <Eye size={14} className="text-slate-400" />
-                                <span>View Details</span>
+                                <Eye size={13} className="text-slate-400" />
+                                <span>View</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handlePrintKOTAction(order); }}
+                                className="h-9 px-2 text-xs font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                title="Print KOT"
+                              >
+                                <Printer size={13} />
+                                <span>Print KOT</span>
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); printReceipt(order); }}
-                                className="h-9 px-3 text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                                className="h-9 px-2 text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-[0_2px_10px_rgba(16,185,129,0.15)] cursor-pointer col-span-2"
+                                title="Print Bill"
                               >
-                                <Printer size={14} />
+                                <Printer size={13} />
                                 <span>Print Bill</span>
                               </button>
                             </div>
                           )}
 
                           {order.status === 'CANCELLED' && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleOpenDetails(order); }}
-                              className="w-full h-9 px-3 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/5"
-                            >
-                              <Eye size={14} className="text-slate-400" />
-                              <span>View Details</span>
-                            </button>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleOpenDetails(order); }}
+                                className="h-9 px-3 text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <Eye size={14} className="text-slate-400" />
+                                <span>View Details</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handlePrintKOTAction(order); }}
+                                className="h-9 px-3 text-xs font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                title="Print KOT"
+                              >
+                                <Printer size={14} />
+                                <span>Print KOT</span>
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -609,6 +686,11 @@ export default function OrdersPage() {
           })).unwrap();
           fetchOrdersData(currentPage);
         }}
+      />
+
+      <ConfirmPrintModal
+        isOpen={confirmKotModal.isOpen}
+        onConfirm={handleConfirmKotResult}
       />
     </div>
   );

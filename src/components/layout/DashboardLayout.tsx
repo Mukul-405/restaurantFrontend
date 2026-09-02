@@ -14,7 +14,6 @@ const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; permiss
   { href: '/dashboard/bar-menu', label: 'Bar Menu', icon: Wine, permission: 'MANAGE_BAR_MENU' },
   { href: '/dashboard/inventory', label: 'Inventory', icon: Boxes, permission: 'MANAGE_INVENTORY' },
   { href: '/dashboard/analysis', label: 'Analysis', icon: BarChart, permission: 'VIEW_ANALYSIS' },
-  { href: '/dashboard/kots', label: 'Print KOTs', icon: Printer, permission: 'PRINT_KOTS' },
   { href: '/dashboard/room-manage', label: 'Manage Rooms', icon: Building, permission: 'MANAGE_ROOMS' },
   { href: '/dashboard/book-room', label: 'Reservation', icon: CalendarDays, permission: 'MANAGE_RESERVATIONS' },
   { href: '/dashboard/channel-manager', label: 'Room Status', icon: RefreshCw, permission: 'VIEW_ROOM_STATUS' },
