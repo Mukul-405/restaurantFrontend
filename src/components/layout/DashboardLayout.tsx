@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Users, LogOut, Menu as MenuIcon, X, Coffee, ShoppingCart, BarChart, Bed, RefreshCw, Utensils, Printer, CalendarDays, Building } from 'lucide-react';
+import { Users, LogOut, Menu as MenuIcon, X, Coffee, ShoppingCart, BarChart, Bed, RefreshCw, Utensils, Printer, CalendarDays, Building, Wine, Boxes } from 'lucide-react';
 import { useAuth, hasPermission, Permission } from '../../context/AuthContext';
 import ProtectedRoute from '../ProtectedRoute';
 
 const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; permission: Permission }[] = [
   { href: '/dashboard/members', label: 'Members', icon: Users, permission: 'MANAGE_MEMBERS' },
   { href: '/dashboard/menu', label: 'Menu', icon: Utensils, permission: 'MANAGE_MENU' },
+  { href: '/dashboard/bar-menu', label: 'Bar Menu', icon: Wine, permission: 'MANAGE_BAR_MENU' },
+  { href: '/dashboard/inventory', label: 'Inventory', icon: Boxes, permission: 'MANAGE_INVENTORY' },
   { href: '/dashboard/analysis', label: 'Analysis', icon: BarChart, permission: 'VIEW_ANALYSIS' },
   { href: '/dashboard/kots', label: 'Print KOTs', icon: Printer, permission: 'PRINT_KOTS' },
   { href: '/dashboard/room-manage', label: 'Manage Rooms', icon: Building, permission: 'MANAGE_ROOMS' },

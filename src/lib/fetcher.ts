@@ -67,6 +67,28 @@ export const fetcher = {
     return data;
   },
 
+  // Bar Menu endpoints
+  getBarMenu: async () => {
+    const { data } = await api.get('/bar-menu');
+    return data;
+  },
+  createBarMenuItem: async (barMenuData: any) => {
+    const { data } = await api.post('/bar-menu', barMenuData);
+    return data;
+  },
+  updateBarMenuItem: async (id: string | number, barMenuData: any) => {
+    const { data } = await api.patch(`/bar-menu/${id}`, barMenuData);
+    return data;
+  },
+  deleteBarMenuItem: async (id: string | number) => {
+    const { data } = await api.delete(`/bar-menu/${id}`);
+    return data;
+  },
+  bulkCreateBarCategories: async (categories: string[]) => {
+    const { data } = await api.post('/bar-menu/categories/bulk', { categories });
+    return data;
+  },
+
   // Order endpoints
   getOrders: async (params?: Record<string, any>) => {
     const { data } = await api.get('/orders', { params });
@@ -91,5 +113,27 @@ export const fetcher = {
   transferOrderToRoom: async (id: number | string, data: { userRoomBookingId: number }) => {
     const response = await api.post(`/orders/${id}/transfer-to-room`, data);
     return response.data;
-  }
+  },
+
+  // Inventory endpoints
+  getInventory: async (params?: Record<string, any>) => {
+    const { data } = await api.get('/inventory', { params });
+    return data;
+  },
+  getInventoryById: async (id: number | string) => {
+    const { data } = await api.get(`/inventory/${id}`);
+    return data;
+  },
+  createInventory: async (inventoryData: any) => {
+    const { data } = await api.post('/inventory', inventoryData);
+    return data;
+  },
+  updateInventory: async (id: number | string, inventoryData: any) => {
+    const { data } = await api.patch(`/inventory/${id}`, inventoryData);
+    return data;
+  },
+  deleteInventory: async (id: number | string) => {
+    const { data } = await api.delete(`/inventory/${id}`);
+    return data;
+  },
 };

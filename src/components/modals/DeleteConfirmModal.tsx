@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X, Loader2 } from 'lucide-react';
-import { MenuItem } from '../../store/slices/menuSlice';
+export interface DeletableItem {
+  id: string | number;
+  name?: string;
+  [key: string]: any;
+}
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (id: string | number) => Promise<void>;
-  item?: MenuItem | null;
+  item?: DeletableItem | null;
 }
 
 export default function DeleteConfirmModal({ isOpen, onClose, onConfirm, item }: DeleteConfirmModalProps) {

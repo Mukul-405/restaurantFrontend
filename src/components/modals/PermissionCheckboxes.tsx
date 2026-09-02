@@ -6,6 +6,8 @@ import { Permission } from '../../context/AuthContext';
 const PERMISSION_LABELS: { value: Permission; label: string }[] = [
   { value: 'MANAGE_MEMBERS', label: 'Can Manage Members' },
   { value: 'MANAGE_MENU', label: 'Can Manage Menu' },
+  { value: 'MANAGE_BAR_MENU', label: 'Can Manage Bar Menu' },
+  { value: 'MANAGE_INVENTORY', label: 'Can Manage Inventory' },
   { value: 'VIEW_ANALYSIS', label: 'Can View Analysis' },
   { value: 'PRINT_KOTS', label: 'Can Print KOTs' },
   { value: 'MANAGE_ROOMS', label: 'Can Manage Rooms' },

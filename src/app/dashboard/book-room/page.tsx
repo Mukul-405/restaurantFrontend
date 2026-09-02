@@ -567,11 +567,11 @@ export default function BookRoomPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className={labelClass}>Check-in Date</label>
-                  <input type="date" name="checkIn" required min={todayStr} value={formData.checkIn} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
+                  <input type="date" name="checkIn" required value={formData.checkIn} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
                 </div>
                 <div>
                   <label className={labelClass}>Check-out Date</label>
-                  <input type="date" name="checkOut" required min={formData.checkIn || todayStr} value={formData.checkOut} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
+                  <input type="date" name="checkOut" required min={formData.checkIn || undefined} value={formData.checkOut} onChange={handleChange} className={`${inputClass} [color-scheme:dark]`} />
                   {formData.checkOut && (
                     <div className="mt-2 text-xs text-slate-400 flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-1.5">

@@ -11,6 +11,8 @@ export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'MANAGER' | 'WAITER' | 'CASHIER'
 export type Permission =
   | 'MANAGE_MEMBERS'
   | 'MANAGE_MENU'
+  | 'MANAGE_BAR_MENU'
+  | 'MANAGE_INVENTORY'
   | 'VIEW_ANALYSIS'
   | 'PRINT_KOTS'
   | 'MANAGE_ROOMS'
