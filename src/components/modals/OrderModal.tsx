@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Plus, Trash2, Search, ChevronDown, RefreshCw } from 'lucide-react';
+import { X, Loader2, Plus, Trash2, Search, ChevronDown, RefreshCw, Sparkles, Tag, Check } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { createOrder, updateOrder, Order } from '../../store/slices/orderSlice';
+import { createOrder, updateOrder, Order, OrderItem } from '../../store/slices/orderSlice';
 import { fetchMenu } from '../../store/slices/menuSlice';
 import { matchesMenuSearch } from '../../utils/menuSearch';
 
@@ -13,12 +13,20 @@ interface OrderModalProps {
   orderToEdit?: Order | null;
 }
 
+interface SelectedItem {
+  menuItemId?: number | null;
+  quantity: number;
+  name: string;
+  price: number;
+  isCustom?: boolean;
+}
+
 export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: OrderModalProps) {
   const dispatch = useAppDispatch();
   const { items: menuItems, categories, status: menuStatus, error: menuError } = useAppSelector(state => state.menu);
 
   const [tableNumber, setTableNumber] = useState('');
-  const [selectedItems, setSelectedItems] = useState<Array<{menuItemId: number, quantity: number, name: string, price: number}>>([]);
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,6 +35,13 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Custom Item Form State
+  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customPrice, setCustomPrice] = useState('');
+  const [customQty, setCustomQty] = useState('1');
+  const [customFormError, setCustomFormError] = useState('');
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -38,10 +53,6 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Refetch on every open, not just when `idle`. A single failed load used to
-  // leave status at 'failed' forever, so the item grid stayed empty until a full
-  // page reload — and a cached 'succeeded' menu never picked up items another
-  // device added.
   useEffect(() => {
     if (isOpen) {
       dispatch(fetchMenu());
@@ -56,7 +67,8 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
           menuItemId: i.menuItemId,
           quantity: i.quantity,
           name: i.name,
-          price: i.price
+          price: Number(i.price),
+          isCustom: !i.menuItemId || i.menuItemId <= 0,
         })));
       } else {
         setTableNumber('');
@@ -67,9 +79,15 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
       setSelectedCategory('ALL');
       setCategorySearchQuery('');
       setIsCategoryDropdownOpen(false);
+      setShowCustomForm(false);
+      setCustomName('');
+      setCustomPrice('');
+      setCustomQty('1');
+      setCustomFormError('');
     }
   }, [isOpen, orderToEdit]);
 
+  // Standard menu item selection
   const handleAddItem = (menuItemId: number) => {
     const item = menuItems.find(i => Number(i.id) === menuItemId);
     if (!item) return;
@@ -84,31 +102,81 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
         menuItemId: Number(item.id),
         quantity: 1,
         name: item.name,
-        price: Number(item.price)
+        price: Number(item.price),
+        isCustom: false
       }]);
     }
   };
 
-  const handleRemoveItem = (menuItemId: number) => {
-    setSelectedItems(selectedItems.filter(i => i.menuItemId !== menuItemId));
+  // Custom ad-hoc item addition
+  const handleAddCustomItem = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setCustomFormError('');
+
+    const trimmed = customName.trim();
+    if (!trimmed) {
+      setCustomFormError('Please enter item name');
+      return;
+    }
+    const parsedPrice = parseFloat(customPrice);
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      setCustomFormError('Please enter a valid price (₹)');
+      return;
+    }
+    const parsedQty = parseInt(customQty, 10);
+    if (isNaN(parsedQty) || parsedQty <= 0) {
+      setCustomFormError('Please enter a valid quantity');
+      return;
+    }
+
+    const existingIndex = selectedItems.findIndex(i => i.name.toLowerCase() === trimmed.toLowerCase());
+    if (existingIndex !== -1) {
+      setSelectedItems(selectedItems.map((item, idx) => 
+        idx === existingIndex 
+          ? { ...item, quantity: item.quantity + parsedQty, price: parsedPrice } 
+          : item
+      ));
+    } else {
+      const customId = -Date.now();
+      setSelectedItems(prev => [...prev, {
+        menuItemId: customId,
+        name: trimmed,
+        price: parsedPrice,
+        quantity: parsedQty,
+        isCustom: true
+      }]);
+    }
+
+    setCustomName('');
+    setCustomPrice('');
+    setCustomQty('1');
+    setCustomFormError('');
+    setShowCustomForm(false);
   };
 
-  const handleQuantityChange = (menuItemId: number, quantity: number) => {
+  const handleRemoveItem = (index: number) => {
+    setSelectedItems(selectedItems.filter((_, i) => i !== index));
+  };
+
+  const handleQuantityChange = (index: number, quantity: number) => {
     if (quantity < 1) return;
-    setSelectedItems(selectedItems.map(i => 
-      i.menuItemId === menuItemId ? { ...i, quantity } : i
+    setSelectedItems(selectedItems.map((item, i) => 
+      i === index ? { ...item, quantity } : item
     ));
   };
 
-  const handlePriceChange = (menuItemId: number, price: number) => {
-    setSelectedItems(selectedItems.map(i => 
-      i.menuItemId === menuItemId ? { ...i, price } : i
+  const handlePriceChange = (index: number, newPrice: number) => {
+    if (isNaN(newPrice) || newPrice < 0) return;
+    setSelectedItems(selectedItems.map((item, i) => 
+      i === index ? { ...item, price: newPrice } : item
     ));
   };
 
-  const visibleItems = menuItems.filter(item => {
+  const customItemsInCart = selectedItems.filter(i => i.isCustom || (i.menuItemId && i.menuItemId <= 0));
+
+  const visibleMenuItems = menuItems.filter(item => {
     if (!matchesMenuSearch(item, searchQuery)) return false;
-    if (selectedCategory === 'CART') return selectedItems.some(s => s.menuItemId === Number(item.id));
+    if (selectedCategory === 'CART' || selectedCategory === 'CUSTOM') return false;
     return selectedCategory === 'ALL' || item.categoryName === selectedCategory;
   });
 
@@ -128,12 +196,20 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
     setIsSubmitting(true);
     setError(null);
 
+    // Format items payload ensuring valid numbers
+    const payloadItems = selectedItems.map(item => ({
+      menuItemId: item.menuItemId && item.menuItemId > 0 ? item.menuItemId : 0,
+      quantity: item.quantity,
+      name: item.name.trim(),
+      price: item.price,
+    }));
+
     try {
       if (orderToEdit) {
         await dispatch(updateOrder({
           id: orderToEdit.id,
           data: {
-            items: selectedItems,
+            items: payloadItems as any,
             baseAmount,
             gstAmount,
             discountAmount,
@@ -143,7 +219,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
         })).unwrap();
       } else {
         await dispatch(createOrder({
-          items: selectedItems,
+          items: payloadItems as any,
           baseAmount,
           gstAmount,
           discountAmount,
@@ -172,86 +248,187 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="bg-surface border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
         >
+          {/* Header */}
           <div className="flex justify-between items-center p-4 md:p-6 border-b border-white/10 bg-surface/80 backdrop-blur-md sticky top-0 z-20">
             <h2 className="text-xl font-bold text-slate-100">{orderToEdit ? 'Edit Order' : 'New Order'}</h2>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-200 transition-colors p-2 rounded-lg hover:bg-white/5"
+              className="text-slate-400 hover:text-slate-200 transition-colors p-2 rounded-lg hover:bg-white/5 cursor-pointer"
             >
               <X size={20} />
             </button>
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col relative">
-            <div className="p-4 md:p-6 space-y-6 flex-1">
+            <div className="p-4 md:p-6 space-y-5 flex-1">
               {error && (
                 <div className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm">
                   {error}
                 </div>
               )}
 
-              {/* Table Details */}
-              <div>
-                <h3 className="text-lg font-bold text-slate-200 mb-3">Table Details</h3>
-                <div className="bg-black/20 border border-white/5 rounded-2xl p-4">
+              {/* Table Details & Custom Item Quick Toggle */}
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                <div className="flex-1 bg-black/20 border border-white/5 rounded-2xl p-2.5">
                   <input
                     type="number"
                     value={tableNumber || ''}
                     onChange={(e) => setTableNumber(e.target.value)}
-                    className="w-full bg-transparent border border-white/10 text-slate-200 px-4 py-3 rounded-xl font-sans text-sm transition-all duration-300 outline-none focus:border-primary placeholder-slate-500"
+                    className="w-full bg-transparent border border-white/10 text-slate-200 px-3.5 py-2 rounded-xl font-sans text-sm transition-all duration-300 outline-none focus:border-primary placeholder-slate-500"
                     placeholder="Table Number (Optional)"
                     min="1"
                   />
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCustomForm(!showCustomForm)}
+                  className={`px-4 py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
+                    showCustomForm 
+                      ? 'bg-purple-500 text-white border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]' 
+                      : 'bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border-purple-500/30'
+                  }`}
+                >
+                  <Sparkles size={15} />
+                  <span>{showCustomForm ? 'Close Custom Item' : '+ Add Custom Item'}</span>
+                </button>
               </div>
 
-              {/* Order Items */}
+              {/* Custom Item Form Card */}
+              <AnimatePresence>
+                {showCustomForm && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <form onSubmit={handleAddCustomItem} className="bg-purple-500/[0.07] border border-purple-500/30 rounded-2xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <Tag size={13} /> Custom / Off-Menu Item
+                        </span>
+                        <span className="text-[11px] text-slate-400">Add ad-hoc item with custom name & rate</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                        <div className="sm:col-span-6">
+                          <input
+                            type="text"
+                            placeholder="Item Name (e.g. Ice Cream, Mineral Water)"
+                            value={customName}
+                            onChange={e => setCustomName(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 text-slate-200 px-3.5 py-2 rounded-xl text-sm outline-none focus:border-purple-400 placeholder-slate-500"
+                            autoFocus
+                          />
+                        </div>
+
+                        <div className="sm:col-span-3">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Price ₹"
+                            value={customPrice}
+                            onChange={e => setCustomPrice(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 text-slate-200 px-3 py-2 rounded-xl text-sm outline-none focus:border-purple-400 placeholder-slate-500 text-right"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-3 flex gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="Qty"
+                            value={customQty}
+                            onChange={e => setCustomQty(e.target.value)}
+                            className="w-16 bg-black/40 border border-white/10 text-slate-200 px-2 py-2 rounded-xl text-sm outline-none focus:border-purple-400 text-center"
+                          />
+                          <button
+                            type="submit"
+                            className="flex-1 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold px-3 py-2 transition-all flex items-center justify-center gap-1 shadow-[0_2px_10px_rgba(168,85,247,0.3)] cursor-pointer"
+                          >
+                            <Check size={14} />
+                            <span>Add</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {customFormError && (
+                        <div className="text-xs text-danger font-medium">{customFormError}</div>
+                      )}
+                    </form>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Order Items Section */}
               <div>
-                <h3 className="text-lg font-bold text-slate-200 mb-3">Order Items</h3>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-base font-bold text-slate-200">Select Items</h3>
+                </div>
                 
                 {/* Search */}
-                <div className="relative mb-4">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <div className="relative mb-3.5">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search menu items..."
-                    className="w-full bg-black/20 border border-white/10 text-slate-200 pl-11 pr-4 py-3 rounded-xl font-sans text-sm outline-none focus:border-primary placeholder-slate-500"
+                    className="w-full bg-black/20 border border-white/10 text-slate-200 pl-11 pr-4 py-2.5 rounded-xl font-sans text-sm outline-none focus:border-primary placeholder-slate-500"
                   />
                 </div>
 
-                {/* Categories (Horizontal Scroll) */}
+                {/* Categories Horizontal Scroll */}
                 <div className="flex overflow-x-auto custom-scrollbar gap-2 mb-4 pb-2 -mx-4 px-4 md:mx-0 md:px-0">
+                  {/* Cart Tab */}
                   <button
                     type="button"
                     onClick={() => setSelectedCategory('CART')}
-                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
+                    className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
                       selectedCategory === 'CART' ? 'bg-emerald-500 text-white' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20'
                     }`}
                   >
-                    Cart
+                    <span>Cart</span>
                     {selectedItems.length > 0 && (
-                      <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">
+                      <span className="bg-emerald-700 text-white px-1.5 py-0.2 rounded-full text-[10px] font-extrabold">
                         {selectedItems.reduce((acc, item) => acc + item.quantity, 0)}
                       </span>
                     )}
                   </button>
+
+                  {/* Custom Items Tab */}
+                  {customItemsInCart.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory('CUSTOM')}
+                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
+                        selectedCategory === 'CUSTOM' ? 'bg-purple-600 text-white' : 'bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border border-purple-500/20'
+                      }`}
+                    >
+                      <Sparkles size={12} />
+                      <span>Custom ({customItemsInCart.length})</span>
+                    </button>
+                  )}
+
+                  {/* All Menu Items Tab */}
                   <button
                     type="button"
                     onClick={() => setSelectedCategory('ALL')}
-                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
                       selectedCategory === 'ALL' ? 'bg-primary text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5'
                     }`}
                   >
                     All
                   </button>
+
                   {categories.map((cat) => (
                     <button
                       key={cat.id}
                       type="button"
                       onClick={() => setSelectedCategory(cat.name)}
-                      className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
                         selectedCategory === cat.name ? 'bg-primary text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5'
                       }`}
                     >
@@ -260,15 +437,14 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                   ))}
                 </div>
 
-                {/* Menu load state — silence here used to look like an empty menu */}
+                {/* Loading state */}
                 {menuStatus === 'loading' && menuItems.length === 0 && (
                   <div className="flex justify-center py-10">
                     <Loader2 className="animate-spin text-primary" size={28} />
                   </div>
                 )}
 
-                {/* Shown even when a stale menu is cached — silently serving an
-                    out-of-date menu is how items go missing without anyone knowing. */}
+                {/* Menu load error */}
                 {menuStatus === 'failed' && (
                   <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-danger/20 bg-danger/10 p-3">
                     <p className="text-danger text-sm">
@@ -279,7 +455,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                     <button
                       type="button"
                       onClick={() => dispatch(fetchMenu())}
-                      className="flex shrink-0 items-center gap-2 text-primary hover:text-primary-hover text-sm"
+                      className="flex shrink-0 items-center gap-2 text-primary hover:text-primary-hover text-sm cursor-pointer"
                     >
                       <RefreshCw size={16} />
                       <span>Retry</span>
@@ -287,74 +463,181 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                   </div>
                 )}
 
-                {menuStatus === 'succeeded' && menuItems.length > 0 && visibleItems.length === 0 && (
-                  <p className="py-10 text-center text-sm text-slate-400">
-                    {selectedCategory === 'CART' ? 'Cart is empty.' : 'No items match this search or category.'}
-                  </p>
-                )}
-
-                {/* Item List (Grid on desktop, list on mobile) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {visibleItems
-                    .map((item) => {
-                      const selectedItem = selectedItems.find(s => s.menuItemId === Number(item.id));
-                      const qty = selectedItem?.quantity || 0;
-
-                      return (
-                        <div key={item.id} className="bg-[#24262b] border border-white/5 rounded-2xl p-4 flex justify-between items-center shadow-sm">
+                {/* View 1: Cart View (Shows all selected items: menu & custom) */}
+                {selectedCategory === 'CART' && (
+                  <div className="space-y-2.5">
+                    {selectedItems.length === 0 ? (
+                      <p className="py-10 text-center text-sm text-slate-400">Your cart is empty. Add menu items or custom items.</p>
+                    ) : (
+                      selectedItems.map((item, index) => (
+                        <div key={`cart-${index}`} className="bg-[#24262b] border border-white/10 rounded-xl p-3.5 flex justify-between items-center shadow-sm">
                           <div>
-                            <h4 className="text-slate-200 font-medium text-base mb-1">
-                              {item.name}
-                              {!item.isAvailable && (
-                                <span className="ml-2 text-[10px] uppercase tracking-wider text-amber-400/90 font-semibold">Unavailable</span>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-slate-200 font-semibold text-sm">{item.name}</h4>
+                              {item.isCustom && (
+                                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded-full font-bold">
+                                  Custom
+                                </span>
                               )}
-                            </h4>
-                            <div className="text-emerald-400 font-bold tracking-wide">₹{item.price}</div>
+                            </div>
+                            <div className="text-emerald-400 font-bold text-xs mt-0.5">
+                              ₹{item.price.toFixed(2)} each = ₹{(item.price * item.quantity).toFixed(2)}
+                            </div>
                           </div>
-                          
-                          <div className="flex items-center gap-3">
-                            {qty > 0 ? (
-                              <>
-                                <div className="flex items-center gap-3 bg-black/30 rounded-full px-2 py-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleQuantityChange(Number(item.id), qty - 1)}
-                                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all"
-                                  >-</button>
-                                  <span className="w-4 text-center font-bold text-slate-100">{qty}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleQuantityChange(Number(item.id), qty + 1)}
-                                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all"
-                                  >+</button>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveItem(Number(item.id))}
-                                  className="text-danger/80 hover:text-danger p-2 transition-colors"
-                                >
-                                  <Trash2 size={20} />
-                                </button>
-                              </>
-                            ) : (
+
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex items-center gap-2 bg-black/40 rounded-lg px-2 py-1 border border-white/5">
                               <button
                                 type="button"
-                                onClick={() => handleAddItem(Number(item.id))}
-                                disabled={!item.isAvailable}
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                                  item.isAvailable 
-                                    ? 'bg-primary/20 text-primary hover:bg-primary/30 active:scale-95' 
-                                    : 'bg-white/5 text-slate-600 cursor-not-allowed'
-                                }`}
-                              >
-                                <Plus size={20} />
-                              </button>
-                            )}
+                                onClick={() => handleQuantityChange(index, item.quantity - 1)}
+                                className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all text-xs font-bold cursor-pointer"
+                              >-</button>
+                              <span className="w-5 text-center font-bold text-slate-100 text-xs">{item.quantity}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleQuantityChange(index, item.quantity + 1)}
+                                className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all text-xs font-bold cursor-pointer"
+                              >+</button>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(index)}
+                              className="text-danger/80 hover:text-danger p-1.5 rounded-lg hover:bg-danger/10 transition-colors cursor-pointer"
+                              title="Remove item"
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
                         </div>
-                      );
-                    })}
-                </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* View 2: Custom Items Tab */}
+                {selectedCategory === 'CUSTOM' && (
+                  <div className="space-y-2.5">
+                    {customItemsInCart.length === 0 ? (
+                      <p className="py-10 text-center text-sm text-slate-400">No custom items added yet. Click "+ Add Custom Item" above to add one.</p>
+                    ) : (
+                      selectedItems.map((item, index) => {
+                        if (!item.isCustom && (!item.menuItemId || item.menuItemId > 0)) return null;
+                        return (
+                          <div key={`custom-${index}`} className="bg-[#24262b] border border-purple-500/20 rounded-xl p-3.5 flex justify-between items-center shadow-sm">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-slate-200 font-semibold text-sm">{item.name}</h4>
+                                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded-full font-bold">
+                                  Custom
+                                </span>
+                              </div>
+                              <div className="text-emerald-400 font-bold text-xs mt-0.5">
+                                ₹{item.price.toFixed(2)} × {item.quantity} = ₹{(item.price * item.quantity).toFixed(2)}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex items-center gap-2 bg-black/40 rounded-lg px-2 py-1 border border-white/5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuantityChange(index, item.quantity - 1)}
+                                  className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all text-xs font-bold cursor-pointer"
+                                >-</button>
+                                <span className="w-5 text-center font-bold text-slate-100 text-xs">{item.quantity}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuantityChange(index, item.quantity + 1)}
+                                  className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all text-xs font-bold cursor-pointer"
+                                >+</button>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItem(index)}
+                                className="text-danger/80 hover:text-danger p-1.5 rounded-lg hover:bg-danger/10 transition-colors cursor-pointer"
+                                title="Remove item"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+
+                {/* View 3: Standard Menu Items Grid */}
+                {selectedCategory !== 'CART' && selectedCategory !== 'CUSTOM' && (
+                  <>
+                    {menuStatus === 'succeeded' && menuItems.length > 0 && visibleMenuItems.length === 0 && (
+                      <p className="py-10 text-center text-sm text-slate-400">
+                        No menu items match this search or category.
+                      </p>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {visibleMenuItems.map((item) => {
+                        const selectedItemIndex = selectedItems.findIndex(s => s.menuItemId === Number(item.id));
+                        const selectedItem = selectedItemIndex !== -1 ? selectedItems[selectedItemIndex] : null;
+                        const qty = selectedItem?.quantity || 0;
+
+                        return (
+                          <div key={item.id} className="bg-[#24262b] border border-white/5 rounded-2xl p-4 flex justify-between items-center shadow-sm">
+                            <div>
+                              <h4 className="text-slate-200 font-medium text-base mb-1">
+                                {item.name}
+                                {!item.isAvailable && (
+                                  <span className="ml-2 text-[10px] uppercase tracking-wider text-amber-400/90 font-semibold">Unavailable</span>
+                                )}
+                              </h4>
+                              <div className="text-emerald-400 font-bold tracking-wide">₹{item.price}</div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                              {qty > 0 ? (
+                                <>
+                                  <div className="flex items-center gap-3 bg-black/30 rounded-full px-2 py-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuantityChange(selectedItemIndex, qty - 1)}
+                                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+                                    >-</button>
+                                    <span className="w-4 text-center font-bold text-slate-100">{qty}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuantityChange(selectedItemIndex, qty + 1)}
+                                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+                                    >+</button>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveItem(selectedItemIndex)}
+                                    className="text-danger/80 hover:text-danger p-2 transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 size={20} />
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddItem(Number(item.id))}
+                                  disabled={!item.isAvailable}
+                                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                                    item.isAvailable 
+                                      ? 'bg-primary/20 text-primary hover:bg-primary/30 active:scale-95' 
+                                      : 'bg-white/5 text-slate-600 cursor-not-allowed'
+                                  }`}
+                                >
+                                  <Plus size={20} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -392,7 +675,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                   <button
                     onClick={handleSubmit}
                     disabled={isSubmitting}
-                    className="w-full py-4 rounded-xl font-bold text-base transition-all duration-200 border-none bg-primary text-white hover:bg-primary-hover active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_4px_14px_0_var(--color-primary-light)]"
+                    className="w-full py-4 rounded-xl font-bold text-base transition-all duration-200 border-none bg-primary text-white hover:bg-primary-hover active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_4px_14px_0_var(--color-primary-light)] cursor-pointer"
                   >
                     {isSubmitting && <Loader2 className="animate-spin" size={18} />}
                     {orderToEdit ? 'Save Changes' : 'Submit Order'}

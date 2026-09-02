@@ -402,8 +402,10 @@ export default function OrdersPage() {
                     onClick={() => toggleAccordion(order.id)}
                     className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-slate-200 font-medium">Order ID <span className="font-mono">#{order.id}</span></span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-slate-200 font-bold text-sm">
+                        {order.tableNumber ? `Table ${order.tableNumber}` : 'Table -'}
+                      </span>
                       {renderStatusBadge(order.status)}
                     </div>
                     <div className="flex items-center gap-3">
@@ -420,6 +422,7 @@ export default function OrdersPage() {
                     <div className="px-4 pb-4">
                       <div className="bg-surface/50 border border-white/5 rounded-xl p-4">
                         <div className="space-y-2 text-sm mb-4">
+                          <div className="text-slate-400">ORDER ID: <span className="text-slate-200 font-mono">#{order.id}</span></div>
                           <div className="text-slate-400">PAYMENT MODE: <span className="text-slate-200">{order.paymentMode || '-'}</span></div>
                           <div className="text-slate-400">TABLE: <span className="text-slate-200 font-bold">{order.tableNumber || '-'}</span></div>
                           <div className="text-slate-400">WAITER: <span className="text-slate-200">{order.user?.name || '-'}</span></div>

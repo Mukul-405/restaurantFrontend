@@ -4,14 +4,14 @@ import { fetcher } from '../../lib/fetcher';
 export type OrderStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
 
 export interface OrderItem {
-  id: number;
-  orderId: number;
-  menuItemId: number;
+  id?: number;
+  orderId?: number;
+  menuItemId?: number | null;
   quantity: number;
   name: string;
   price: number;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Order {
@@ -26,7 +26,7 @@ export interface Order {
   tableNumber: number | null;
   items: OrderItem[];
   kotHistory: {
-    menuItemId: number;
+    menuItemId?: number | null;
     name: string;
     qty: number;
   }[];
