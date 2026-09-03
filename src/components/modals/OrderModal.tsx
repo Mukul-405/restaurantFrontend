@@ -465,105 +465,127 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
 
                 {/* View 1: Cart View (Shows all selected items: menu & custom) */}
                 {selectedCategory === 'CART' && (
-                  <div className="space-y-2.5">
+                  <>
                     {selectedItems.length === 0 ? (
                       <p className="py-10 text-center text-sm text-slate-400">Your cart is empty. Add menu items or custom items.</p>
                     ) : (
-                      selectedItems.map((item, index) => (
-                        <div key={`cart-${index}`} className="bg-[#24262b] border border-white/10 rounded-xl p-3.5 flex justify-between items-center shadow-sm">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-slate-200 font-semibold text-sm">{item.name}</h4>
-                              {item.isCustom && (
-                                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded-full font-bold">
-                                  Custom
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-emerald-400 font-bold text-xs mt-0.5">
-                              ₹{item.price.toFixed(2)} each = ₹{(item.price * item.quantity).toFixed(2)}
-                            </div>
-                          </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {selectedItems.map((item, index) => {
+                          if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase().trim())) {
+                            return null;
+                          }
+                          return (
+                            <div key={`cart-${index}`} className="bg-[#24262b] border border-white/5 rounded-2xl p-4 flex justify-between items-center shadow-sm">
+                              <div className="min-w-0 pr-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-slate-200 font-medium text-base truncate">{item.name}</h4>
+                                  {item.isCustom && (
+                                    <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded-full font-bold">
+                                      Custom
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-emerald-400 font-bold tracking-wide text-sm mt-0.5">
+                                  ₹{item.price}
+                                  {item.quantity > 1 && (
+                                    <span className="text-xs text-slate-400 font-normal ml-1.5">
+                                      (₹{(item.price * item.quantity).toFixed(2)})
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
 
-                          <div className="flex items-center gap-2.5">
-                            <div className="flex items-center gap-2 bg-black/40 rounded-lg px-2 py-1 border border-white/5">
-                              <button
-                                type="button"
-                                onClick={() => handleQuantityChange(index, item.quantity - 1)}
-                                className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all text-xs font-bold cursor-pointer"
-                              >-</button>
-                              <span className="w-5 text-center font-bold text-slate-100 text-xs">{item.quantity}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleQuantityChange(index, item.quantity + 1)}
-                                className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all text-xs font-bold cursor-pointer"
-                              >+</button>
+                              <div className="flex items-center gap-3 shrink-0">
+                                <div className="flex items-center gap-3 bg-black/30 rounded-full px-2 py-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuantityChange(index, item.quantity - 1)}
+                                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold"
+                                  >-</button>
+                                  <span className="w-4 text-center font-bold text-slate-100">{item.quantity}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuantityChange(index, item.quantity + 1)}
+                                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold"
+                                  >+</button>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveItem(index)}
+                                  className="text-danger/80 hover:text-danger p-2 transition-colors cursor-pointer"
+                                  title="Remove item"
+                                >
+                                  <Trash2 size={20} />
+                                </button>
+                              </div>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItem(index)}
-                              className="text-danger/80 hover:text-danger p-1.5 rounded-lg hover:bg-danger/10 transition-colors cursor-pointer"
-                              title="Remove item"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      ))
+                          );
+                        })}
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
 
                 {/* View 2: Custom Items Tab */}
                 {selectedCategory === 'CUSTOM' && (
-                  <div className="space-y-2.5">
+                  <>
                     {customItemsInCart.length === 0 ? (
                       <p className="py-10 text-center text-sm text-slate-400">No custom items added yet. Click "+ Add Custom Item" above to add one.</p>
                     ) : (
-                      selectedItems.map((item, index) => {
-                        if (!item.isCustom && (!item.menuItemId || item.menuItemId > 0)) return null;
-                        return (
-                          <div key={`custom-${index}`} className="bg-[#24262b] border border-purple-500/20 rounded-xl p-3.5 flex justify-between items-center shadow-sm">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="text-slate-200 font-semibold text-sm">{item.name}</h4>
-                                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded-full font-bold">
-                                  Custom
-                                </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {selectedItems.map((item, index) => {
+                          if (!item.isCustom && (!item.menuItemId || item.menuItemId > 0)) return null;
+                          if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase().trim())) {
+                            return null;
+                          }
+                          return (
+                            <div key={`custom-${index}`} className="bg-[#24262b] border border-purple-500/20 rounded-2xl p-4 flex justify-between items-center shadow-sm">
+                              <div className="min-w-0 pr-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-slate-200 font-medium text-base truncate">{item.name}</h4>
+                                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded-full font-bold">
+                                    Custom
+                                  </span>
+                                </div>
+                                <div className="text-emerald-400 font-bold tracking-wide text-sm mt-0.5">
+                                  ₹{item.price}
+                                  {item.quantity > 1 && (
+                                    <span className="text-xs text-slate-400 font-normal ml-1.5">
+                                      (₹{(item.price * item.quantity).toFixed(2)})
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-emerald-400 font-bold text-xs mt-0.5">
-                                ₹{item.price.toFixed(2)} × {item.quantity} = ₹{(item.price * item.quantity).toFixed(2)}
-                              </div>
-                            </div>
 
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex items-center gap-2 bg-black/40 rounded-lg px-2 py-1 border border-white/5">
+                              <div className="flex items-center gap-3 shrink-0">
+                                <div className="flex items-center gap-3 bg-black/30 rounded-full px-2 py-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuantityChange(index, item.quantity - 1)}
+                                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold"
+                                  >-</button>
+                                  <span className="w-4 text-center font-bold text-slate-100">{item.quantity}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuantityChange(index, item.quantity + 1)}
+                                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold"
+                                  >+</button>
+                                </div>
                                 <button
                                   type="button"
-                                  onClick={() => handleQuantityChange(index, item.quantity - 1)}
-                                  className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all text-xs font-bold cursor-pointer"
-                                >-</button>
-                                <span className="w-5 text-center font-bold text-slate-100 text-xs">{item.quantity}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuantityChange(index, item.quantity + 1)}
-                                  className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all text-xs font-bold cursor-pointer"
-                                >+</button>
+                                  onClick={() => handleRemoveItem(index)}
+                                  className="text-danger/80 hover:text-danger p-2 transition-colors cursor-pointer"
+                                  title="Remove item"
+                                >
+                                  <Trash2 size={20} />
+                                </button>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveItem(index)}
-                                className="text-danger/80 hover:text-danger p-1.5 rounded-lg hover:bg-danger/10 transition-colors cursor-pointer"
-                                title="Remove item"
-                              >
-                                <Trash2 size={16} />
-                              </button>
                             </div>
-                          </div>
-                        );
-                      })
+                          );
+                        })}
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
 
                 {/* View 3: Standard Menu Items Grid */}

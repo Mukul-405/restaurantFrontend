@@ -45,21 +45,9 @@ export interface PageMeta {
   totalPages: number;
 }
 
-// /orders/kots returns a lean projection, not a full Order.
-export interface Kot {
-  id: number;
-  tableNumber: number | null;
-  kotHistory: Order['kotHistory'];
-  createdAt: string;
-  user?: { id: string; name: string };
-}
-
 export interface OrderState {
   orders: Order[];
   meta: PageMeta;
-  kots: Kot[];
-  kotMeta: PageMeta;
-  kotStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
   selectedOrder: Order | null;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
@@ -70,9 +58,6 @@ const emptyMeta: PageMeta = { total: 0, page: 1, limit: 10, totalPages: 0 };
 const initialState: OrderState = {
   orders: [],
   meta: emptyMeta,
-  kots: [],
-  kotMeta: { ...emptyMeta, limit: 20 },
-  kotStatus: 'idle',
   selectedOrder: null,
   status: 'idle',
   error: null,
@@ -86,18 +71,6 @@ export const fetchOrders = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch orders');
-    }
-  }
-);
-
-export const fetchKots = createAsyncThunk(
-  'order/fetchKots',
-  async (params: { page?: number; limit?: number } | undefined, { rejectWithValue }) => {
-    try {
-      const response = await fetcher.getKots(params);
-      return response;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch KOTs');
     }
   }
 );
@@ -175,20 +148,6 @@ const orderSlice = createSlice({
       })
       .addCase(fetchOrders.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.payload as string;
-      })
-      // Fetch KOTs
-      .addCase(fetchKots.pending, (state) => {
-        state.kotStatus = 'loading';
-        state.error = null;
-      })
-      .addCase(fetchKots.fulfilled, (state, action: PayloadAction<{ data: Kot[], meta: PageMeta }>) => {
-        state.kotStatus = 'succeeded';
-        state.kots = action.payload.data;
-        state.kotMeta = action.payload.meta;
-      })
-      .addCase(fetchKots.rejected, (state, action) => {
-        state.kotStatus = 'failed';
         state.error = action.payload as string;
       })
       // Fetch Order By Id

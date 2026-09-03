@@ -82,3 +82,8 @@ export const updateBookingPaymentStatus = async (id: number, data: { paymentStat
   const res = await api.patch(`/bookings/${id}/payment`, data);
   return res.data;
 };
+
+export const updateRoomDailyPrices = async (id: number, rooms: any[]) => {
+  const res = await api.patch(`/bookings/${id}/daily-prices`, { rooms });
+  return res.data;
+};

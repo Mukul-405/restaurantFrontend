@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Printer, ChevronLeft, ChevronRight, Edit2, Banknote, Smartphone } from 'lucide-react';
+import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Clock, Printer, ChevronLeft, ChevronRight, Edit2, Banknote, Smartphone, IndianRupee } from 'lucide-react';
 import { getRoomTypes, RoomType, getAvailability } from '../../../lib/roomsApi';
 import { createBooking, BookingPayload, getBookings, checkInBooking, checkOutBooking, editBookingRooms, cancelBooking, extendCheckoutBooking } from '../../../lib/roomBookApi';
 import { printBookingBill } from '../../../utils/printReceipt';
 import EditGuestModal from '../../../components/modals/EditGuestModal';
 import PrintBookingBillModal from '../../../components/modals/PrintBookingBillModal';
 import ChangePaymentModal from '../../../components/modals/ChangePaymentModal';
+import DailyRateBreakdownModal from '../../../components/modals/DailyRateBreakdownModal';
 
 export default function BookRoomPage() {
   const [formData, setFormData] = useState({
@@ -65,6 +66,8 @@ export default function BookRoomPage() {
   const [extendModalError, setExtendModalError] = useState('');
   const [editingGuestBooking, setEditingGuestBooking] = useState<any>(null);
   const [paymentModalBooking, setPaymentModalBooking] = useState<any>(null);
+
+  const [dailyRateBooking, setDailyRateBooking] = useState<any | null>(null);
 
   const [modalMode, setModalMode] = useState<'checkin' | 'edit'>('checkin');
 
@@ -1110,6 +1113,20 @@ export default function BookRoomPage() {
                                       ? 'Reserved Rooms'
                                       : 'Allocated Rooms'} ({b.rooms.length})
                                 </span>
+
+                                {b.status === 'CHECKED_IN' && b.paymentStatus === 'PENDING' && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDailyRateBooking(b);
+                                    }}
+                                    className="flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 px-2.5 py-0.5 rounded-lg border border-amber-500/30 transition-all cursor-pointer shadow-sm"
+                                  >
+                                    <IndianRupee size={10} className="shrink-0" />
+                                    <span>View Prices</span>
+                                  </button>
+                                )}
                               </div>
                               <div className="space-y-2 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
                                 {b.rooms.map((r: any, idx: number) => (
@@ -2056,6 +2073,21 @@ export default function BookRoomPage() {
           setFormSuccess("Payment status updated to PAID successfully!");
           if (updated && updated.id) {
             setManagedBookings(prev => prev.map(b => b.id === updated.id ? { ...b, ...updated } : b));
+          } else {
+            handleSearchBookings();
+          }
+        }}
+      />
+
+      <DailyRateBreakdownModal
+        isOpen={!!dailyRateBooking}
+        onClose={() => setDailyRateBooking(null)}
+        booking={dailyRateBooking}
+        onSuccess={(updated) => {
+          setFormSuccess("Room daily prices and total amount updated successfully!");
+          if (updated && updated.id) {
+            setManagedBookings(prev => prev.map(b => b.id === updated.id ? { ...b, ...updated } : b));
+            setDailyRateBooking(updated);
           } else {
             handleSearchBookings();
           }

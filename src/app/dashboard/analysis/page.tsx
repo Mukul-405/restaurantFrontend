@@ -126,20 +126,38 @@ const DateRangeFilter = ({
   </div>
 );
 
-const StatCard = ({ title, value, icon: Icon, color }: { title: string, value: string, icon: any, color: string }) => (
+const StatCard = ({
+  title,
+  value,
+  icon: Icon,
+  color,
+  highlight = false,
+  className = '',
+}: {
+  title: string;
+  value: string;
+  icon: any;
+  color: string;
+  highlight?: boolean;
+  className?: string;
+}) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className="relative overflow-hidden bg-surface/40 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-white/10 shadow-lg"
+    className={`relative overflow-hidden ${
+      highlight
+        ? 'bg-gradient-to-br from-emerald-500/15 via-surface/60 to-surface/40 border-emerald-500/30 shadow-[0_4px_20px_rgba(16,185,129,0.15)]'
+        : 'bg-surface/40 border-white/10 shadow-lg'
+    } backdrop-blur-md p-4 sm:p-5 rounded-2xl border flex flex-col justify-between ${className}`}
   >
     <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 ${color} blur-2xl pointer-events-none`} />
-    <div className="flex justify-between items-start mb-3 sm:mb-4">
+    <div className="flex justify-between items-start mb-3">
       <h3 className="text-slate-400 font-medium text-xs sm:text-sm">{title}</h3>
-      <div className={`p-2 rounded-xl bg-surface/50 ${color.replace('bg-', 'text-')}`}>
+      <div className={`p-2 rounded-xl bg-surface/50 shrink-0 ${color.replace('bg-', 'text-')}`}>
         <Icon size={18} className="sm:w-5 sm:h-5" />
       </div>
     </div>
-    <div className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+    <div className={`text-xl sm:text-2xl font-bold ${highlight ? 'text-emerald-400' : 'text-white'} tracking-tight truncate`} title={value}>
       {value}
     </div>
   </motion.div>
@@ -1413,7 +1431,7 @@ export default function AnalysisPage() {
               ) : filteredDailyBills ? (
                 <div className="space-y-4 sm:space-y-6">
                   {/* Summary Stat Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
                     <StatCard
                       title="Total Orders"
                       value={`${filteredDailyBills.totalOrders}`}
@@ -1422,39 +1440,41 @@ export default function AnalysisPage() {
                     />
                     <StatCard
                       title="Total Base Amount"
-                      value={`₹${Number(filteredDailyBills.totalBaseAmount || 0).toFixed(2)}`}
+                      value={`₹${Number(filteredDailyBills.totalBaseAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       icon={IndianRupee}
                       color="bg-blue-500"
                     />
                     <StatCard
                       title="Total Discount"
-                      value={`₹${Number(filteredDailyBills.totalDiscountAmount || 0).toFixed(2)}`}
+                      value={`₹${Number(filteredDailyBills.totalDiscountAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       icon={Tag}
                       color="bg-rose-500"
                     />
                     <StatCard
                       title="Taxable Amount"
-                      value={`₹${Number(filteredDailyBills.totalTaxableAmount || 0).toFixed(2)}`}
+                      value={`₹${Number(filteredDailyBills.totalTaxableAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       icon={IndianRupee}
                       color="bg-teal-500"
                     />
                     <StatCard
                       title="SGST (2.5%)"
-                      value={`₹${Number(filteredDailyBills.totalSgstAmount || 0).toFixed(2)}`}
+                      value={`₹${Number(filteredDailyBills.totalSgstAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       icon={Receipt}
                       color="bg-amber-500"
                     />
                     <StatCard
                       title="CGST (2.5%)"
-                      value={`₹${Number(filteredDailyBills.totalCgstAmount || 0).toFixed(2)}`}
+                      value={`₹${Number(filteredDailyBills.totalCgstAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       icon={Receipt}
                       color="bg-orange-500"
                     />
                     <StatCard
                       title="Grand Total"
-                      value={`₹${Number(filteredDailyBills.grandTotalAmount || 0).toFixed(2)}`}
+                      value={`₹${Number(filteredDailyBills.grandTotalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       icon={IndianRupee}
                       color="bg-emerald-500"
+                      highlight
+                      className="sm:col-span-2 lg:col-span-2"
                     />
                   </div>
 
