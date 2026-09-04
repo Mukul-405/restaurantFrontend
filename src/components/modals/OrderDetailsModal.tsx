@@ -120,11 +120,21 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
                   <div className="space-y-6">
                     {/* Header Info Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="bg-black/20 p-4 rounded-xl border border-white/5">
-                        <div className="flex items-center gap-2 text-slate-400 mb-1 text-sm font-medium">
-                          <Hash size={14} /> Table
+                      <div className="p-4 rounded-xl border border-primary/40 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/5 relative overflow-hidden transition-all shadow-[0_0_18px_-3px_rgba(139,92,246,0.3)]">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-purple-200">
+                            <Hash size={14} className="text-primary-light" /> Table
+                          </div>
+                          {selectedOrder.status === 'PENDING' && (
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-light opacity-80"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                            </span>
+                          )}
                         </div>
-                        <div className="text-slate-200 font-bold">{selectedOrder.tableNumber || '-'}</div>
+                        <div className="inline-block font-black text-xl font-mono tracking-wide bg-primary text-white px-3.5 py-1 rounded-lg border border-primary-light/40 shadow-[0_4px_14px_0_rgba(139,92,246,0.45)]">
+                          {selectedOrder.tableNumber ? (String(selectedOrder.tableNumber).toLowerCase().startsWith('table') ? selectedOrder.tableNumber : `Table ${selectedOrder.tableNumber}`) : '-'}
+                        </div>
                       </div>
                       <div className="bg-black/20 p-4 rounded-xl border border-white/5">
                         <div className="flex items-center gap-2 text-slate-400 mb-1 text-sm font-medium">
@@ -200,11 +210,11 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {selectedOrder.items?.map((item, index) => (
                           <div key={`item-${index}`} className="bg-[#24262b] border border-white/5 rounded-2xl p-4 flex justify-between items-center shadow-sm">
-                            <div>
-                              <h4 className="text-slate-200 font-medium text-base mb-1">{item.name}</h4>
+                            <div className="flex-1 min-w-0 pr-3">
+                              <h4 className="text-slate-200 font-medium text-base mb-1 leading-snug break-words" title={item.name}>{item.name}</h4>
                               <div className="text-slate-400 text-sm">₹{item.price} <span className="text-slate-500 mx-1">x</span> <span className="font-bold text-slate-300">{item.quantity}</span></div>
                             </div>
-                            <div className="text-emerald-400 font-bold text-lg tracking-wide">
+                            <div className="text-emerald-400 font-bold text-lg tracking-wide shrink-0">
                               ₹{(item.price * item.quantity).toFixed(2)}
                             </div>
                           </div>

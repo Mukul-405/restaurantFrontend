@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, RefreshCw, Plus, Search, Eye, Edit2, ChevronDown, ChevronUp, X, CheckCircle, Filter, Printer, Tag } from 'lucide-react';
+import { Loader2, RefreshCw, Plus, Search, Eye, Edit2, ChevronDown, ChevronUp, X, CheckCircle, Filter, Printer, Tag, UtensilsCrossed } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchOrders, Order, updateOrder } from '../../../store/slices/orderSlice';
 import { fetcher } from '../../../lib/fetcher';
@@ -145,6 +145,45 @@ export default function OrdersPage() {
       default:
         return <span className="bg-slate-500/20 text-slate-400 px-3 py-1 rounded-full text-xs font-bold tracking-wider">{status}</span>;
     }
+  };
+
+  const renderTableBadge = (tableNumber: string | number | undefined | null, status: string) => {
+    const isPending = status === 'PENDING';
+
+    const rawStr = tableNumber ? String(tableNumber).trim() : '';
+    const displayVal = rawStr 
+      ? (rawStr.toLowerCase().startsWith('table') ? rawStr : `Table ${rawStr}`)
+      : 'No Table';
+
+    return (
+      <motion.div
+        animate={isPending ? { 
+          boxShadow: [
+            '0 0 8px rgba(139, 92, 246, 0.2)', 
+            '0 0 20px rgba(139, 92, 246, 0.5)', 
+            '0 0 8px rgba(139, 92, 246, 0.2)'
+          ] 
+        } : {}}
+        transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
+        className="relative overflow-hidden flex justify-between items-center bg-gradient-to-r from-primary/25 via-primary/15 to-primary/5 border border-primary/40 rounded-xl px-3.5 py-2 my-2.5 shadow-[0_0_16px_-2px_rgba(139,92,246,0.3)] transition-all hover:scale-[1.01] hover:border-primary/60"
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="relative flex h-2.5 w-2.5">
+            {isPending && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-light opacity-80"></span>}
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+          </span>
+          <span className="text-xs font-bold uppercase tracking-wider text-purple-200 flex items-center gap-1.5">
+            <UtensilsCrossed size={13} className="text-primary-light" />
+            Table
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm sm:text-base font-black font-mono tracking-wide px-3 py-0.5 rounded-lg bg-primary text-white border border-primary-light/40 shadow-[0_4px_14px_0_rgba(139,92,246,0.45)]">
+            {displayVal}
+          </span>
+        </div>
+      </motion.div>
+    );
   };
 
   return (
@@ -293,10 +332,7 @@ export default function OrdersPage() {
                         <span className="text-slate-200 font-bold">{order.paymentMode || '-'}</span>
                       </div>
                     )}
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Table:</span>
-                      <span className="text-slate-200 font-bold">{order.tableNumber || '-'}</span>
-                    </div>
+                    {renderTableBadge(order.tableNumber, order.status)}
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">Waiter:</span>
                       <span className="text-slate-200">{order.user?.name || '-'}</span>
@@ -455,9 +491,16 @@ export default function OrdersPage() {
                     onClick={() => toggleAccordion(order.id)}
                     className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-slate-200 font-bold text-sm">
-                        {order.tableNumber ? `Table ${order.tableNumber}` : 'Table -'}
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold font-mono tracking-wide bg-primary text-white border-primary-light/40 shadow-[0_4px_14px_0_rgba(139,92,246,0.4)]">
+                        {order.status === 'PENDING' && (
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-80"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                          </span>
+                        )}
+                        <UtensilsCrossed size={12} className="text-purple-200" />
+                        {order.tableNumber ? (String(order.tableNumber).toLowerCase().startsWith('table') ? String(order.tableNumber) : `Table ${order.tableNumber}`) : 'Table -'}
                       </span>
                       {renderStatusBadge(order.status)}
                     </div>
@@ -477,7 +520,7 @@ export default function OrdersPage() {
                         <div className="space-y-2 text-sm mb-4">
                           <div className="text-slate-400">ORDER ID: <span className="text-slate-200 font-mono">#{order.id}</span></div>
                           <div className="text-slate-400">PAYMENT MODE: <span className="text-slate-200">{order.paymentMode || '-'}</span></div>
-                          <div className="text-slate-400">TABLE: <span className="text-slate-200 font-bold">{order.tableNumber || '-'}</span></div>
+                          {renderTableBadge(order.tableNumber, order.status)}
                           <div className="text-slate-400">WAITER: <span className="text-slate-200">{order.user?.name || '-'}</span></div>
                           <div className="text-slate-400">DATE & TIME: <span className="text-slate-200">{new Date(order.createdAt).toLocaleString()}</span></div>
                         </div>

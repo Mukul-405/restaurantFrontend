@@ -476,16 +476,16 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                           }
                           return (
                             <div key={`cart-${index}`} className="bg-[#24262b] border border-white/5 rounded-2xl p-4 flex justify-between items-center shadow-sm">
-                              <div className="min-w-0 pr-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-slate-200 font-medium text-base truncate">{item.name}</h4>
+                              <div className="flex-1 min-w-0 pr-3">
+                                <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                  <h4 className="text-slate-200 font-medium text-sm sm:text-base leading-snug break-words" title={item.name}>{item.name}</h4>
                                   {item.isCustom && (
-                                    <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded-full font-bold">
+                                    <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full font-bold shrink-0">
                                       Custom
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-emerald-400 font-bold tracking-wide text-sm mt-0.5">
+                                <div className="text-emerald-400 font-bold tracking-wide text-sm">
                                   ₹{item.price}
                                   {item.quantity > 1 && (
                                     <span className="text-xs text-slate-400 font-normal ml-1.5">
@@ -495,27 +495,27 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-3 shrink-0">
-                                <div className="flex items-center gap-3 bg-black/30 rounded-full px-2 py-1">
+                              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                                <div className="flex items-center gap-2 sm:gap-3 bg-black/30 rounded-full px-2 py-1">
                                   <button
                                     type="button"
                                     onClick={() => handleQuantityChange(index, item.quantity - 1)}
-                                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold"
+                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold text-sm"
                                   >-</button>
-                                  <span className="w-4 text-center font-bold text-slate-100">{item.quantity}</span>
+                                  <span className="w-4 text-center font-bold text-slate-100 text-sm">{item.quantity}</span>
                                   <button
                                     type="button"
                                     onClick={() => handleQuantityChange(index, item.quantity + 1)}
-                                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold"
+                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold text-sm"
                                   >+</button>
                                 </div>
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveItem(index)}
-                                  className="text-danger/80 hover:text-danger p-2 transition-colors cursor-pointer"
+                                  className="text-danger/80 hover:text-danger p-1.5 sm:p-2 transition-colors cursor-pointer"
                                   title="Remove item"
                                 >
-                                  <Trash2 size={20} />
+                                  <Trash2 size={18} />
                                 </button>
                               </div>
                             </div>
@@ -540,14 +540,14 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                           }
                           return (
                             <div key={`custom-${index}`} className="bg-[#24262b] border border-purple-500/20 rounded-2xl p-4 flex justify-between items-center shadow-sm">
-                              <div className="min-w-0 pr-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-slate-200 font-medium text-base truncate">{item.name}</h4>
-                                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded-full font-bold">
+                              <div className="flex-1 min-w-0 pr-3">
+                                <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                  <h4 className="text-slate-200 font-medium text-sm sm:text-base leading-snug break-words" title={item.name}>{item.name}</h4>
+                                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full font-bold shrink-0">
                                     Custom
                                   </span>
                                 </div>
-                                <div className="text-emerald-400 font-bold tracking-wide text-sm mt-0.5">
+                                <div className="text-emerald-400 font-bold tracking-wide text-sm">
                                   ₹{item.price}
                                   {item.quantity > 1 && (
                                     <span className="text-xs text-slate-400 font-normal ml-1.5">
@@ -557,27 +557,27 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-3 shrink-0">
-                                <div className="flex items-center gap-3 bg-black/30 rounded-full px-2 py-1">
+                              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                                <div className="flex items-center gap-2 sm:gap-3 bg-black/30 rounded-full px-2 py-1">
                                   <button
                                     type="button"
                                     onClick={() => handleQuantityChange(index, item.quantity - 1)}
-                                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold"
+                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold text-sm"
                                   >-</button>
-                                  <span className="w-4 text-center font-bold text-slate-100">{item.quantity}</span>
+                                  <span className="w-4 text-center font-bold text-slate-100 text-sm">{item.quantity}</span>
                                   <button
                                     type="button"
                                     onClick={() => handleQuantityChange(index, item.quantity + 1)}
-                                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold"
+                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold text-sm"
                                   >+</button>
                                 </div>
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveItem(index)}
-                                  className="text-danger/80 hover:text-danger p-2 transition-colors cursor-pointer"
+                                  className="text-danger/80 hover:text-danger p-1.5 sm:p-2 transition-colors cursor-pointer"
                                   title="Remove item"
                                 >
-                                  <Trash2 size={20} />
+                                  <Trash2 size={18} />
                                 </button>
                               </div>
                             </div>
@@ -605,38 +605,39 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
 
                         return (
                           <div key={item.id} className="bg-[#24262b] border border-white/5 rounded-2xl p-4 flex justify-between items-center shadow-sm">
-                            <div>
-                              <h4 className="text-slate-200 font-medium text-base mb-1">
+                            <div className="flex-1 min-w-0 pr-3">
+                              <h4 className="text-slate-200 font-medium text-sm sm:text-base mb-1 leading-snug break-words" title={item.name}>
                                 {item.name}
                                 {!item.isAvailable && (
-                                  <span className="ml-2 text-[10px] uppercase tracking-wider text-amber-400/90 font-semibold">Unavailable</span>
+                                  <span className="ml-2 text-[10px] uppercase tracking-wider text-amber-400/90 font-semibold inline-block">Unavailable</span>
                                 )}
                               </h4>
-                              <div className="text-emerald-400 font-bold tracking-wide">₹{item.price}</div>
+                              <div className="text-emerald-400 font-bold tracking-wide text-sm">₹{item.price}</div>
                             </div>
                             
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                               {qty > 0 ? (
                                 <>
-                                  <div className="flex items-center gap-3 bg-black/30 rounded-full px-2 py-1">
+                                  <div className="flex items-center gap-2 sm:gap-3 bg-black/30 rounded-full px-2 py-1">
                                     <button
                                       type="button"
                                       onClick={() => handleQuantityChange(selectedItemIndex, qty - 1)}
-                                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+                                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold text-sm"
                                     >-</button>
-                                    <span className="w-4 text-center font-bold text-slate-100">{qty}</span>
+                                    <span className="w-4 text-center font-bold text-slate-100 text-sm">{qty}</span>
                                     <button
                                       type="button"
                                       onClick={() => handleQuantityChange(selectedItemIndex, qty + 1)}
-                                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+                                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-200 hover:bg-white/20 active:scale-95 transition-all cursor-pointer font-bold text-sm"
                                     >+</button>
                                   </div>
                                   <button
                                     type="button"
                                     onClick={() => handleRemoveItem(selectedItemIndex)}
-                                    className="text-danger/80 hover:text-danger p-2 transition-colors cursor-pointer"
+                                    className="text-danger/80 hover:text-danger p-1.5 sm:p-2 transition-colors cursor-pointer"
+                                    title="Remove item"
                                   >
-                                    <Trash2 size={20} />
+                                    <Trash2 size={18} />
                                   </button>
                                 </>
                               ) : (
@@ -644,7 +645,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                                   type="button"
                                   onClick={() => handleAddItem(Number(item.id))}
                                   disabled={!item.isAvailable}
-                                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all cursor-pointer ${
                                     item.isAvailable 
                                       ? 'bg-primary/20 text-primary hover:bg-primary/30 active:scale-95' 
                                       : 'bg-white/5 text-slate-600 cursor-not-allowed'
