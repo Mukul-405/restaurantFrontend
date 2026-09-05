@@ -375,21 +375,88 @@ export const printBookingBill = (
   const formattedDate = now.toISOString().split('T')[0];
   const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
-  const rooms: any[] = Array.isArray(booking.rooms) ? booking.rooms : [];
+  let webhookPayloadObj: any = null;
+  if (typeof booking.webhookPayload === 'string') {
+    try {
+      webhookPayloadObj = JSON.parse(booking.webhookPayload);
+    } catch {
+      webhookPayloadObj = null;
+    }
+  } else if (booking.webhookPayload && typeof booking.webhookPayload === 'object') {
+    webhookPayloadObj = booking.webhookPayload;
+  }
+
+  const webhookRooms: any[] = Array.isArray(webhookPayloadObj?.rooms) ? webhookPayloadObj.rooms : [];
+  const bookingRooms: any[] = Array.isArray(booking.rooms) ? booking.rooms : [];
   const foodOrders: any[] = Array.isArray(booking.foodOrders) ? booking.foodOrders : [];
-  
+
+  const checkInDate = booking.checkIn ? new Date(booking.checkIn) : new Date();
+  const checkOutDate = booking.checkOut ? new Date(booking.checkOut) : new Date();
+  const nightsCount = Math.max(1, Math.round((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)));
+
   const rawRoomTotal = Number(booking.totalAmount || 0);
   const dbRoomTax = Number(booking.taxAmount || 0);
+
+  const sourceRooms = bookingRooms.length > 0 ? bookingRooms : (webhookRooms.length > 0 ? webhookRooms : []);
+
+  const formatRateDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const parsedRooms = sourceRooms.map((r: any, idx: number) => {
+    const wr = webhookRooms[idx] || webhookRooms.find((w: any) => w.roomCode === (r.roomCode || r.roomCodeId)) || r;
+    
+    let prices: { date: string; sellRate: number }[] = [];
+    if (Array.isArray(wr?.prices) && wr.prices.length > 0) {
+      prices = wr.prices.map((p: any) => ({
+        date: p.date,
+        sellRate: Number(p.sellRate ?? p.rate ?? p.price) || 0
+      }));
+    } else {
+      const dailyRate = Number(r.price) || (rawRoomTotal > 0 ? Number((rawRoomTotal / (nightsCount * Math.max(1, sourceRooms.length))).toFixed(2)) : 0);
+      prices = Array.from({ length: nightsCount }).map((_, dIdx) => {
+        const d = new Date(checkInDate.getTime() + dIdx * 24 * 60 * 60 * 1000);
+        return {
+          date: d.toISOString().split('T')[0],
+          sellRate: dailyRate
+        };
+      });
+    }
+
+    const roomSubtotal = prices.reduce((sum, p) => sum + p.sellRate, 0);
+
+    return {
+      roomCode: r.roomCode || wr.roomCode || 'Standard',
+      roomNumber: r.roomNumber || '',
+      rateplanCode: r.rateplanCode || wr.rateplanCode || '',
+      adults: r.adults ?? wr.occupancy?.adults ?? 1,
+      children: r.children ?? wr.occupancy?.children ?? 0,
+      prices,
+      roomSubtotal
+    };
+  });
+
+  const sumDailyRates = parsedRooms.reduce((sum, r) => sum + r.roomSubtotal, 0);
+  const sumRoomPrices = bookingRooms.reduce((sum, r) => sum + (Number(r.price) || 0), 0);
 
   let roomBase = 0;
   let roomTax = 0;
   let roomTotal = rawRoomTotal;
 
-  const sumRoomPrices = rooms.reduce((sum, r) => sum + (Number(r.price) || 0), 0);
-
   if (dbRoomTax > 0) {
     roomTax = dbRoomTax;
-    roomBase = Math.max(0, Number((roomTotal - roomTax).toFixed(2)));
+    roomBase = sumDailyRates > 0 ? sumDailyRates : Math.max(0, Number((roomTotal - roomTax).toFixed(2)));
+    roomTotal = Number((roomBase + roomTax).toFixed(2));
+  } else if (sumDailyRates > 0) {
+    roomBase = sumDailyRates;
+    roomTax = Number((roomBase * 0.05).toFixed(2));
+    roomTotal = Number((roomBase + roomTax).toFixed(2));
   } else if (sumRoomPrices > 0 && Math.abs(sumRoomPrices - rawRoomTotal) < 1) {
     roomBase = sumRoomPrices;
     roomTax = Number((roomBase * 0.05).toFixed(2));
@@ -426,13 +493,37 @@ export const printBookingBill = (
   const grandTotal = Math.max(0, grandTotalBeforeDiscount - totalDiscount);
   const dueTotal = Math.max(0, (booking.paymentStatus === 'PAID' ? foodNet : (roomNet + foodNet)));
 
-  const roomRows = rooms.map((r: any) => `
-    <tr>
-      <td class="text-left item-name">${escapeHtml(r.roomCode)}${r.roomNumber ? ` (Room ${escapeHtml(r.roomNumber)})` : ''}</td>
-      <td class="w-qty" style="text-align: center;">${escapeHtml(r.rateplanCode) || '-'}</td>
-      <td class="w-amount">${r.adults || 0} / ${r.children || 0}</td>
-    </tr>
-  `).join('');
+  const roomRows = parsedRooms.map((r: any, rIdx: number) => {
+    const roomHeaderHtml = `
+      <tr style="${rIdx > 0 ? 'border-top: 1px dashed #999;' : ''}">
+        <td class="text-left item-name" style="font-weight: 900; font-size: 12.5px; padding-top: ${rIdx > 0 ? '6px' : '4px'};">
+          ${escapeHtml(r.roomCode)}${r.roomNumber ? ` (Room ${escapeHtml(r.roomNumber)})` : ''}
+        </td>
+        <td class="w-qty" style="text-align: center; font-size: 11px; padding-top: ${rIdx > 0 ? '6px' : '4px'};">${escapeHtml(r.rateplanCode) || '-'}</td>
+        <td class="w-rate" style="text-align: right; font-size: 11px; padding-top: ${rIdx > 0 ? '6px' : '4px'}; color: #555;">${r.adults}A / ${r.children}C</td>
+        <td class="w-amount" style="text-align: right; font-weight: 900; font-size: 12.5px; padding-top: ${rIdx > 0 ? '6px' : '4px'};">₹${r.roomSubtotal.toFixed(2)}</td>
+      </tr>
+    `;
+
+    const dailyRowsHtml = r.prices.map((p: any) => `
+      <tr>
+        <td class="text-left" style="padding-left: 8px; font-weight: normal; font-size: 11px; color: #222;">
+          &bull; ${formatRateDate(p.date)}
+        </td>
+        <td class="w-qty" style="text-align: center; font-weight: normal; font-size: 11px; color: #666;">
+          1 Day
+        </td>
+        <td class="w-rate" style="text-align: right; font-weight: normal; font-size: 11px; color: #333;">
+          ₹${Number(p.sellRate).toFixed(2)}
+        </td>
+        <td class="w-amount" style="text-align: right; font-weight: normal; font-size: 11px; color: #333;">
+          ₹${Number(p.sellRate).toFixed(2)}
+        </td>
+      </tr>
+    `).join('');
+
+    return roomHeaderHtml + dailyRowsHtml;
+  }).join('');
 
   const foodRows = foodOrders.map((f: any) => `
     <tr>
@@ -480,10 +571,10 @@ export const printBookingBill = (
           th.text-left { text-align: left; }
           td { padding: 4px 0; vertical-align: top; text-align: right; }
           td.text-left { text-align: left; }
-          .w-qty { width: 20%; text-align: center; }
-          .w-rate { width: 20%; }
-          .w-amount { width: 25%; }
-          .item-name { width: 35%; text-align: left; padding-right: 5px; }
+          .w-qty { width: 16%; text-align: center; }
+          .w-rate { width: 20%; text-align: right; }
+          .w-amount { width: 22%; text-align: right; }
+          .item-name { width: 42%; text-align: left; padding-right: 5px; }
           .totals-wrapper { display: flex; justify-content: flex-end; margin-top: 5px; font-weight: bold; font-size: 13px; }
           .totals-table { width: 70%; }
           .totals-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
@@ -607,10 +698,11 @@ export const printBookingBill = (
             <div style="margin-top: 5px; border-top: 1px dashed #cbd5e1; border-bottom: 1px dashed #cbd5e1; padding: 4px 0;">
               ${fields.map(f => {
                 const isBillTo = f.key.toLowerCase().includes('bill to');
+                const formattedVal = escapeHtml(f.value).replace(/\n/g, '<br/>');
                 return `
-                <div style="margin: 2px 0; font-size: 12px; line-height: 1.35; display: flex; justify-content: space-between; align-items: baseline;">
+                <div style="margin: 3px 0; font-size: 12px; line-height: 1.35; display: flex; justify-content: space-between; align-items: flex-start;">
                   <span style="font-weight: bold; color: #000; padding-right: 6px; white-space: nowrap;">${escapeHtml(f.key)}:</span>
-                  <span style="color: #111; text-align: right; word-break: break-word; ${isBillTo ? 'font-weight: 900; color: #000;' : ''}">${escapeHtml(f.value)}</span>
+                  <span style="color: #111; text-align: right; word-break: break-word; white-space: pre-line; ${isBillTo ? 'font-weight: 900; color: #000;' : ''}">${formattedVal}</span>
                 </div>`;
               }).join('')}
             </div>`;
@@ -630,13 +722,14 @@ export const printBookingBill = (
           <table>
             <thead>
               <tr>
-                <th class="text-left">Room</th>
+                <th class="text-left item-name">Room / Date</th>
                 <th class="w-qty" style="text-align: center;">Plan</th>
-                <th class="w-amount">A / C</th>
+                <th class="w-rate">Rate/Day</th>
+                <th class="w-amount">Amount</th>
               </tr>
             </thead>
             <tbody>
-              ${roomRows || '<tr><td class="text-left" colspan="3">No rooms</td></tr>'}
+              ${roomRows || '<tr><td class="text-left" colspan="4">No rooms</td></tr>'}
             </tbody>
           </table>
           

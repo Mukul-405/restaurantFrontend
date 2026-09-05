@@ -185,10 +185,10 @@ export default function PrintBookingBillModal({
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl p-2.5 focus-within:border-primary/50 transition-colors"
+                      className="flex items-start gap-2 bg-black/40 border border-white/10 rounded-xl p-2.5 focus-within:border-primary/50 transition-colors"
                     >
                       {/* Key Field Input */}
-                      <div className="w-1/3 min-w-[110px]">
+                      <div className="w-1/3 min-w-[110px] pt-0.5">
                         <input
                           type="text"
                           value={row.key}
@@ -198,16 +198,16 @@ export default function PrintBookingBillModal({
                         />
                       </div>
 
-                      <span className="text-slate-500 text-xs font-bold">:</span>
+                      <span className="text-slate-500 text-xs font-bold pt-2">:</span>
 
                       {/* Value Field Input */}
                       <div className="flex-1">
-                        <input
-                          type="text"
+                        <textarea
+                          rows={2}
                           value={row.value}
                           onChange={(e) => handleUpdateField(row.id, 'value', e.target.value)}
-                          placeholder="Value (e.g. Microsoft Company Limited)"
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-primary transition-colors font-mono"
+                          placeholder="Value (Press Enter for new line)"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-primary transition-colors font-mono resize-y min-h-[38px] leading-relaxed custom-scrollbar"
                         />
                       </div>
 
@@ -215,7 +215,7 @@ export default function PrintBookingBillModal({
                       <button
                         type="button"
                         onClick={() => handleRemoveField(row.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
+                        className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0 mt-0.5"
                         title="Delete this field"
                       >
                         <Trash2 size={15} />
