@@ -1114,7 +1114,7 @@ export default function BookRoomPage() {
                                       : 'Allocated Rooms'} ({b.rooms.length})
                                 </span>
 
-                                {b.status === 'CHECKED_IN' && b.paymentStatus === 'PENDING' && (
+                                {b.rooms && b.rooms.length > 0 && (
                                   <button
                                     type="button"
                                     onClick={(e) => {

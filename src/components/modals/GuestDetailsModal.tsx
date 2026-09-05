@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Phone, Calendar, User, Mail, Bed, Building2, CheckCircle, CreditCard, Printer, Edit2, Tag, AlertCircle, Banknote, Smartphone } from 'lucide-react';
+import { X, Loader2, IndianRupee, Phone, Calendar, User, Mail, Bed, Building2, CheckCircle, CreditCard, Printer, Edit2, Tag, AlertCircle, Banknote, Smartphone } from 'lucide-react';
 import { getBookingById, checkOutBooking, editBookingRooms, cancelBooking } from '../../lib/roomBookApi';
 import { getRoomTypes, RoomType } from '../../lib/roomsApi';
 import { printBookingBill } from '../../utils/printReceipt';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import EditGuestModal from './EditGuestModal';
 import PrintBookingBillModal from './PrintBookingBillModal';
 import ChangePaymentModal from './ChangePaymentModal';
+import DailyRateBreakdownModal from './DailyRateBreakdownModal';
 
 interface GuestDetailsModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
   const [isEditGuestModalOpen, setIsEditGuestModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isDailyPricesModalOpen, setIsDailyPricesModalOpen] = useState(false);
   
   // Views inside modal
   const [mode, setMode] = useState<'view' | 'editRooms' | 'checkout' | 'cancel'>('view');
@@ -752,9 +754,21 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                         <Bed size={18} className="text-emerald-400" />
                         <span>Checked-In Rooms</span>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                        {roomsList.length} {roomsList.length === 1 ? 'Room' : 'Rooms'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {roomsList.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setIsDailyPricesModalOpen(true)}
+                            className="flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 px-2.5 py-1 rounded-lg border border-amber-500/30 transition-all cursor-pointer shadow-sm"
+                          >
+                            <IndianRupee size={12} className="shrink-0" />
+                            <span>View Prices</span>
+                          </button>
+                        )}
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          {roomsList.length} {roomsList.length === 1 ? 'Room' : 'Rooms'}
+                        </span>
+                      </div>
                     </div>
 
                     {roomsList.length === 0 ? (
@@ -896,6 +910,17 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
       onSuccess={async () => {
         toast.success("Payment status updated to PAID!");
         await fetchBooking();
+        onRefresh?.();
+      }}
+    />
+
+    <DailyRateBreakdownModal
+      isOpen={isDailyPricesModalOpen}
+      onClose={() => setIsDailyPricesModalOpen(false)}
+      booking={booking}
+      onSuccess={(updatedBooking: any) => {
+        setBooking(updatedBooking);
+        fetchBooking();
         onRefresh?.();
       }}
     />
