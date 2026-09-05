@@ -314,6 +314,18 @@ export default function OrdersPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Refresh Orders Button */}
+          <button
+            type="button"
+            onClick={() => fetchOrdersData(currentPage)}
+            disabled={status === 'loading'}
+            className="flex items-center justify-center p-2 md:px-3 md:py-2 rounded-xl bg-black/40 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 active:scale-95 transition-all text-xs font-bold gap-1.5 cursor-pointer disabled:opacity-50"
+            title="Refresh Orders"
+          >
+            <RefreshCw size={15} className={`${status === 'loading' ? 'animate-spin text-primary' : 'text-slate-400'}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+
           {/* View Mode Switcher (POS High-Density Standard) */}
           <div className="hidden md:flex items-center bg-black/40 p-0.5 rounded-xl border border-white/10 text-xs">
             <button
