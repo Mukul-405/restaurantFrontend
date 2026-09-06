@@ -21,7 +21,7 @@ export interface Order {
   discountAmount: number;
   finalDiscountedAmount: number;
   status: OrderStatus;
-  paymentMode?: 'CASH' | 'CARD' | 'UPI';
+  paymentMode?: 'CASH' | 'CARD' | 'UPI' | 'ROOM_TRANSFER' | string;
   cancellationReason: string | null;
   tableNumber: number | null;
   items: OrderItem[];

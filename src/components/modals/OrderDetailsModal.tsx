@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Calendar, IndianRupee, User, Hash, Printer, Tag } from 'lucide-react';
+import { X, Loader2, Calendar, IndianRupee, User, Hash, Printer, Tag, Banknote, CreditCard, Smartphone, Building, CheckCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchOrderById, updateOrder, transferOrderToRoom } from '../../store/slices/orderSlice';
 import CancelOrderModal from './CancelOrderModal';
 import TransferToRoomModal from './TransferToRoomModal';
 import DiscountModal from './DiscountModal';
+import ReceiptModal from './ReceiptModal';
 import { ConfirmPrintModal } from './ConfirmPrintModal';
 import { printReceipt, printKOT } from '../../utils/printReceipt';
 
@@ -13,14 +15,16 @@ interface OrderDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   orderId: number;
+  onOrderUpdated?: () => void;
 }
 
-export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDetailsModalProps) {
+export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpdated }: OrderDetailsModalProps) {
   const dispatch = useAppDispatch();
   const { selectedOrder, status, error } = useAppSelector(state => state.order);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [confirmKotModal, setConfirmKotModal] = useState<{ isOpen: boolean; orderId: number | null }>({ isOpen: false, orderId: null });
 
@@ -61,10 +65,83 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
           payload.paymentMode = 'CASH';
         }
         await dispatch(updateOrder({ id: selectedOrder.id, data: payload }));
+        dispatch(fetchOrderById(selectedOrder.id));
+        onOrderUpdated?.();
       } finally {
         setIsUpdatingStatus(false);
       }
     }
+  };
+
+  const handleCompleteFromReceipt = async (amounts: {
+    baseAmount: number;
+    gstAmount: number;
+    discountAmount: number;
+    finalDiscountedAmount: number;
+    paymentMode: 'CASH' | 'CARD' | 'UPI';
+  }) => {
+    if (!selectedOrder) return;
+    try {
+      await dispatch(updateOrder({
+        id: selectedOrder.id,
+        data: { status: 'COMPLETED', ...amounts }
+      })).unwrap();
+      dispatch(fetchOrderById(selectedOrder.id));
+      setIsReceiptModalOpen(false);
+      onOrderUpdated?.();
+      toast.success(`Order #${selectedOrder.id} completed via ${amounts.paymentMode}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to complete order');
+    }
+  };
+
+  const handlePaymentModeChange = async (newMode: 'CASH' | 'CARD' | 'UPI') => {
+    if (!selectedOrder) return;
+    setIsUpdatingStatus(true);
+    try {
+      await dispatch(updateOrder({ id: selectedOrder.id, data: { paymentMode: newMode } })).unwrap();
+      dispatch(fetchOrderById(selectedOrder.id));
+      onOrderUpdated?.();
+      toast.success(`Payment mode updated to ${newMode}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update payment mode');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const renderPaymentBadge = (mode?: string | null) => {
+    const m = (mode || 'CASH').toUpperCase();
+    if (m === 'UPI') {
+      return (
+        <span className="inline-flex items-center gap-1 font-bold rounded-lg uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/40 px-2.5 py-0.5 text-xs shadow-sm">
+          <Smartphone size={12} className="text-violet-400 shrink-0" />
+          <span>UPI</span>
+        </span>
+      );
+    }
+    if (m === 'CARD') {
+      return (
+        <span className="inline-flex items-center gap-1 font-bold rounded-lg uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2.5 py-0.5 text-xs shadow-sm">
+          <CreditCard size={12} className="text-sky-400 shrink-0" />
+          <span>Card</span>
+        </span>
+      );
+    }
+    if (m === 'ROOM_TRANSFER') {
+      return (
+        <span className="inline-flex items-center gap-1 font-bold rounded-lg uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-0.5 text-xs shadow-sm">
+          <Building size={12} className="text-amber-400 shrink-0" />
+          <span>Room Trf</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 font-bold rounded-lg uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 text-xs shadow-sm">
+        <Banknote size={12} className="text-emerald-400 shrink-0" />
+        <span>Cash</span>
+      </span>
+    );
   };
 
   return (
@@ -154,15 +231,53 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-slate-400 text-sm mb-1 font-medium">Status</div>
-                          <div className="font-black tracking-wider text-sm">
+                          <div className="text-slate-400 text-sm mb-1 font-medium">Status & Payment</div>
+                          <div className="font-black tracking-wider text-sm flex items-center gap-2 justify-end flex-wrap">
                             {selectedOrder.status === 'PENDING' && <span className="bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded-full">PENDING</span>}
-                            {selectedOrder.status === 'COMPLETED' && <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full">COMPLETED</span>}
+                            {selectedOrder.status === 'COMPLETED' && (
+                              <>
+                                <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full">COMPLETED</span>
+                                {renderPaymentBadge(selectedOrder.paymentMode)}
+                              </>
+                            )}
                             {selectedOrder.status === 'CANCELLED' && <span className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full">CANCELLED</span>}
                           </div>
                         </div>
                       </div>
                     </div>
+
+                    {/* Quick Payment Mode Switcher for Completed Order */}
+                    {selectedOrder.status === 'COMPLETED' && (
+                      <div className="bg-black/30 border border-white/10 p-3.5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-inner">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Payment Mode:</span>
+                          {renderPaymentBadge(selectedOrder.paymentMode)}
+                        </div>
+                        <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                          <span className="text-[11px] text-slate-400 mr-1 font-medium">Switch Mode:</span>
+                          {(['CASH', 'UPI', 'CARD'] as const).map((mode) => {
+                            const currentMode = (selectedOrder.paymentMode || 'CASH').toUpperCase();
+                            const isCurrent = currentMode === mode;
+                            return (
+                              <button
+                                key={mode}
+                                type="button"
+                                onClick={() => handlePaymentModeChange(mode)}
+                                disabled={isUpdatingStatus || isCurrent}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  isCurrent
+                                    ? 'bg-primary text-white shadow-sm ring-1 ring-white/20'
+                                    : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                                } disabled:opacity-50`}
+                                title={`Switch payment mode to ${mode}`}
+                              >
+                                {mode}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Action Buttons if Pending */}
                     {selectedOrder.status === 'PENDING' && (
@@ -187,11 +302,12 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
                           Transfer Room
                         </button>
                         <button
-                          onClick={() => handleStatusChange('COMPLETED')}
+                          onClick={() => setIsReceiptModalOpen(true)}
                           disabled={isUpdatingStatus}
                           className="py-2.5 px-3 bg-emerald-600 border border-emerald-500/20 text-white hover:bg-emerald-700 rounded-xl font-bold text-sm transition-all shadow-[0_4px_14px_0_rgba(16,185,129,0.39)] disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                          title="Complete Order & Choose Payment Mode"
                         >
-                          {isUpdatingStatus && <Loader2 className="animate-spin" size={15} />}
+                          <CheckCircle size={15} />
                           <span>Mark Done</span>
                         </button>
                       </div>
@@ -277,6 +393,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
           if (selectedOrder) {
             dispatch(fetchOrderById(selectedOrder.id));
           }
+          onOrderUpdated?.();
           setIsCancelModalOpen(false);
         }}
       />
@@ -289,6 +406,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
           onSubmit={async (data) => {
             await dispatch(transferOrderToRoom({ id: selectedOrder.id, data })).unwrap();
             dispatch(fetchOrderById(selectedOrder.id));
+            onOrderUpdated?.();
           }}
         />
       )}
@@ -301,7 +419,17 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId }: OrderDet
           onConfirm={async (amounts) => {
             await dispatch(updateOrder({ id: selectedOrder.id, data: amounts })).unwrap();
             dispatch(fetchOrderById(selectedOrder.id));
+            onOrderUpdated?.();
           }}
+        />
+      )}
+
+      {selectedOrder && (
+        <ReceiptModal
+          isOpen={isReceiptModalOpen}
+          onClose={() => setIsReceiptModalOpen(false)}
+          order={selectedOrder}
+          onConfirm={handleCompleteFromReceipt}
         />
       )}
 

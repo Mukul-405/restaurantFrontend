@@ -314,6 +314,15 @@ export const printReceipt = (order: Order) => {
                 </div>
               </div>
               
+              ${order.status === 'COMPLETED' ? `
+              <div class="total-row-main" style="margin-top: 8px;">
+                <span>Paid (${escapeHtml(order.paymentMode || 'CASH')}) :</span>
+                <div style="text-align: right;">
+                  <div>${Math.round(Number(order.finalDiscountedAmount || 0))}</div>
+                  <div style="font-size: 14px;">Rs</div>
+                </div>
+              </div>
+              ` : `
               <div class="total-row-main" style="margin-top: 8px;">
                 <span>Due :</span>
                 <div style="text-align: right;">
@@ -321,6 +330,7 @@ export const printReceipt = (order: Order) => {
                   <div style="font-size: 14px;">Rs</div>
                 </div>
               </div>
+              `}
             </div>
           </div>
           

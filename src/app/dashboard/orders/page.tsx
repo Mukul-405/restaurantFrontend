@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Loader2, RefreshCw, Plus, Search, Eye, Edit2, ChevronDown, ChevronUp, 
   X, CheckCircle, Filter, Printer, Tag, UtensilsCrossed, LayoutGrid, 
-  List, Clock, Flame, Calendar, Sparkles, Check, ArrowUpDown
+  List, Clock, Flame, Calendar, Sparkles, Check, ArrowUpDown,
+  Banknote, CreditCard, Smartphone, Building
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchOrders, Order, updateOrder } from '../../../store/slices/orderSlice';
@@ -177,7 +178,8 @@ export default function OrdersPage() {
       const tableMatch = o.tableNumber && String(o.tableNumber).toLowerCase().includes(q);
       const waiterMatch = o.user?.name && o.user.name.toLowerCase().includes(q);
       const itemMatch = Array.isArray(o.items) && o.items.some((i: any) => i.name && i.name.toLowerCase().includes(q));
-      return idMatch || tableMatch || waiterMatch || itemMatch;
+      const paymentMatch = o.paymentMode && String(o.paymentMode).toLowerCase().includes(q);
+      return idMatch || tableMatch || waiterMatch || itemMatch || paymentMatch;
     });
   }, [orders, searchQuery]);
 
@@ -240,6 +242,60 @@ export default function OrdersPage() {
     }
   };
 
+  const renderPaymentBadge = (mode?: string | null, isCompact = false) => {
+    const m = (mode || 'CASH').toUpperCase();
+    if (m === 'UPI') {
+      return (
+        <span
+          className={`inline-flex items-center gap-1 font-bold rounded-md uppercase tracking-wider bg-violet-500/15 text-violet-300 border border-violet-500/30 ${
+            isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-0.5'
+          }`}
+          title="Paid via UPI"
+        >
+          <Smartphone size={isCompact ? 10 : 11} className="text-violet-400 shrink-0" />
+          <span>UPI</span>
+        </span>
+      );
+    }
+    if (m === 'CARD') {
+      return (
+        <span
+          className={`inline-flex items-center gap-1 font-bold rounded-md uppercase tracking-wider bg-sky-500/15 text-sky-300 border border-sky-500/30 ${
+            isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-0.5'
+          }`}
+          title="Paid via Card"
+        >
+          <CreditCard size={isCompact ? 10 : 11} className="text-sky-400 shrink-0" />
+          <span>Card</span>
+        </span>
+      );
+    }
+    if (m === 'ROOM_TRANSFER') {
+      return (
+        <span
+          className={`inline-flex items-center gap-1 font-bold rounded-md uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 ${
+            isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-0.5'
+          }`}
+          title="Transferred to Room Booking"
+        >
+          <Building size={isCompact ? 10 : 11} className="text-amber-400 shrink-0" />
+          <span>Room Trf</span>
+        </span>
+      );
+    }
+    return (
+      <span
+        className={`inline-flex items-center gap-1 font-bold rounded-md uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 ${
+          isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-0.5'
+        }`}
+        title="Paid via Cash"
+      >
+        <Banknote size={isCompact ? 10 : 11} className="text-emerald-400 shrink-0" />
+        <span>Cash</span>
+      </span>
+    );
+  };
+
   const renderTableBadge = (tableNumber: string | number | undefined | null, status: string, compact: boolean = false) => {
     const isPending = status === 'PENDING';
     const rawStr = tableNumber ? String(tableNumber).trim() : '';
@@ -293,7 +349,14 @@ export default function OrdersPage() {
           </h1>
 
           {/* Quick Rush Hour Stats Banner */}
-          {statusFilter === 'PENDING' && (meta?.total ?? orders.length) > 0 ? (
+          {statusFilter === 'COMPLETED' ? (
+            <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full px-3 py-1 text-xs text-emerald-300 shadow-sm">
+              <CheckCircle size={13} className="text-emerald-400" />
+              <span className="font-bold">{meta?.total ?? stats.completedCount} Completed</span>
+              <span className="text-emerald-500/60">&bull;</span>
+              <span className="font-mono font-bold text-white">₹{stats.completedTotal.toLocaleString()}</span>
+            </div>
+          ) : statusFilter === 'PENDING' && (meta?.total ?? orders.length) > 0 ? (
             <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-full px-3 py-1 text-xs text-amber-300 shadow-sm animate-pulse">
               <Flame size={13} className="text-amber-400" />
               <span className="font-bold">{meta?.total ?? orders.length} Pending</span>
@@ -636,9 +699,12 @@ export default function OrdersPage() {
                             )}
                           </div>
                         </td>
-                        {/* Status */}
+                        {/* Status & Payment Mode */}
                         <td className="py-2 px-2.5 text-center whitespace-nowrap">
-                          {renderStatusBadge(order.status)}
+                          <div className="flex flex-col items-center gap-1">
+                            {renderStatusBadge(order.status)}
+                            {order.status === 'COMPLETED' && renderPaymentBadge(order.paymentMode, true)}
+                          </div>
                         </td>
                         <td className="py-2 px-3 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1">
@@ -775,11 +841,12 @@ export default function OrdersPage() {
                       : 'border-white/10 hover:border-white/20'
                   }`}
                 >
-                  {/* CARD TOP: TABLE BADGE + ORDER ID & TIME */}
+                  {/* CARD TOP: TABLE BADGE + PAYMENT MODE + ORDER ID & TIME */}
                   <div>
                     <div className="flex items-center justify-between gap-1.5 mb-2">
-                      <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         {renderTableBadge(order.tableNumber, order.status, true)}
+                        {order.status === 'COMPLETED' && renderPaymentBadge(order.paymentMode)}
                       </div>
                       <div className="flex items-center gap-1.5 text-[11px]">
                         <span className="font-mono font-bold text-slate-300">#{order.id}</span>
@@ -808,9 +875,17 @@ export default function OrdersPage() {
                     {/* FINANCIALS SUMMARY (SINGLE SLEEK LINE) */}
                     <div className="flex items-baseline justify-between mb-2">
                       <div className="text-[10px] text-slate-400 font-mono">
-                        Base ₹{order.baseAmount ?? 0} &bull; GST ₹{order.gstAmount ?? 0}
-                        {Number(order.discountAmount) > 0 && (
-                          <span className="text-emerald-400 font-bold ml-1">-₹{order.discountAmount}</span>
+                        <div>
+                          Base ₹{order.baseAmount ?? 0} &bull; GST ₹{order.gstAmount ?? 0}
+                          {Number(order.discountAmount) > 0 && (
+                            <span className="text-emerald-400 font-bold ml-1">-₹{order.discountAmount}</span>
+                          )}
+                        </div>
+                        {order.status === 'COMPLETED' && (
+                          <div className="text-[10.5px] font-sans font-medium text-slate-300 mt-0.5 flex items-center gap-1">
+                            <span className="text-slate-400">Payment:</span>
+                            <span className="font-bold text-white uppercase tracking-wider">{order.paymentMode || 'CASH'}</span>
+                          </div>
                         )}
                       </div>
                       <div className="text-right">
@@ -1020,8 +1095,12 @@ export default function OrdersPage() {
       {selectedOrder && (
         <OrderDetailsModal
           isOpen={isDetailsModalOpen}
-          onClose={() => setIsDetailsModalOpen(false)}
+          onClose={() => {
+            setIsDetailsModalOpen(false);
+            fetchOrdersData(currentPage);
+          }}
           orderId={selectedOrder.id}
+          onOrderUpdated={() => fetchOrdersData(currentPage)}
         />
       )}
 
