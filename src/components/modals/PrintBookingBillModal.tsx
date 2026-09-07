@@ -122,6 +122,24 @@ export default function PrintBookingBillModal({
               </span>
             </div>
 
+            {/* Restaurant Bill Summary Pill */}
+            {(Number(booking.foodTotalAmount || 0) > 0 || (Array.isArray(booking.foodOrders) && booking.foodOrders.length > 0)) && (
+              <div className="bg-black/30 border border-white/10 rounded-xl p-3.5 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                    <Tag size={13} className="text-slate-400" /> Restaurant Bill
+                  </span>
+                  <span className="text-slate-500">&bull;</span>
+                  <span className="text-white font-mono font-bold">
+                    ₹{Number(booking.foodTotalAmount || 0).toFixed(2)}
+                  </span>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                  PAID
+                </span>
+              </div>
+            )}
+
             {/* Quick Presets Suggestions */}
             <div>
               <div className="text-[11px] uppercase tracking-wider font-bold text-slate-400 mb-2 flex items-center gap-1.5">

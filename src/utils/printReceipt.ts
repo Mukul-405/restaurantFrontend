@@ -501,7 +501,7 @@ export const printBookingBill = (
   const grandTotalBeforeDiscount = roomTotal + finalFoodTotal;
   const totalDiscount = rDiscount + fDiscount;
   const grandTotal = Math.max(0, grandTotalBeforeDiscount - totalDiscount);
-  const dueTotal = Math.max(0, (booking.paymentStatus === 'PAID' ? foodNet : (roomNet + foodNet)));
+  const dueTotal = booking.paymentStatus === 'PAID' ? 0 : roomNet;
 
   const roomRows = parsedRooms.map((r: any, rIdx: number) => {
     const roomHeaderHtml = `
@@ -663,6 +663,18 @@ export const printBookingBill = (
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
+            .paid-badge {
+              background: #e6f9f0 !important;
+              color: #059669 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .pending-badge {
+              background: #fef3c7 !important;
+              color: #d97706 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
           }
         </style>
       </head>
@@ -768,7 +780,10 @@ export const printBookingBill = (
           <div class="divider"></div>
           
           <!-- Food Orders -->
-          <div class="section-title">Restaurant Bill</div>
+          <div class="section-title">
+            Restaurant Bill
+            <span class="paid-badge">PAID</span>
+          </div>
           <table>
             <thead>
               <tr>
@@ -816,7 +831,7 @@ export const printBookingBill = (
               ${finalFoodTotal > 0 ? `
               <div class="totals-row">
                 <span>Restaurant Total :</span>
-                <span>₹${finalFoodTotal.toFixed(2)}</span>
+                <span>₹${finalFoodTotal.toFixed(2)} (PAID)</span>
               </div>
               ` : ''}
               ${totalDiscount > 0 ? `
@@ -847,7 +862,7 @@ export const printBookingBill = (
                 <span>Due :</span>
                 <div style="text-align: right;">
                   <div>₹${Math.round(dueTotal)}</div>
-                  <div style="font-size: 14px;">Rs</div>
+                  <div style="font-size: 14px;">${dueTotal === 0 ? 'PAID' : 'Rs'}</div>
                 </div>
               </div>
             </div>

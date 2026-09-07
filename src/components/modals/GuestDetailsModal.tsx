@@ -406,7 +406,14 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
                             <span className="text-slate-300 font-medium flex items-center gap-2">
                               <Tag size={15} className="text-slate-400" /> Restaurant Bill
                             </span>
-                            <span className="text-white font-bold font-mono">₹{foodTotalIncTax.toFixed(2)}</span>
+                            <div className="flex items-center gap-2">
+                              {foodTotalIncTax > 0 && (
+                                <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                                  PAID
+                                </span>
+                              )}
+                              <span className="text-white font-bold font-mono">₹{foodTotalIncTax.toFixed(2)}</span>
+                            </div>
                           </div>
 
                           {foodTotalIncTax > 0 && (
@@ -730,7 +737,14 @@ export default function GuestDetailsModal({ isOpen, onClose, bookingId, onRefres
 
                       <div className="bg-surface/80 border border-white/10 rounded-xl p-3 space-y-1">
                         <div className="text-slate-400 font-semibold flex items-center justify-between">
-                          <span>Restaurant Food:</span>
+                          <span className="flex items-center gap-1.5">
+                            <span>Restaurant Food:</span>
+                            {Number(booking.foodTotalAmount || 0) > 0 && (
+                              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                                PAID
+                              </span>
+                            )}
+                          </span>
                           <span className="text-slate-200 font-mono font-bold">₹{Number(booking.foodTotalAmount || 0).toFixed(2)}</span>
                         </div>
                         <div className="text-slate-400 font-semibold flex items-center justify-between">

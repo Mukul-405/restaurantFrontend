@@ -1602,7 +1602,14 @@ export default function BookRoomPage() {
                           <span className="text-slate-300 font-medium flex items-center gap-2">
                             <Tag size={15} className="text-slate-400" /> Restaurant Bill
                           </span>
-                          <span className="text-white font-bold font-mono">₹{foodTotalIncTax.toFixed(2)}</span>
+                          <div className="flex items-center gap-2">
+                            {foodTotalIncTax > 0 && (
+                              <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                                PAID
+                              </span>
+                            )}
+                            <span className="text-white font-bold font-mono">₹{foodTotalIncTax.toFixed(2)}</span>
+                          </div>
                         </div>
 
                         {foodTotalIncTax > 0 && (
