@@ -894,6 +894,27 @@ export const printBookingBill = (
   printHtml(html);
 };
 
+export const getKotPendingItems = (order: any): any[] => {
+  if (Array.isArray(order?.kotHistory)) {
+    return order.kotHistory.filter((item: any) => (item.qty ?? item.quantity ?? 1) > 0);
+  }
+  if (Array.isArray(order?.items)) {
+    return order.items.filter((item: any) => (item.quantity ?? item.qty ?? 1) > 0);
+  }
+  return [];
+};
+
+export const hasPendingKotItems = (order: any): boolean => {
+  return getKotPendingItems(order).length > 0;
+};
+
+export const getPendingKotQtyCount = (order: any): number => {
+  return getKotPendingItems(order).reduce(
+    (sum: number, item: any) => sum + (Number(item.qty ?? item.quantity) || 1),
+    0
+  );
+};
+
 export const printKOT = (order: any) => {
   try {
     const itemsToPrint = Array.isArray(order.kotHistory)
@@ -915,6 +936,10 @@ export const printKOT = (order: any) => {
       `;
     }).join('');
 
+    const rawTable = order.tableNumber ? String(order.tableNumber).trim() : '';
+    const tableNumOnly = rawTable.replace(/^table\s*[:#-]?\s*/i, '');
+    const tableDisplay = tableNumOnly ? `Table: ${escapeHtml(tableNumOnly)}` : 'Table: -';
+
     const printContent = `
       <!DOCTYPE html>
       <html>
@@ -927,6 +952,7 @@ export const printKOT = (order: any) => {
             .header { text-align: center; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 8px; }
             .footer { text-align: center; margin-top: 12px; border-top: 1px dashed #000; padding-top: 8px; }
             h2 { margin: 0 0 4px 0; font-size: 22px; }
+            .table-num { font-size: 22px; font-weight: 900; margin: 5px 0; letter-spacing: 0.5px; }
             p { margin: 2px 0; font-size: 13px; }
             table { width: 100%; border-collapse: collapse; margin-top: 8px; }
             th { border-bottom: 1px dashed #000; text-align: left; padding-bottom: 4px; font-size: 14px; }
@@ -935,7 +961,7 @@ export const printKOT = (order: any) => {
         <body>
           <div class="header">
             <h2>KOT</h2>
-            <p>Order #${order.id} | Table: ${escapeHtml(order.tableNumber) || '-'}</p>
+            <div class="table-num" style="font-size: 22px; font-weight: 900; margin: 5px 0; letter-spacing: 0.5px;">${tableDisplay}</div>
             <p>Waiter: ${escapeHtml(order.user?.name) || '-'}</p>
             <p>Time: ${new Date().toLocaleTimeString()}</p>
           </div>

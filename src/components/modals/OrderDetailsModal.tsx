@@ -9,7 +9,7 @@ import TransferToRoomModal from './TransferToRoomModal';
 import DiscountModal from './DiscountModal';
 import ReceiptModal from './ReceiptModal';
 import { ConfirmPrintModal } from './ConfirmPrintModal';
-import { printReceipt, printKOT } from '../../utils/printReceipt';
+import { printReceipt, printKOT, hasPendingKotItems, getPendingKotQtyCount } from '../../utils/printReceipt';
 
 interface OrderDetailsModalProps {
   isOpen: boolean;
@@ -160,14 +160,35 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
               <div className="flex items-center gap-2">
                 {selectedOrder && (
                   <>
-                    <button
-                      onClick={() => handlePrintKOTAction(selectedOrder)}
-                      className="flex items-center gap-1.5 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors px-3 py-2 rounded-lg text-sm font-bold cursor-pointer"
-                      title="Print KOT"
-                    >
-                      <Printer size={16} />
-                      <span className="hidden sm:inline">Print KOT</span>
-                    </button>
+                    {(() => {
+                      const hasKot = hasPendingKotItems(selectedOrder);
+                      const kotQty = getPendingKotQtyCount(selectedOrder);
+                      return (
+                        <button
+                          onClick={() => handlePrintKOTAction(selectedOrder)}
+                          className={`relative flex items-center gap-1.5 transition-all px-3 py-2 rounded-lg text-sm font-bold cursor-pointer ${
+                            hasKot
+                              ? 'animate-kot-pulse bg-sky-500/25 text-sky-100 border border-sky-400/80 shadow-[0_0_14px_rgba(56,189,248,0.35)] hover:bg-sky-500/35'
+                              : 'bg-white/5 text-slate-400 border border-white/10 opacity-70 hover:bg-white/10 hover:text-slate-300'
+                          }`}
+                          title={hasKot ? `Print KOT (${kotQty} pending item${kotQty > 1 ? 's' : ''})` : 'No pending KOT items'}
+                        >
+                          {hasKot && (
+                            <span className="relative flex h-2 w-2 shrink-0">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-400"></span>
+                            </span>
+                          )}
+                          <Printer size={16} className={hasKot ? 'text-sky-300' : 'text-slate-400'} />
+                          <span className="hidden sm:inline">Print KOT</span>
+                          {hasKot && (
+                            <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[11px] font-black bg-sky-400/30 text-sky-100 border border-sky-300/40">
+                              {kotQty}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })()}
                     <button
                       onClick={() => printReceipt(selectedOrder)}
                       className="flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors px-3 py-2 rounded-lg text-sm font-bold cursor-pointer"

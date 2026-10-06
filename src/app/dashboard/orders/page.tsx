@@ -16,7 +16,7 @@ import OrderDetailsModal from '../../../components/modals/OrderDetailsModal';
 import CancelOrderModal from '../../../components/modals/CancelOrderModal';
 import ReceiptModal from '../../../components/modals/ReceiptModal';
 import DiscountModal from '../../../components/modals/DiscountModal';
-import { printReceipt, printKOT } from '../../../utils/printReceipt';
+import { printReceipt, printKOT, hasPendingKotItems, getPendingKotQtyCount } from '../../../utils/printReceipt';
 import { ConfirmPrintModal } from '../../../components/modals/ConfirmPrintModal';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -718,14 +718,35 @@ export default function OrdersPage() {
                                   <CheckCircle size={12} />
                                   <span>Done</span>
                                 </button>
-                                <button
-                                  onClick={() => handlePrintKOTAction(order)}
-                                  className="h-7 px-2 flex items-center gap-1 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 text-[11px] font-bold transition-all cursor-pointer"
-                                  title="Print Kitchen Order Ticket (KOT)"
-                                >
-                                  <Printer size={12} />
-                                  <span>KOT</span>
-                                </button>
+                                {(() => {
+                                  const hasKot = hasPendingKotItems(order);
+                                  const kotQty = getPendingKotQtyCount(order);
+                                  return (
+                                    <button
+                                      onClick={() => handlePrintKOTAction(order)}
+                                      className={`h-7 px-2 flex items-center gap-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                                        hasKot
+                                          ? 'animate-kot-pulse bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/80 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
+                                          : 'bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10 opacity-70'
+                                      }`}
+                                      title={hasKot ? `Print KOT (${kotQty} pending item${kotQty > 1 ? 's' : ''})` : 'No pending KOT items'}
+                                    >
+                                      {hasKot && (
+                                        <span className="relative flex h-1.5 w-1.5 shrink-0">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-sky-400"></span>
+                                        </span>
+                                      )}
+                                      <Printer size={12} className={hasKot ? 'text-sky-300' : 'text-slate-400'} />
+                                      <span>KOT</span>
+                                      {hasKot && (
+                                        <span className="px-1 py-0.2 rounded-full text-[9px] font-black bg-sky-400/30 text-sky-100 border border-sky-300/40">
+                                          {kotQty}
+                                        </span>
+                                      )}
+                                    </button>
+                                  );
+                                })()}
                                 <button
                                   onClick={() => handleOpenEdit(order)}
                                   className="h-7 px-2 flex items-center gap-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-[11px] font-semibold transition-all cursor-pointer"
@@ -911,14 +932,35 @@ export default function OrdersPage() {
                             <span>Mark Done</span>
                           </button>
 
-                          <button
-                            onClick={() => handlePrintKOTAction(order)}
-                            className="h-8 flex items-center justify-center gap-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 text-xs font-bold transition-all cursor-pointer active:scale-95"
-                            title="Print Kitchen Order Ticket (KOT)"
-                          >
-                            <Printer size={13} />
-                            <span>Print KOT</span>
-                          </button>
+                          {(() => {
+                            const hasKot = hasPendingKotItems(order);
+                            const kotQty = getPendingKotQtyCount(order);
+                            return (
+                              <button
+                                onClick={() => handlePrintKOTAction(order)}
+                                className={`relative h-8 flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                                  hasKot
+                                    ? 'animate-kot-pulse bg-sky-500/20 hover:bg-sky-500/30 text-sky-100 border border-sky-400/80 shadow-[0_0_14px_rgba(56,189,248,0.35)]'
+                                    : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-300 border border-white/10 opacity-70'
+                                }`}
+                                title={hasKot ? `Print Kitchen Order Ticket (${kotQty} pending item${kotQty > 1 ? 's' : ''})` : 'No pending KOT items'}
+                              >
+                                {hasKot && (
+                                  <span className="relative flex h-2 w-2 shrink-0">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-400"></span>
+                                  </span>
+                                )}
+                                <Printer size={13} className={hasKot ? 'text-sky-300' : 'text-slate-400'} />
+                                <span>Print KOT</span>
+                                {hasKot && (
+                                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-black bg-sky-400/30 text-sky-100 border border-sky-300/40">
+                                    {kotQty}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })()}
                         </div>
 
                         {/* Secondary Row: Labeled Edit, Disc, View, Cancel */}
@@ -974,14 +1016,35 @@ export default function OrdersPage() {
                             <span>Print Bill</span>
                           </button>
 
-                          <button
-                            onClick={() => handlePrintKOTAction(order)}
-                            className="h-8 flex items-center justify-center gap-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 text-xs font-bold transition-all cursor-pointer"
-                            title="Print Kitchen Order Ticket (KOT)"
-                          >
-                            <Printer size={13} />
-                            <span>Print KOT</span>
-                          </button>
+                          {(() => {
+                            const hasKot = hasPendingKotItems(order);
+                            const kotQty = getPendingKotQtyCount(order);
+                            return (
+                              <button
+                                onClick={() => handlePrintKOTAction(order)}
+                                className={`h-8 flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  hasKot
+                                    ? 'animate-kot-pulse bg-sky-500/20 hover:bg-sky-500/30 text-sky-100 border border-sky-400/80 shadow-[0_0_14px_rgba(56,189,248,0.35)]'
+                                    : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-300 border border-white/10 opacity-70'
+                                }`}
+                                title={hasKot ? `Print Kitchen Order Ticket (${kotQty} pending)` : 'Print Kitchen Order Ticket (KOT)'}
+                              >
+                                {hasKot && (
+                                  <span className="relative flex h-2 w-2 shrink-0">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-400"></span>
+                                  </span>
+                                )}
+                                <Printer size={13} className={hasKot ? 'text-sky-300' : 'text-slate-400'} />
+                                <span>Print KOT</span>
+                                {hasKot && (
+                                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-black bg-sky-400/30 text-sky-100 border border-sky-300/40">
+                                    {kotQty}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })()}
                         </div>
 
                         <button
@@ -1004,14 +1067,35 @@ export default function OrdersPage() {
                           <Eye size={12} className="text-slate-400" />
                           <span>View Details</span>
                         </button>
-                        <button
-                          onClick={() => handlePrintKOTAction(order)}
-                          className="h-7.5 flex items-center justify-center gap-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 text-xs font-bold transition-all cursor-pointer"
-                          title="Print KOT"
-                        >
-                          <Printer size={12} />
-                          <span>Print KOT</span>
-                        </button>
+                        {(() => {
+                          const hasKot = hasPendingKotItems(order);
+                          const kotQty = getPendingKotQtyCount(order);
+                          return (
+                            <button
+                              onClick={() => handlePrintKOTAction(order)}
+                              className={`h-7.5 flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                hasKot
+                                  ? 'animate-kot-pulse bg-sky-500/20 hover:bg-sky-500/30 text-sky-100 border border-sky-400/80 shadow-[0_0_14px_rgba(56,189,248,0.35)]'
+                                  : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-300 border border-white/10 opacity-70'
+                              }`}
+                              title={hasKot ? `Print KOT (${kotQty} pending)` : 'Print KOT'}
+                            >
+                              {hasKot && (
+                                <span className="relative flex h-2 w-2 shrink-0">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-400"></span>
+                                </span>
+                              )}
+                              <Printer size={12} className={hasKot ? 'text-sky-300' : 'text-slate-400'} />
+                              <span>Print KOT</span>
+                              {hasKot && (
+                                <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-black bg-sky-400/30 text-sky-100 border border-sky-300/40">
+                                  {kotQty}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
