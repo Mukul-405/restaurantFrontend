@@ -385,6 +385,25 @@ export const printBookingBill = (
   const formattedDate = now.toISOString().split('T')[0];
   const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
+  // Generate invoice number from UserRoomBooking table id (or custom field if provided)
+  const rawBookingId = booking?.id ?? booking?.userRoomBookingId;
+  const defaultInvoiceNumber = (rawBookingId !== undefined && rawBookingId !== null && !isNaN(Number(rawBookingId)))
+    ? `INV-${String(rawBookingId).padStart(5, '0')}`
+    : (booking?.bookingId ? `INV-${booking.bookingId}` : 'N/A');
+
+  let customInvoiceNo = '';
+  if (Array.isArray(extraDetails)) {
+    const found = extraDetails.find(f => f && f.key && /invoice\s*(no|number)?/i.test(f.key.trim()));
+    if (found && found.value?.trim()) {
+      customInvoiceNo = found.value.trim();
+    }
+  } else if (extraDetails && typeof extraDetails === 'object') {
+    if (extraDetails.invoiceNo?.trim()) customInvoiceNo = extraDetails.invoiceNo.trim();
+    else if (extraDetails.invoiceNumber?.trim()) customInvoiceNo = extraDetails.invoiceNumber.trim();
+  }
+
+  const invoiceNumber = customInvoiceNo || defaultInvoiceNumber;
+
   let webhookPayloadObj: any = null;
   if (typeof booking.webhookPayload === 'string') {
     try {
@@ -549,7 +568,7 @@ export const printBookingBill = (
     <html>
       <head>
         <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
-        <title>Booking Bill - ${escapeHtml(booking.bookingId)}</title>
+        <title>Invoice #${escapeHtml(invoiceNumber)} - ${escapeHtml(booking.bookingId || '')}</title>
         <style>
           @page { margin: 0; size: 80mm auto; }
           body { 
@@ -694,19 +713,26 @@ export const printBookingBill = (
           <div class="divider-thick"></div>
           
           <div class="flex-between font-bold" style="margin-bottom: 4px;">
-            <div style="font-size: 15px;">Booking: ${escapeHtml(booking.bookingId)}</div>
+            <div style="font-size: 15px;">Invoice No: ${escapeHtml(invoiceNumber)}</div>
             <div class="meta-right">Date : ${formattedDate}</div>
+          </div>
+          <div class="flex-between font-bold" style="margin-bottom: 4px;">
+            <div style="font-size: 14px;">Booking: ${escapeHtml(booking.bookingId || 'N/A')}</div>
+            <div class="meta-right">Time: ${formattedTime}</div>
           </div>
           <div class="flex-between font-bold">
             <div>Guest: ${escapeHtml(booking.guestName) || 'N/A'}</div>
-            <div class="meta-right">Time: ${formattedTime}</div>
           </div>
           <div class="font-bold" style="margin-top: 4px;">Phone: ${escapeHtml(booking.guestPhone) || 'N/A'}</div>
 
           ${(() => {
             let fields: BookingBillCustomField[] = [];
             if (Array.isArray(extraDetails)) {
-              fields = extraDetails.filter(f => f && f.key && f.key.trim() && f.value && f.value.trim());
+              fields = extraDetails.filter(f => {
+                if (!f || !f.key || !f.key.trim() || !f.value || !f.value.trim()) return false;
+                if (/invoice\s*(no|number)?/i.test(f.key.trim())) return false;
+                return true;
+              });
             } else if (extraDetails && typeof extraDetails === 'object') {
               if (extraDetails.billTo?.trim()) fields.push({ key: 'Bill To', value: extraDetails.billTo.trim() });
               if (extraDetails.gstin?.trim()) fields.push({ key: 'Guest GSTIN', value: extraDetails.gstin.trim() });

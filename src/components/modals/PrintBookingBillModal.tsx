@@ -18,6 +18,7 @@ interface KeyValueRow {
 }
 
 const COMMON_PRESETS = [
+  { key: 'Invoice No', placeholder: 'e.g. INV-00004' },
   { key: 'Bill To', placeholder: 'e.g. Microsoft Company Limited' },
   { key: 'Guest / Company GSTIN', placeholder: 'e.g. 08AFAFS7077J1ZI' },
   { key: 'Billing Address', placeholder: 'e.g. DLF Cyber City, Gurugram' },
@@ -32,6 +33,11 @@ export default function PrintBookingBillModal({
   roomDiscount = 0,
   foodDiscount = 0
 }: PrintBookingBillModalProps) {
+  const rawBookingId = booking?.id ?? booking?.userRoomBookingId;
+  const invoiceNumber = (rawBookingId !== undefined && rawBookingId !== null && !isNaN(Number(rawBookingId)))
+    ? `INV-${String(rawBookingId).padStart(5, '0')}`
+    : (booking?.bookingId ? `INV-${booking.bookingId}` : 'N/A');
+
   const [fields, setFields] = useState<KeyValueRow[]>([
     { id: 'row-1', key: 'Bill To', value: '' }
   ]);
@@ -47,9 +53,13 @@ export default function PrintBookingBillModal({
   if (!isOpen || !booking) return null;
 
   const handleAddField = (presetKey: string = '', presetPlaceholder: string = '') => {
+    let initialVal = '';
+    if (presetKey.toLowerCase().includes('invoice')) {
+      initialVal = invoiceNumber;
+    }
     setFields(prev => [
       ...prev,
-      { id: `row-${Date.now()}-${Math.random()}`, key: presetKey, value: '' }
+      { id: `row-${Date.now()}-${Math.random()}`, key: presetKey, value: initialVal }
     ]);
   };
 
@@ -108,7 +118,9 @@ export default function PrintBookingBillModal({
           <form onSubmit={handlePrint} className="p-5 md:p-6 overflow-y-auto custom-scrollbar space-y-5">
             {/* Booking Summary Pill */}
             <div className="bg-black/30 border border-white/10 rounded-xl p-3.5 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-emerald-400 font-mono">Invoice #{invoiceNumber}</span>
+                <span className="text-slate-500">&bull;</span>
                 <span className="font-bold text-white font-mono">Booking #{booking.bookingId}</span>
                 <span className="text-slate-500">&bull;</span>
                 <span className="text-slate-200 font-semibold">{booking.guestName || 'Guest'}</span>
