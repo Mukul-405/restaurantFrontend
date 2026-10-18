@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Plus, Trash2, Search, ChevronDown, RefreshCw, Sparkles, Tag, Check } from 'lucide-react';
+import { X, Loader2, Plus, Trash2, Search, ChevronDown, RefreshCw, Sparkles, Tag, Check, UtensilsCrossed, User } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { createOrder, updateOrder, Order, OrderItem } from '../../store/slices/orderSlice';
 import { fetchMenu } from '../../store/slices/menuSlice';
 import { matchesMenuSearch } from '../../utils/menuSearch';
+import { getOrderCustomer, setOrderCustomer, removeOrderCustomer } from '../../utils/customerStorage';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
   const { items: menuItems, categories, status: menuStatus, error: menuError } = useAppSelector(state => state.menu);
 
   const [tableNumber, setTableNumber] = useState('');
+  const [customerName, setCustomerName] = useState('');
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +65,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
     if (isOpen) {
       if (orderToEdit) {
         setTableNumber(orderToEdit.tableNumber ? orderToEdit.tableNumber.toString() : '');
+        setCustomerName(getOrderCustomer(orderToEdit.id) || '');
         setSelectedItems(orderToEdit.items.map(i => ({
           menuItemId: i.menuItemId,
           quantity: i.quantity,
@@ -72,6 +75,7 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
         })));
       } else {
         setTableNumber('');
+        setCustomerName('');
         setSelectedItems([]);
       }
       setError(null);
@@ -220,8 +224,14 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
             tableNumber: tableNumber ? parseInt(tableNumber, 10) : undefined
           }
         })).unwrap();
+
+        if (customerName.trim()) {
+          setOrderCustomer(orderToEdit.id, customerName.trim());
+        } else {
+          removeOrderCustomer(orderToEdit.id);
+        }
       } else {
-        await dispatch(createOrder({
+        const created = await dispatch(createOrder({
           items: payloadItems as any,
           baseAmount,
           gstAmount,
@@ -229,6 +239,10 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
           finalDiscountedAmount,
           tableNumber: tableNumber ? parseInt(tableNumber, 10) : undefined
         })).unwrap();
+
+        if (created?.id && customerName.trim()) {
+          setOrderCustomer(created.id, customerName.trim());
+        }
       }
       
       if (onSuccess) onSuccess();
@@ -270,23 +284,45 @@ export default function OrderModal({ isOpen, onClose, onSuccess, orderToEdit }: 
                 </div>
               )}
 
-              {/* Table Details & Custom Item Quick Toggle */}
-              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-                <div className="flex-1 bg-black/20 border border-white/5 rounded-2xl p-2.5">
-                  <input
-                    type="number"
-                    value={tableNumber || ''}
-                    onChange={(e) => setTableNumber(e.target.value)}
-                    className="w-full bg-transparent border border-white/10 text-slate-200 px-3.5 py-2 rounded-xl font-sans text-sm transition-all duration-300 outline-none focus:border-primary placeholder-slate-500"
-                    placeholder="Table Number (Optional)"
-                    min="1"
-                  />
+              {/* Table Details, Customer Name & Custom Item Quick Toggle */}
+              <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Table Number Field */}
+                  <div className="bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 select-none">
+                      <UtensilsCrossed size={11} className="text-purple-400 shrink-0" />
+                      <span>Table Number</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={tableNumber || ''}
+                      onChange={(e) => setTableNumber(e.target.value)}
+                      className="w-full bg-transparent border-0 text-slate-100 font-mono font-bold text-sm outline-none placeholder:text-slate-500 placeholder:font-normal p-0 mt-0.5"
+                      placeholder="e.g. 3 (Optional)"
+                      min="1"
+                    />
+                  </div>
+
+                  {/* Customer Name Field */}
+                  <div className="bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 select-none">
+                      <User size={11} className="text-purple-400 shrink-0" />
+                      <span>Customer Name</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      className="w-full bg-transparent border-0 text-slate-100 font-sans font-semibold text-sm outline-none placeholder:text-slate-500 placeholder:font-normal p-0 mt-0.5"
+                      placeholder="e.g. John Doe (Optional)"
+                    />
+                  </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setShowCustomForm(!showCustomForm)}
-                  className={`px-4 py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
+                  className={`h-[48px] px-4 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer border shrink-0 ${
                     showCustomForm 
                       ? 'bg-purple-500 text-white border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]' 
                       : 'bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border-purple-500/30'

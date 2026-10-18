@@ -110,6 +110,10 @@ export const fetcher = {
     const response = await api.post(`/orders/${id}/transfer-to-room`, data);
     return response.data;
   },
+  mergeOrders: async (mergeData: { orderIds?: number[]; tableNumbers?: number[]; targetTableNumber: number }) => {
+    const { data } = await api.post('/orders/merge', mergeData);
+    return data;
+  },
 
   // Inventory endpoints
   getInventory: async (params?: Record<string, any>) => {

@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, CheckCircle, Receipt } from 'lucide-react';
 import { Order } from '../../store/slices/orderSlice';
 
+import { getOrderCustomer } from '../../utils/customerStorage';
+
 interface ReceiptModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -22,6 +24,8 @@ export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: Rece
   const [paymentMode, setPaymentMode] = useState<'CASH' | 'CARD' | 'UPI'>('CASH');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const custName = order ? getOrderCustomer(order.id) : '';
 
   useEffect(() => {
     if (isOpen && order) {
@@ -123,7 +127,9 @@ export default function ReceiptModal({ isOpen, onClose, order, onConfirm }: Rece
               </div>
               <div>
                 <h2 className="text-xl font-bold text-slate-100">Order Receipt</h2>
-                <p className="text-sm text-slate-400">Order #{order.id}</p>
+                <p className="text-sm text-slate-400">
+                  Order #{order.id} {order.tableNumber ? `• Table ${order.tableNumber}` : ''} {custName ? `• Customer: ${custName}` : ''}
+                </p>
               </div>
             </div>
             <button

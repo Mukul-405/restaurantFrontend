@@ -1,6 +1,7 @@
 import { Order } from '../store/slices/orderSlice';
 import toast from 'react-hot-toast';
 import { escapeHtml } from './escapeHtml';
+import { getOrderCustomer } from './customerStorage';
 
 /**
  * Ultra-lightweight, non-blocking print utility using a hidden iframe.
@@ -63,8 +64,9 @@ export const printHtml = (htmlContent: string) => {
   }
 };
 
-export const printReceipt = (order: Order) => {
+export const printReceipt = (order: Order, customerName?: string) => {
   const totalQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  const custName = (customerName || getOrderCustomer(order?.id) || '').trim();
   
   // Format Date (e.g., 2026-05-03)
   const orderDate = new Date(order.createdAt);
@@ -245,8 +247,17 @@ export const printReceipt = (order: Order) => {
           </div>
           
           <div class="table-guest">
-            <div>Table No:</div>
-            <div style="font-size: 15px;">${order.tableNumber ? `TABLE-${escapeHtml(order.tableNumber)}` : 'WALK-IN'}</div>
+            <div class="flex-between">
+              <div>
+                <div>Table No:</div>
+                <div style="font-size: 15px;">${order.tableNumber ? `TABLE-${escapeHtml(order.tableNumber)}` : 'WALK-IN'}</div>
+              </div>
+              ${custName ? `
+              <div class="meta-right">
+                <div>Customer Name:</div>
+                <div style="font-size: 15px;">${escapeHtml(custName)}</div>
+              </div>` : ''}
+            </div>
           </div>
           
           <div class="divider-thick" style="margin-bottom: 0;"></div>
@@ -941,8 +952,9 @@ export const getPendingKotQtyCount = (order: any): number => {
   );
 };
 
-export const printKOT = (order: any) => {
+export const printKOT = (order: any, customerName?: string) => {
   try {
+    const custName = (customerName || getOrderCustomer(order?.id) || '').trim();
     const itemsToPrint = Array.isArray(order.kotHistory)
       ? order.kotHistory
       : (order.items || []);
@@ -988,6 +1000,7 @@ export const printKOT = (order: any) => {
           <div class="header">
             <h2>KOT</h2>
             <div class="table-num" style="font-size: 22px; font-weight: 900; margin: 5px 0; letter-spacing: 0.5px;">${tableDisplay}</div>
+            ${custName ? `<p style="font-size: 14px; font-weight: bold; margin: 4px 0;">Customer: ${escapeHtml(custName)}</p>` : ''}
             <p>Waiter: ${escapeHtml(order.user?.name) || '-'}</p>
             <p>Time: ${new Date().toLocaleTimeString()}</p>
           </div>

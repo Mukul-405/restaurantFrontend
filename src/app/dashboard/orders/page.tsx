@@ -6,7 +6,7 @@ import {
   Loader2, RefreshCw, Plus, Search, Eye, Edit2, ChevronDown, ChevronUp, 
   X, CheckCircle, Filter, Printer, Tag, UtensilsCrossed, LayoutGrid, 
   List, Clock, Flame, Calendar, Sparkles, Check, ArrowUpDown,
-  Banknote, CreditCard, Smartphone, Building
+  Banknote, CreditCard, Smartphone, Building, GitMerge, User
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchOrders, Order, updateOrder } from '../../../store/slices/orderSlice';
@@ -16,9 +16,11 @@ import OrderDetailsModal from '../../../components/modals/OrderDetailsModal';
 import CancelOrderModal from '../../../components/modals/CancelOrderModal';
 import ReceiptModal from '../../../components/modals/ReceiptModal';
 import DiscountModal from '../../../components/modals/DiscountModal';
+import MergeOrdersModal from '../../../components/modals/MergeOrdersModal';
 import { printReceipt, printKOT, hasPendingKotItems, getPendingKotQtyCount } from '../../../utils/printReceipt';
 import { ConfirmPrintModal } from '../../../components/modals/ConfirmPrintModal';
 import { useAuth } from '../../../context/AuthContext';
+import { getOrderCustomer } from '../../../utils/customerStorage';
 
 export default function OrdersPage() {
   const dispatch = useAppDispatch();
@@ -27,6 +29,7 @@ export default function OrdersPage() {
 
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderToCancel, setOrderToCancel] = useState<number | null>(null);
   const [orderToComplete, setOrderToComplete] = useState<Order | null>(null);
@@ -54,6 +57,13 @@ export default function OrdersPage() {
   const [pageSize, setPageSize] = useState<number>(30);
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedOrderId, setExpandedOrderId] = useState<number | string | null>(null);
+  const [customerTick, setCustomerTick] = useState(0);
+
+  useEffect(() => {
+    const handleCustomerUpdate = () => setCustomerTick(t => t + 1);
+    window.addEventListener('order_customers_updated', handleCustomerUpdate);
+    return () => window.removeEventListener('order_customers_updated', handleCustomerUpdate);
+  }, []);
 
   const toggleAccordion = (id: number | string) => {
     setExpandedOrderId(prev => prev === id ? null : id);
@@ -179,9 +189,11 @@ export default function OrdersPage() {
       const waiterMatch = o.user?.name && o.user.name.toLowerCase().includes(q);
       const itemMatch = Array.isArray(o.items) && o.items.some((i: any) => i.name && i.name.toLowerCase().includes(q));
       const paymentMatch = o.paymentMode && String(o.paymentMode).toLowerCase().includes(q);
-      return idMatch || tableMatch || waiterMatch || itemMatch || paymentMatch;
+      const custName = getOrderCustomer(o.id);
+      const custMatch = custName && custName.toLowerCase().includes(q);
+      return idMatch || tableMatch || waiterMatch || itemMatch || paymentMatch || custMatch;
     });
-  }, [orders, searchQuery]);
+  }, [orders, searchQuery, customerTick]);
 
   // Quick stats summary
   const stats = useMemo(() => {
@@ -387,6 +399,18 @@ export default function OrdersPage() {
           >
             <RefreshCw size={15} className={`${status === 'loading' ? 'animate-spin text-primary' : 'text-slate-400'}`} />
             <span className="hidden sm:inline">Refresh</span>
+          </button>
+
+          {/* Merge Orders Button */}
+          <button
+            type="button"
+            onClick={() => setIsMergeModalOpen(true)}
+            className="flex items-center justify-center p-2 md:px-3.5 md:py-2 rounded-xl bg-violet-600/15 border border-violet-500/30 text-violet-300 hover:text-white hover:bg-violet-600/25 active:scale-95 transition-all text-xs font-bold gap-1.5 cursor-pointer shadow-sm"
+            title="Merge Multiple Table Orders"
+          >
+            <GitMerge size={15} className="text-violet-400 shrink-0" />
+            <span className="hidden sm:inline">Merge Orders</span>
+            <span className="sm:hidden">Merge</span>
           </button>
 
           {/* View Mode Switcher (POS High-Density Standard) */}
@@ -668,7 +692,18 @@ export default function OrdersPage() {
                       >
                         {/* Table */}
                         <td className="py-2 px-3 whitespace-nowrap">
-                          {renderTableBadge(order.tableNumber, order.status, true)}
+                          <div className="flex flex-col gap-1 items-start">
+                            {renderTableBadge(order.tableNumber, order.status, true)}
+                            {(() => {
+                              const cust = getOrderCustomer(order.id);
+                              return cust ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-300 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded">
+                                  <User size={9} className="text-purple-400 shrink-0" />
+                                  <span className="truncate max-w-[100px]">{cust}</span>
+                                </span>
+                              ) : null;
+                            })()}
+                          </div>
                         </td>
                         {/* Order # & Waiter */}
                         <td className="py-2 px-2.5 whitespace-nowrap">
@@ -867,6 +902,15 @@ export default function OrdersPage() {
                     <div className="flex items-center justify-between gap-1.5 mb-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {renderTableBadge(order.tableNumber, order.status, true)}
+                        {(() => {
+                          const cust = getOrderCustomer(order.id);
+                          return cust ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 rounded-md">
+                              <User size={10} className="text-purple-400 shrink-0" />
+                              <span className="truncate max-w-[100px]">{cust}</span>
+                            </span>
+                          ) : null;
+                        })()}
                         {order.status === 'COMPLETED' && renderPaymentBadge(order.paymentMode)}
                       </div>
                       <div className="flex items-center gap-1.5 text-[11px]">
@@ -1219,6 +1263,12 @@ export default function OrdersPage() {
       <ConfirmPrintModal
         isOpen={confirmKotModal.isOpen}
         onConfirm={handleConfirmKotResult}
+      />
+
+      <MergeOrdersModal
+        isOpen={isMergeModalOpen}
+        onClose={() => setIsMergeModalOpen(false)}
+        onSuccess={() => fetchOrdersData(currentPage)}
       />
     </div>
   );

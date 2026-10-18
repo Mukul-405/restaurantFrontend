@@ -10,6 +10,7 @@ import DiscountModal from './DiscountModal';
 import ReceiptModal from './ReceiptModal';
 import { ConfirmPrintModal } from './ConfirmPrintModal';
 import { printReceipt, printKOT, hasPendingKotItems, getPendingKotQtyCount } from '../../utils/printReceipt';
+import { getOrderCustomer } from '../../utils/customerStorage';
 
 interface OrderDetailsModalProps {
   isOpen: boolean;
@@ -242,7 +243,7 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                           {new Date(selectedOrder.createdAt).toLocaleString()}
                         </div>
                       </div>
-                      <div className="bg-black/20 p-4 rounded-xl border border-white/5 sm:col-span-2 flex justify-between items-center">
+                      <div className="bg-black/20 p-4 rounded-xl border border-white/5 sm:col-span-2 flex justify-between items-center flex-wrap gap-3">
                         <div>
                           <div className="flex items-center gap-2 text-slate-400 mb-1 text-sm font-medium">
                             <User size={14} /> Waiter
@@ -251,6 +252,19 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, onOrderUpd
                             {selectedOrder.user ? selectedOrder.user.name : 'Unknown'}
                           </div>
                         </div>
+                        {(() => {
+                          const cust = getOrderCustomer(selectedOrder.id);
+                          return cust ? (
+                            <div>
+                              <div className="flex items-center gap-2 text-slate-400 mb-1 text-sm font-medium">
+                                <User size={14} className="text-purple-400" /> Customer Name
+                              </div>
+                              <div className="text-purple-300 font-bold">
+                                {cust}
+                              </div>
+                            </div>
+                          ) : null;
+                        })()}
                         <div className="text-right">
                           <div className="text-slate-400 text-sm mb-1 font-medium">Status & Payment</div>
                           <div className="font-black tracking-wider text-sm flex items-center gap-2 justify-end flex-wrap">

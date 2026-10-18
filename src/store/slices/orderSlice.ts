@@ -123,6 +123,18 @@ export const transferOrderToRoom = createAsyncThunk(
   }
 );
 
+export const mergeOrders = createAsyncThunk(
+  'order/mergeOrders',
+  async (mergeData: { orderIds?: number[]; tableNumbers?: number[]; targetTableNumber: number }, { rejectWithValue }) => {
+    try {
+      const response = await fetcher.mergeOrders(mergeData);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to merge orders');
+    }
+  }
+);
+
 const orderSlice = createSlice({
   name: 'order',
   initialState,
@@ -177,6 +189,14 @@ const orderSlice = createSlice({
         }
         if (state.selectedOrder?.id === orderId) {
           state.selectedOrder.status = 'COMPLETED';
+        }
+      })
+      // Merge Orders
+      .addCase(mergeOrders.fulfilled, (state, action) => {
+        const mergedIds: number[] = action.payload.mergedOrderIds || [];
+        state.orders = state.orders.filter(order => !mergedIds.includes(order.id));
+        if (action.payload.order) {
+          state.orders.unshift(action.payload.order);
         }
       });
   },
