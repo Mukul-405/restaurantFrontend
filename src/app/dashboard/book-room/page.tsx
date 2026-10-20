@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Clock, Printer, ChevronLeft, ChevronRight, Edit2, Banknote, Smartphone, IndianRupee } from 'lucide-react';
+import { Bed, Calendar, Users, User, Plus, Trash2, Mail, Phone, CreditCard, Loader2, Key, X, RefreshCw, Tag, AlignLeft, AlertCircle, CheckCircle2, Search, CheckCircle, Clock, Printer, ChevronLeft, ChevronRight, Edit2, Banknote, Smartphone, IndianRupee, Sparkles, Globe, Receipt } from 'lucide-react';
 import { getRoomTypes, RoomType, getAvailability } from '../../../lib/roomsApi';
 import { createBooking, BookingPayload, getBookings, checkInBooking, checkOutBooking, editBookingRooms, cancelBooking, extendCheckoutBooking } from '../../../lib/roomBookApi';
 import { printBookingBill } from '../../../utils/printReceipt';
@@ -10,6 +10,101 @@ import EditGuestModal from '../../../components/modals/EditGuestModal';
 import PrintBookingBillModal from '../../../components/modals/PrintBookingBillModal';
 import ChangePaymentModal from '../../../components/modals/ChangePaymentModal';
 import DailyRateBreakdownModal from '../../../components/modals/DailyRateBreakdownModal';
+import OtaDeductionsModal, { calculateOtaDeductions } from '../../../components/modals/OtaDeductionsModal';
+
+function isDateToday(dateVal: any): boolean {
+  if (!dateVal) return false;
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return false;
+  const now = new Date();
+  
+  // Format as YYYY-MM-DD in local time
+  const localD = d.toLocaleDateString('en-CA');
+  const localNow = now.toLocaleDateString('en-CA');
+  if (localD === localNow) return true;
+
+  // Also format as YYYY-MM-DD in UTC
+  const utcD = d.toISOString().slice(0, 10);
+  const utcNow = now.toISOString().slice(0, 10);
+  if (utcD === utcNow) return true;
+
+  return false;
+}
+
+function getOtaInfo(b: any) {
+  const channel = (b?.channel || '').trim();
+  const source = (b?.source || '').trim().toUpperCase();
+
+  const lower = channel.toLowerCase();
+  const isKnownOta = (
+    lower.includes('booking') ||
+    lower.includes('makemytrip') ||
+    lower.includes('make my trip') ||
+    lower.includes('mmt') ||
+    lower.includes('agoda') ||
+    lower.includes('goibibo') ||
+    lower.includes('expedia') ||
+    lower.includes('airbnb') ||
+    lower.includes('tripadvisor') ||
+    lower.includes('yatra')
+  );
+
+  const isOta = source === 'OTA' || isKnownOta;
+  if (!isOta) return null;
+
+  if (lower.includes('booking')) {
+    return {
+      platform: 'Booking.com',
+      badgeClass: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
+      dotClass: 'bg-blue-400',
+    };
+  }
+  if (lower.includes('makemytrip') || lower.includes('make my trip') || lower.includes('mmt')) {
+    return {
+      platform: 'MakeMyTrip',
+      badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+      dotClass: 'bg-rose-400',
+    };
+  }
+  if (lower.includes('agoda')) {
+    return {
+      platform: 'Agoda',
+      badgeClass: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
+      dotClass: 'bg-teal-400',
+    };
+  }
+  if (lower.includes('goibibo')) {
+    return {
+      platform: 'Goibibo',
+      badgeClass: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
+      dotClass: 'bg-orange-400',
+    };
+  }
+  if (lower.includes('expedia')) {
+    return {
+      platform: 'Expedia',
+      badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+      dotClass: 'bg-amber-400',
+    };
+  }
+  if (lower.includes('airbnb')) {
+    return {
+      platform: 'Airbnb',
+      badgeClass: 'bg-pink-500/15 text-pink-300 border-pink-500/30',
+      dotClass: 'bg-pink-400',
+    };
+  }
+
+  const displayName = channel && channel !== 'OTA' && !channel.toLowerCase().includes('sunrise') 
+    ? channel 
+    : 'OTA';
+
+  return {
+    platform: displayName,
+    badgeClass: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+    dotClass: 'bg-purple-400',
+  };
+}
 
 export default function BookRoomPage() {
   const [formData, setFormData] = useState({
@@ -45,6 +140,39 @@ export default function BookRoomPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalBookings, setTotalBookings] = useState(0);
+
+  const sortedBookings = useMemo(() => {
+    if (!managedBookings || managedBookings.length === 0) return [];
+    const copy = [...managedBookings];
+
+    if (bookingStatusFilter === 'RESERVED') {
+      return copy.sort((a, b) => {
+        const aToday = isDateToday(a.checkIn);
+        const bToday = isDateToday(b.checkIn);
+        if (aToday && !bToday) return -1;
+        if (!aToday && bToday) return 1;
+
+        const dateA = a.checkIn ? new Date(a.checkIn).getTime() : 0;
+        const dateB = b.checkIn ? new Date(b.checkIn).getTime() : 0;
+        return dateA - dateB;
+      });
+    }
+
+    if (bookingStatusFilter === 'CHECKED_IN') {
+      return copy.sort((a, b) => {
+        const aToday = isDateToday(a.checkOut);
+        const bToday = isDateToday(b.checkOut);
+        if (aToday && !bToday) return -1;
+        if (!aToday && bToday) return 1;
+
+        const dateA = a.checkOut ? new Date(a.checkOut).getTime() : 0;
+        const dateB = b.checkOut ? new Date(b.checkOut).getTime() : 0;
+        return dateA - dateB;
+      });
+    }
+
+    return copy;
+  }, [managedBookings, bookingStatusFilter]);
   const [searchingBookings, setSearchingBookings] = useState(false);
   const [cancelingBooking, setCancelingBooking] = useState<any>(null);
   const [openingModalBookingId, setOpeningModalBookingId] = useState<number | null>(null);
@@ -68,6 +196,7 @@ export default function BookRoomPage() {
   const [paymentModalBooking, setPaymentModalBooking] = useState<any>(null);
 
   const [dailyRateBooking, setDailyRateBooking] = useState<any | null>(null);
+  const [otaDeductionsModalBooking, setOtaDeductionsModalBooking] = useState<any | null>(null);
 
   const [modalMode, setModalMode] = useState<'checkin' | 'edit'>('checkin');
 
@@ -975,7 +1104,7 @@ export default function BookRoomPage() {
               ) : (
                 <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {managedBookings.map(b => {
+                  {sortedBookings.map(b => {
                     const isPaid = b.paymentStatus === 'PAID';
                     
                     const finalTotal = Math.max(0, 
@@ -985,20 +1114,68 @@ export default function BookRoomPage() {
                       - Number(b.foodDiscountAmount || 0)
                     );
 
+                    const isCheckInToday = (bookingStatusFilter === 'RESERVED' || bookingStatusFilter === 'ALL') && b.status === 'RESERVED' && isDateToday(b.checkIn);
+                    const isCheckOutToday = (bookingStatusFilter === 'CHECKED_IN' || bookingStatusFilter === 'ALL') && b.status === 'CHECKED_IN' && isDateToday(b.checkOut);
+                    const otaInfo = getOtaInfo(b);
+                    const otaDeductions = calculateOtaDeductions(b);
+
                     return (
-                      <div key={b.id} className="bg-[#15171e]/90 hover:bg-[#181a22] border border-white/10 hover:border-primary/40 rounded-3xl p-4 sm:p-5 shadow-2xl transition-all duration-300 space-y-4 relative overflow-hidden group backdrop-blur-xl flex flex-col justify-between">
-                        {/* Top subtle glow line */}
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <motion.div
+                        key={b.id}
+                        initial={false}
+                        animate={{
+                          boxShadow: isCheckInToday
+                            ? [
+                                '0 0 0px rgba(56, 189, 248, 0)',
+                                '0 0 25px rgba(56, 189, 248, 0.35)',
+                                '0 0 0px rgba(56, 189, 248, 0)'
+                              ]
+                            : isCheckOutToday
+                            ? [
+                                '0 0 0px rgba(251, 191, 36, 0)',
+                                '0 0 25px rgba(251, 191, 36, 0.35)',
+                                '0 0 0px rgba(251, 191, 36, 0)'
+                              ]
+                            : 'none'
+                        }}
+                        transition={
+                          isCheckInToday || isCheckOutToday
+                            ? { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }
+                            : undefined
+                        }
+                        className={`bg-[#15171e]/90 hover:bg-[#181a22] border rounded-3xl p-4 sm:p-5 shadow-2xl transition-all duration-300 space-y-4 relative overflow-hidden group backdrop-blur-xl flex flex-col justify-between ${
+                          isCheckInToday
+                            ? 'border-sky-500/50 bg-gradient-to-b from-sky-950/20 via-[#15171e]/90 to-[#15171e]/90'
+                            : isCheckOutToday
+                            ? 'border-amber-500/50 bg-gradient-to-b from-amber-950/20 via-[#15171e]/90 to-[#15171e]/90'
+                            : 'border-white/10 hover:border-white/20'
+                        }`}
+                      >
+                        {/* Sleek top accent line for Today's Check-in */}
+                        {isCheckInToday && (
+                          <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-sky-500 via-cyan-300 to-sky-500 shadow-[0_0_8px_rgba(56,189,248,0.7)]" />
+                        )}
+
+                        {/* Sleek top accent line for Today's Check-out */}
+                        {isCheckOutToday && (
+                          <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-500 shadow-[0_0_8px_rgba(251,191,36,0.7)]" />
+                        )}
+
+                        {/* Subtle top hover glow line when not today */}
+                        {!isCheckInToday && !isCheckOutToday && (
+                          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        )}
 
                         <div className="space-y-4">
-                          {/* Top Row: Guest Info & Status Badge */}
-                          <div className="flex items-start justify-between gap-2 pb-3 border-b border-white/10">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-600/40 to-indigo-600/40 border border-violet-500/50 text-violet-200 font-black text-sm flex items-center justify-center shadow-lg shadow-violet-500/10 shrink-0">
-                                {(b.guestName || 'G').charAt(0).toUpperCase()}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
+                          {/* Top Section: Guest Header & Contact / Channel Sub-row */}
+                          <div className="pb-3 border-b border-white/10 space-y-2.5">
+                            {/* Tier 1: Avatar, Name, Edit, Status */}
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600/30 to-indigo-600/30 border border-violet-500/40 text-violet-200 font-extrabold text-sm flex items-center justify-center shadow-md shadow-violet-500/10 shrink-0">
+                                  {(b.guestName || 'G').charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex items-center gap-2 min-w-0">
                                   <h3 className="text-sm font-extrabold text-white tracking-tight truncate">
                                     {b.guestName || 'Guest'}
                                   </h3>
@@ -1006,7 +1183,7 @@ export default function BookRoomPage() {
                                     <button
                                       type="button"
                                       onClick={() => setEditingGuestBooking(b)}
-                                      className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-violet-600/30 active:scale-95 text-slate-200 hover:text-white border border-white/20 hover:border-violet-400/60 text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm shrink-0 cursor-pointer"
+                                      className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-violet-600/30 active:scale-95 text-slate-300 hover:text-white border border-white/15 text-[10px] font-bold flex items-center gap-1 transition-all shrink-0 cursor-pointer"
                                       title="Edit Guest Name & Phone"
                                     >
                                       <Edit2 size={10} className="text-violet-400" />
@@ -1014,85 +1191,225 @@ export default function BookRoomPage() {
                                     </button>
                                   )}
                                 </div>
-                                <p className="text-[11px] text-slate-300 font-medium flex items-center gap-1.5 mt-0.5 truncate">
-                                  <Phone size={12} className="text-emerald-400 shrink-0" /> {b.guestPhone}
-                                </p>
+                              </div>
+
+                              {/* Status Badge */}
+                              <div className="shrink-0">
+                                {isCheckInToday ? (
+                                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-extrabold tracking-wide border border-sky-400/40 bg-sky-500/15 text-sky-300 flex items-center gap-1.5 shadow-sm shadow-sky-500/10">
+                                    <span className="relative flex h-2 w-2">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-80" />
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500" />
+                                    </span>
+                                    Check-In Today
+                                  </span>
+                                ) : isCheckOutToday ? (
+                                  <span className="px-2.5 py-1 rounded-full text-[10.5px] font-extrabold tracking-wide border border-amber-400/40 bg-amber-500/15 text-amber-300 flex items-center gap-1.5 shadow-sm shadow-amber-500/10">
+                                    <span className="relative flex h-2 w-2">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-80" />
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                                    </span>
+                                    Check-Out Today
+                                  </span>
+                                ) : (
+                                  <span className={`px-2.5 py-1 rounded-full text-[10.5px] font-extrabold tracking-wide border flex items-center gap-1.5 shadow-sm ${
+                                    b.status === 'CHECKED_IN'
+                                      ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shadow-emerald-500/10'
+                                      : b.status === 'RESERVED'
+                                        ? 'bg-sky-500/15 text-sky-400 border-sky-500/30 shadow-sky-500/10'
+                                        : b.status === 'CHECKED_OUT'
+                                          ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                                          : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                                  }`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${
+                                      b.status === 'CHECKED_IN'
+                                        ? 'bg-emerald-400 animate-pulse'
+                                        : b.status === 'RESERVED'
+                                          ? 'bg-sky-400'
+                                          : b.status === 'CHECKED_OUT'
+                                            ? 'bg-indigo-400'
+                                            : 'bg-rose-400'
+                                    }`} />
+                                    {b.status.replace('_', ' ')}
+                                  </span>
+                                )}
                               </div>
                             </div>
 
-                            {/* Status Badges */}
-                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold tracking-wide border flex items-center gap-1.5 shrink-0 shadow-sm ${
-                              b.status === 'CHECKED_IN'
-                                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shadow-emerald-500/10'
-                                : b.status === 'RESERVED'
-                                  ? 'bg-sky-500/15 text-sky-400 border-sky-500/30 shadow-sky-500/10'
-                                  : b.status === 'CHECKED_OUT'
-                                    ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
-                                    : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-                            }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${
-                                b.status === 'CHECKED_IN'
-                                  ? 'bg-emerald-400 animate-pulse'
-                                  : b.status === 'RESERVED'
-                                    ? 'bg-sky-400'
-                                    : b.status === 'CHECKED_OUT'
-                                      ? 'bg-indigo-400'
-                                      : 'bg-rose-400'
-                              }`} />
-                              {b.status.replace('_', ' ')}
-                            </span>
+                            {/* Tier 2: Contact Info & Booking Channel (Full Width Row) */}
+                            <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5">
+                              <div className="flex items-center gap-1.5 text-slate-300 font-medium">
+                                <Phone size={12} className="text-emerald-400 shrink-0" />
+                                <span className="text-xs tracking-wide font-mono">{b.guestPhone || 'No phone'}</span>
+                              </div>
+
+                              {otaInfo ? (
+                                <span 
+                                  className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold tracking-wide border flex items-center gap-1.5 shadow-sm shrink-0 ${otaInfo.badgeClass}`}
+                                  title={`Booked via ${otaInfo.platform}`}
+                                >
+                                  <Globe size={11} className="shrink-0" />
+                                  <span>{otaInfo.platform}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-semibold text-slate-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
+                                  Direct Booking
+                                </span>
+                              )}
+                            </div>
                           </div>
 
-                          {/* Middle Details Grid (2x2) */}
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div className="bg-white/[0.03] hover:bg-white/[0.06] p-2.5 rounded-xl border border-white/10 transition-all duration-200">
-                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-                                <Calendar size={12} className="text-emerald-400" /> Check In
+                          {/* Stay Details Grid (3 columns): Check In, Check Out, Guests */}
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div className={`p-2.5 rounded-xl border flex flex-col justify-between min-h-[58px] transition-all duration-200 ${
+                              isCheckInToday 
+                                ? 'bg-sky-500/15 border-sky-400/50 shadow-sm shadow-sky-500/10' 
+                                : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/10'
+                            }`}>
+                              <div className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap ${
+                                isCheckInToday ? 'text-sky-300' : 'text-slate-400'
+                              }`}>
+                                <Calendar size={11} className={isCheckInToday ? 'text-sky-400' : 'text-emerald-400'} /> Check In
                               </div>
-                              <div className="font-extrabold text-white text-xs tracking-tight">
+                              <div className={`font-extrabold text-xs tracking-tight whitespace-nowrap mt-1 truncate ${
+                                isCheckInToday ? 'text-sky-200' : 'text-white'
+                              }`}>
                                 {new Date(b.checkIn).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                               </div>
                             </div>
 
-                            <div className="bg-white/[0.03] hover:bg-white/[0.06] p-2.5 rounded-xl border border-white/10 transition-all duration-200">
-                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-                                <Calendar size={12} className="text-rose-400" /> Check Out
+                            <div className={`p-2.5 rounded-xl border flex flex-col justify-between min-h-[58px] transition-all duration-200 ${
+                              isCheckOutToday 
+                                ? 'bg-amber-500/15 border-amber-400/50 shadow-sm shadow-amber-500/10' 
+                                : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/10'
+                            }`}>
+                              <div className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap ${
+                                isCheckOutToday ? 'text-amber-300' : 'text-slate-400'
+                              }`}>
+                                <Calendar size={11} className={isCheckOutToday ? 'text-amber-400' : 'text-rose-400'} /> Check Out
                               </div>
-                              <div className="font-extrabold text-white text-xs tracking-tight">
+                              <div className={`font-extrabold text-xs tracking-tight whitespace-nowrap mt-1 truncate ${
+                                isCheckOutToday ? 'text-amber-200' : 'text-white'
+                              }`}>
                                 {new Date(b.checkOut).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                               </div>
                             </div>
 
-                            <div className="bg-white/[0.03] hover:bg-white/[0.06] p-2.5 rounded-xl border border-white/10 transition-all duration-200">
-                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-                                <Users size={12} className="text-indigo-400" /> Guests
+                            <div className="bg-white/[0.03] hover:bg-white/[0.06] p-2.5 rounded-xl border border-white/10 flex flex-col justify-between min-h-[58px] transition-all duration-200">
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap">
+                                <Users size={11} className="text-indigo-400" /> Guests
                               </div>
-                              <div className="font-extrabold text-white text-xs tracking-tight truncate">
+                              <div className="font-extrabold text-white text-xs tracking-tight whitespace-nowrap mt-1 truncate">
                                 {b.totalAdults || 1} Adult{(b.totalAdults || 1) > 1 ? 's' : ''}
                                 {Number(b.totalChildren) > 0 ? `, ${b.totalChildren} C` : ''}
                               </div>
                             </div>
+                          </div>
 
-                            <div className="bg-white/[0.03] hover:bg-white/[0.06] p-2.5 rounded-xl border border-white/10 transition-all duration-200">
-                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-                                <CreditCard size={12} className="text-amber-400" /> Payment
-                              </div>
-                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                <span className="text-white font-mono font-black text-xs">₹{finalTotal.toFixed(0)}</span>
-                                <span className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold uppercase tracking-wide border ${
+                          {/* Full-Width Payment Section */}
+                          <div className="w-full bg-[#181a24]/90 hover:bg-[#1c1f2b] border border-white/10 rounded-2xl p-3 transition-all duration-200 shadow-inner">
+                            {/* Payment Top Bar: Title, Status, Breakdown Button / Mode */}
+                            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/5">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                                  <CreditCard size={12} />
+                                </div>
+                                <span className="text-[11px] font-extrabold text-slate-200 uppercase tracking-wider">
+                                  Payment Details
+                                </span>
+                                <span className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wide border shrink-0 ${
                                   isPaid
                                     ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30'
                                     : 'text-amber-400 bg-amber-500/15 border-amber-500/30'
                                 }`}>
                                   {b.paymentStatus}
                                 </span>
-                                {b.paymentMode && (
-                                  <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-white/10 text-slate-300 border border-white/15">
+                              </div>
+
+                              {otaDeductions && otaDeductions.totalDeductions > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOtaDeductionsModalBooking(b);
+                                  }}
+                                  className="text-[10px] font-black text-amber-400 hover:text-amber-300 active:scale-95 px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 flex items-center gap-1.5 cursor-pointer transition-all shadow-sm shrink-0"
+                                  title="View OTA Commission, Taxes & Net Payout breakdown"
+                                >
+                                  <Receipt size={12} className="text-amber-400 shrink-0" />
+                                  <span>View Breakdown</span>
+                                </button>
+                              ) : (
+                                b.paymentMode && (
+                                  <span className="text-[9.5px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider bg-white/10 text-slate-300 border border-white/15">
                                     {b.paymentMode}
                                   </span>
-                                )}
-                              </div>
+                                )
+                              )}
                             </div>
+
+                            {/* Payment Financial Values */}
+                            {otaDeductions && otaDeductions.totalDeductions > 0 ? (
+                              <div className="grid grid-cols-3 gap-2 pt-2.5 items-center text-left">
+                                {/* 1. Net Payout */}
+                                <div>
+                                  <div className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Net Payout
+                                  </div>
+                                  <div className="text-emerald-400 font-mono font-black text-sm sm:text-base tracking-tight mt-0.5">
+                                    ₹{otaDeductions.payableToProperty.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                                  </div>
+                                  <div className="text-[9px] text-emerald-400/80 font-medium">
+                                    Receivable
+                                  </div>
+                                </div>
+
+                                {/* 2. Gross Amount */}
+                                <div className="border-x border-white/5 px-2">
+                                  <div className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Gross Total
+                                  </div>
+                                  <div className="text-slate-200 font-mono font-bold text-xs sm:text-sm tracking-tight mt-0.5">
+                                    ₹{otaDeductions.grossAmount.toLocaleString('en-IN')}
+                                  </div>
+                                  <div className="text-[9px] text-slate-500">
+                                    Guest paid
+                                  </div>
+                                </div>
+
+                                {/* 3. Deductions */}
+                                <div className="text-right">
+                                  <div className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Deductions
+                                  </div>
+                                  <div className="text-rose-400 font-mono font-bold text-xs sm:text-sm tracking-tight mt-0.5">
+                                    -₹{otaDeductions.totalDeductions.toLocaleString('en-IN')}
+                                  </div>
+                                  <div className="text-[9px] text-rose-400/80">
+                                    OTA fee & tax
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between pt-2.5">
+                                <div>
+                                  <div className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Total Amount
+                                  </div>
+                                  <div className="text-white font-mono font-black text-sm sm:text-base tracking-tight mt-0.5">
+                                    ₹{finalTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Booking Source
+                                  </div>
+                                  <div className="text-slate-300 font-bold text-xs mt-0.5">
+                                    Direct Booking
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           {/* Rooms Breakdown */}
@@ -1269,7 +1586,7 @@ export default function BookRoomPage() {
                             </button>
                           )}
                         </div>
-                      </div>
+                      </motion.div>
                     );
                   })}
                 </div>
@@ -2099,6 +2416,12 @@ export default function BookRoomPage() {
             handleSearchBookings();
           }
         }}
+      />
+
+      <OtaDeductionsModal
+        isOpen={!!otaDeductionsModalBooking}
+        onClose={() => setOtaDeductionsModalBooking(null)}
+        booking={otaDeductionsModalBooking}
       />
 
     </div>

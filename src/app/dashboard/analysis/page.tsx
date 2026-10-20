@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  IndianRupee, Receipt, TrendingUp, Users, Bed, Building2, Calendar, 
-  AlertCircle, Banknote, CreditCard, QrCode, Download, Printer, 
+import {
+  IndianRupee, Receipt, TrendingUp, Users, Bed, Building2, Calendar,
+  AlertCircle, Banknote, CreditCard, QrCode, Download, Printer,
   UtensilsCrossed, ShoppingBag, Search, ArrowUpDown, Sparkles, Hotel,
   FileSpreadsheet, CheckCircle2, XCircle, FileText, Check, Layers, Tag, Percent
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { 
+import {
   getRevenueAnalysis, getWaiterAnalysis, getBookingAnalysis, getChannelAnalysis, getOrderItemAnalysis, getDailyBillSummary,
   RevenueAnalysis, WaiterAnalysis, BookingAnalysis, ChannelAnalysis, OrderItemAnalysis, DailyBillSummaryResult, DailyBillSummaryItem, DayGroupSummary
 } from '../../../lib/analysis';
@@ -144,11 +144,10 @@ const StatCard = ({
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className={`relative overflow-hidden ${
-      highlight
+    className={`relative overflow-hidden ${highlight
         ? 'bg-gradient-to-br from-emerald-500/15 via-surface/60 to-surface/40 border-emerald-500/30 shadow-[0_4px_20px_rgba(16,185,129,0.15)]'
         : 'bg-surface/40 border-white/10 shadow-lg'
-    } backdrop-blur-md p-4 sm:p-5 rounded-2xl border flex flex-col justify-between ${className}`}
+      } backdrop-blur-md p-4 sm:p-5 rounded-2xl border flex flex-col justify-between ${className}`}
   >
     <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 ${color} blur-2xl pointer-events-none`} />
     <div className="flex justify-between items-start mb-3">
@@ -718,11 +717,11 @@ export default function AnalysisPage() {
               <tr><th>Order Type</th><th class="text-right">Base Amount</th><th class="text-right">CGST (2.5%)</th><th class="text-right">SGST (2.5%)</th><th class="text-right">Total Amount</th></tr>
             </thead>
             <tbody>
-              <tr><td>DINE IN (${dineInCount})</td><td class="text-right">${dineInBase.toFixed(2)}</td><td class="text-right">${(dineInTax/2).toFixed(2)}</td><td class="text-right">${(dineInTax/2).toFixed(2)}</td><td class="text-right font-bold">${dineInTotal.toFixed(2)}</td></tr>
-              <tr><td>ROOM SERVICE (${roomTransfer.count})</td><td class="text-right">${roomTransfer.baseAmount.toFixed(2)}</td><td class="text-right">${(roomTransfer.gstAmount/2).toFixed(2)}</td><td class="text-right">${(roomTransfer.gstAmount/2).toFixed(2)}</td><td class="text-right font-bold">${roomTransfer.totalAmount.toFixed(2)}</td></tr>
+              <tr><td>DINE IN (${dineInCount})</td><td class="text-right">${dineInBase.toFixed(2)}</td><td class="text-right">${(dineInTax / 2).toFixed(2)}</td><td class="text-right">${(dineInTax / 2).toFixed(2)}</td><td class="text-right font-bold">${dineInTotal.toFixed(2)}</td></tr>
+              <tr><td>ROOM SERVICE (${roomTransfer.count})</td><td class="text-right">${roomTransfer.baseAmount.toFixed(2)}</td><td class="text-right">${(roomTransfer.gstAmount / 2).toFixed(2)}</td><td class="text-right">${(roomTransfer.gstAmount / 2).toFixed(2)}</td><td class="text-right font-bold">${roomTransfer.totalAmount.toFixed(2)}</td></tr>
             </tbody>
             <tfoot>
-              <tr><td>Total (${totalOrders})</td><td class="text-right">${rev.totalBaseAmount.toFixed(2)}</td><td class="text-right">${(rev.totalGstAmount/2).toFixed(2)}</td><td class="text-right">${(rev.totalGstAmount/2).toFixed(2)}</td><td class="text-right">${rev.totalFinalDiscountedAmount.toFixed(2)}</td></tr>
+              <tr><td>Total (${totalOrders})</td><td class="text-right">${rev.totalBaseAmount.toFixed(2)}</td><td class="text-right">${(rev.totalGstAmount / 2).toFixed(2)}</td><td class="text-right">${(rev.totalGstAmount / 2).toFixed(2)}</td><td class="text-right">${rev.totalFinalDiscountedAmount.toFixed(2)}</td></tr>
             </tfoot>
           </table>
 
@@ -732,10 +731,10 @@ export default function AnalysisPage() {
               <tr><th>Payment Mode</th><th class="text-right">Count</th><th class="text-right">Base Amount</th><th class="text-right">CGST (2.5%)</th><th class="text-right">SGST (2.5%)</th><th class="text-right">Total Amount</th></tr>
             </thead>
             <tbody>
-              <tr><td>CASH</td><td class="text-right">${cash.count}</td><td class="text-right">${cash.baseAmount.toFixed(2)}</td><td class="text-right">${(cash.gstAmount/2).toFixed(2)}</td><td class="text-right">${(cash.gstAmount/2).toFixed(2)}</td><td class="text-right font-bold">${cash.totalAmount.toFixed(2)}</td></tr>
-              <tr><td>CARD</td><td class="text-right">${card.count}</td><td class="text-right">${card.baseAmount.toFixed(2)}</td><td class="text-right">${(card.gstAmount/2).toFixed(2)}</td><td class="text-right">${(card.gstAmount/2).toFixed(2)}</td><td class="text-right font-bold">${card.totalAmount.toFixed(2)}</td></tr>
-              <tr><td>UPI</td><td class="text-right">${upi.count}</td><td class="text-right">${upi.baseAmount.toFixed(2)}</td><td class="text-right">${(upi.gstAmount/2).toFixed(2)}</td><td class="text-right">${(upi.gstAmount/2).toFixed(2)}</td><td class="text-right font-bold">${upi.totalAmount.toFixed(2)}</td></tr>
-              <tr><td>ROOM TRANSFER</td><td class="text-right">${roomTransfer.count}</td><td class="text-right">${roomTransfer.baseAmount.toFixed(2)}</td><td class="text-right">${(roomTransfer.gstAmount/2).toFixed(2)}</td><td class="text-right">${(roomTransfer.gstAmount/2).toFixed(2)}</td><td class="text-right font-bold">${roomTransfer.totalAmount.toFixed(2)}</td></tr>
+              <tr><td>CASH</td><td class="text-right">${cash.count}</td><td class="text-right">${cash.baseAmount.toFixed(2)}</td><td class="text-right">${(cash.gstAmount / 2).toFixed(2)}</td><td class="text-right">${(cash.gstAmount / 2).toFixed(2)}</td><td class="text-right font-bold">${cash.totalAmount.toFixed(2)}</td></tr>
+              <tr><td>CARD</td><td class="text-right">${card.count}</td><td class="text-right">${card.baseAmount.toFixed(2)}</td><td class="text-right">${(card.gstAmount / 2).toFixed(2)}</td><td class="text-right">${(card.gstAmount / 2).toFixed(2)}</td><td class="text-right font-bold">${card.totalAmount.toFixed(2)}</td></tr>
+              <tr><td>UPI</td><td class="text-right">${upi.count}</td><td class="text-right">${upi.baseAmount.toFixed(2)}</td><td class="text-right">${(upi.gstAmount / 2).toFixed(2)}</td><td class="text-right">${(upi.gstAmount / 2).toFixed(2)}</td><td class="text-right font-bold">${upi.totalAmount.toFixed(2)}</td></tr>
+              <tr><td>ROOM TRANSFER</td><td class="text-right">${roomTransfer.count}</td><td class="text-right">${roomTransfer.baseAmount.toFixed(2)}</td><td class="text-right">${(roomTransfer.gstAmount / 2).toFixed(2)}</td><td class="text-right">${(roomTransfer.gstAmount / 2).toFixed(2)}</td><td class="text-right font-bold">${roomTransfer.totalAmount.toFixed(2)}</td></tr>
             </tbody>
           </table>
         </body>
@@ -1025,16 +1024,16 @@ export default function AnalysisPage() {
             </thead>
             <tbody>
               ${res.days.map(day => {
-                let daySerNo = 1;
-                return `
+      let daySerNo = 1;
+      return `
                 <tr>
                   <td colspan="10" class="day-header-cell">${escapeHtml(day.dateHeaderStr)}</td>
                 </tr>
                 ${day.orders.map(order => {
-                  const isCancelled = order.status === 'CANCELLED';
-                  const disc = Number(order.discountAmount || 0);
-                  const ser = String(daySerNo++).padStart(2, '0');
-                  return `
+        const isCancelled = order.status === 'CANCELLED';
+        const disc = Number(order.discountAmount || 0);
+        const ser = String(daySerNo++).padStart(2, '0');
+        return `
                     <tr>
                       <td class="text-center">${ser}.</td>
                       <td class="text-center" style="font-weight: 600;">${escapeHtml(order.billNo)}</td>
@@ -1048,7 +1047,7 @@ export default function AnalysisPage() {
                       <td>${escapeHtml(order.remarks || (isCancelled ? 'Cancelled' : ''))}</td>
                     </tr>
                   `;
-                }).join('')}
+      }).join('')}
                 <tr>
                   <td colspan="3" class="subtotal-cell text-right">Day Total (${escapeHtml(day.dateStr)}):</td>
                   <td class="subtotal-cell text-right">${Number(day.totalBaseAmount).toFixed(2)}</td>
@@ -1060,7 +1059,7 @@ export default function AnalysisPage() {
                   <td class="subtotal-cell">${day.completedOrders} Completed</td>
                 </tr>
               `;
-              }).join('')}
+    }).join('')}
               <tr>
                 <td colspan="3" class="grand-total-cell text-right">Grand Total:</td>
                 <td class="grand-total-cell text-right">${Number(res.totalBaseAmount).toFixed(2)}</td>
@@ -1122,7 +1121,7 @@ export default function AnalysisPage() {
           return { ...o };
         } else {
           completed += 1;
-          
+
           const originalBase = Number((o.originalBaseAmount ?? o.baseAmount) || 0);
           const disc = Number(o.discountAmount || 0);
           const taxable = Number(Math.max(0, originalBase - disc).toFixed(2));
@@ -1232,7 +1231,7 @@ export default function AnalysisPage() {
             Analytics Dashboard
           </h1>
           <p className="text-slate-400 text-xs sm:text-sm">
-            {activeCategory === 'HOTEL' 
+            {activeCategory === 'HOTEL'
               ? 'Gain insights into hotel room revenue, bookings, and channel breakdown.'
               : 'Gain insights into restaurant revenue, ordered items sales, and staff performance.'}
           </p>
@@ -1242,22 +1241,20 @@ export default function AnalysisPage() {
         <div className="grid grid-cols-2 w-full sm:w-auto bg-surface/50 p-1.5 rounded-2xl border border-white/10 shadow-lg backdrop-blur-md shrink-0">
           <button
             onClick={() => setActiveCategory('HOTEL')}
-            className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
-              activeCategory === 'HOTEL'
+            className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${activeCategory === 'HOTEL'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/25'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
+              }`}
           >
             <Hotel size={16} className="shrink-0" />
             <span className="truncate">Hotel Analytics</span>
           </button>
           <button
             onClick={() => setActiveCategory('RESTAURANT')}
-            className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
-              activeCategory === 'RESTAURANT'
+            className={`flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${activeCategory === 'RESTAURANT'
                 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-            }`}
+              }`}
           >
             <UtensilsCrossed size={16} className="shrink-0" />
             <span className="truncate">Restaurant Analytics</span>
@@ -1499,11 +1496,10 @@ export default function AnalysisPage() {
                             key={st}
                             type="button"
                             onClick={() => setDailyBillStatusFilter(st)}
-                            className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
-                              dailyBillStatusFilter === st
+                            className={`px-3 py-1.5 rounded-lg font-medium transition-all ${dailyBillStatusFilter === st
                                 ? 'bg-emerald-500 text-white shadow-sm'
                                 : 'text-slate-400 hover:text-white'
-                            }`}
+                              }`}
                           >
                             {st === 'ALL' ? 'All Status' : st === 'COMPLETED' ? 'Completed' : 'Cancelled'}
                           </button>
@@ -1586,82 +1582,82 @@ export default function AnalysisPage() {
                                       const disc = Number(order.discountAmount || 0);
                                       const ser = String(rowSerNo++).padStart(2, '0');
 
-                                    return (
-                                      <tr
-                                        key={`bill-row-${order.id}`}
-                                        className={`hover:bg-white/5 transition-colors ${isCancelled ? 'opacity-60 bg-red-500/5' : ''}`}
-                                      >
-                                        <td className="px-3 py-2.5 text-center text-slate-500 font-semibold">{ser}.</td>
-                                        <td className="px-3 py-2.5 text-center font-bold text-white tracking-wide">
-                                          {order.billNo}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-center text-slate-300">
-                                          {order.dateStr}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-right font-medium text-slate-200">
-                                          {isCancelled ? (
-                                            <span className="text-rose-400 font-bold font-sans text-[11px] px-1.5 py-0.5 rounded bg-rose-500/10">cancel</span>
-                                          ) : (
-                                            `₹${Number(order.baseAmount).toFixed(2)}`
-                                          )}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-right font-medium text-rose-400">
-                                          {isCancelled ? '-' : (disc > 0 ? `₹${disc.toFixed(2)}` : '-')}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-right font-medium text-teal-300">
-                                          {isCancelled ? '-' : `₹${Number(order.taxableAmount).toFixed(2)}`}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-right text-amber-400/90 font-medium">
-                                          {isCancelled ? '-' : `₹${Number(order.sgstAmount).toFixed(2)}`}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-right text-amber-400/90 font-medium">
-                                          {isCancelled ? '-' : `₹${Number(order.cgstAmount).toFixed(2)}`}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-right font-bold text-emerald-400">
-                                          {isCancelled ? '-' : `₹${Number(order.totalAmount).toFixed(2)}`}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-left font-sans text-xs">
-                                          {isCancelled ? (
-                                            <span className="text-rose-400 font-medium text-[11px] flex items-center gap-1">
-                                              <XCircle size={12} /> {order.remarks}
-                                            </span>
-                                          ) : (
-                                            <span className="text-slate-300 text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/5 border border-white/5">
-                                              {order.remarks}
-                                            </span>
-                                          )}
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
+                                      return (
+                                        <tr
+                                          key={`bill-row-${order.id}`}
+                                          className={`hover:bg-white/5 transition-colors ${isCancelled ? 'opacity-60 bg-red-500/5' : ''}`}
+                                        >
+                                          <td className="px-3 py-2.5 text-center text-slate-500 font-semibold">{ser}.</td>
+                                          <td className="px-3 py-2.5 text-center font-bold text-white tracking-wide">
+                                            {order.billNo}
+                                          </td>
+                                          <td className="px-3 py-2.5 text-center text-slate-300">
+                                            {order.dateStr}
+                                          </td>
+                                          <td className="px-3 py-2.5 text-right font-medium text-slate-200">
+                                            {isCancelled ? (
+                                              <span className="text-rose-400 font-bold font-sans text-[11px] px-1.5 py-0.5 rounded bg-rose-500/10">cancel</span>
+                                            ) : (
+                                              `₹${Number(order.baseAmount).toFixed(2)}`
+                                            )}
+                                          </td>
+                                          <td className="px-3 py-2.5 text-right font-medium text-rose-400">
+                                            {isCancelled ? '-' : (disc > 0 ? `₹${disc.toFixed(2)}` : '-')}
+                                          </td>
+                                          <td className="px-3 py-2.5 text-right font-medium text-teal-300">
+                                            {isCancelled ? '-' : `₹${Number(order.taxableAmount).toFixed(2)}`}
+                                          </td>
+                                          <td className="px-3 py-2.5 text-right text-amber-400/90 font-medium">
+                                            {isCancelled ? '-' : `₹${Number(order.sgstAmount).toFixed(2)}`}
+                                          </td>
+                                          <td className="px-3 py-2.5 text-right text-amber-400/90 font-medium">
+                                            {isCancelled ? '-' : `₹${Number(order.cgstAmount).toFixed(2)}`}
+                                          </td>
+                                          <td className="px-3 py-2.5 text-right font-bold text-emerald-400">
+                                            {isCancelled ? '-' : `₹${Number(order.totalAmount).toFixed(2)}`}
+                                          </td>
+                                          <td className="px-3 py-2.5 text-left font-sans text-xs">
+                                            {isCancelled ? (
+                                              <span className="text-rose-400 font-medium text-[11px] flex items-center gap-1">
+                                                <XCircle size={12} /> {order.remarks}
+                                              </span>
+                                            ) : (
+                                              <span className="text-slate-300 text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/5 border border-white/5">
+                                                {order.remarks}
+                                              </span>
+                                            )}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
 
-                                  {/* Day Subtotal Row */}
-                                  <tr className="bg-black/40 border-t border-white/10 font-bold font-mono text-xs">
-                                    <td colSpan={3} className="px-3 py-2 text-right text-slate-400 font-sans text-xs">
-                                      Subtotal ({day.dateStr}):
-                                    </td>
-                                    <td className="px-3 py-2 text-right text-slate-200">
-                                      ₹{day.totalBaseAmount.toFixed(2)}
-                                    </td>
-                                    <td className="px-3 py-2 text-right text-rose-400">
-                                      {day.totalDiscountAmount > 0 ? `₹${day.totalDiscountAmount.toFixed(2)}` : '-'}
-                                    </td>
-                                    <td className="px-3 py-2 text-right text-teal-300">
-                                      ₹{day.totalTaxableAmount.toFixed(2)}
-                                    </td>
-                                    <td className="px-3 py-2 text-right text-amber-400">
-                                      ₹{day.totalSgstAmount.toFixed(2)}
-                                    </td>
-                                    <td className="px-3 py-2 text-right text-amber-400">
-                                      ₹{day.totalCgstAmount.toFixed(2)}
-                                    </td>
-                                    <td className="px-3 py-2 text-right text-emerald-400 text-sm font-black">
-                                      ₹{day.totalAmount.toFixed(2)}
-                                    </td>
-                                    <td className="px-3 py-2 text-slate-400 font-sans text-[11px]">
-                                      {day.completedOrders} Completed
-                                    </td>
-                                  </tr>
+                                    {/* Day Subtotal Row */}
+                                    <tr className="bg-black/40 border-t border-white/10 font-bold font-mono text-xs">
+                                      <td colSpan={3} className="px-3 py-2 text-right text-slate-400 font-sans text-xs">
+                                        Subtotal ({day.dateStr}):
+                                      </td>
+                                      <td className="px-3 py-2 text-right text-slate-200">
+                                        ₹{day.totalBaseAmount.toFixed(2)}
+                                      </td>
+                                      <td className="px-3 py-2 text-right text-rose-400">
+                                        {day.totalDiscountAmount > 0 ? `₹${day.totalDiscountAmount.toFixed(2)}` : '-'}
+                                      </td>
+                                      <td className="px-3 py-2 text-right text-teal-300">
+                                        ₹{day.totalTaxableAmount.toFixed(2)}
+                                      </td>
+                                      <td className="px-3 py-2 text-right text-amber-400">
+                                        ₹{day.totalSgstAmount.toFixed(2)}
+                                      </td>
+                                      <td className="px-3 py-2 text-right text-amber-400">
+                                        ₹{day.totalCgstAmount.toFixed(2)}
+                                      </td>
+                                      <td className="px-3 py-2 text-right text-emerald-400 text-sm font-black">
+                                        ₹{day.totalAmount.toFixed(2)}
+                                      </td>
+                                      <td className="px-3 py-2 text-slate-400 font-sans text-[11px]">
+                                        {day.completedOrders} Completed
+                                      </td>
+                                    </tr>
                                   </React.Fragment>
                                 );
                               });
@@ -1728,20 +1724,18 @@ export default function AnalysisPage() {
                               return (
                                 <div
                                   key={`mob-order-${order.id}`}
-                                  className={`p-3 rounded-xl border transition-colors ${
-                                    isCancelled ? 'bg-rose-500/5 border-rose-500/20' : 'bg-black/30 border-white/5'
-                                  }`}
+                                  className={`p-3 rounded-xl border transition-colors ${isCancelled ? 'bg-rose-500/5 border-rose-500/20' : 'bg-black/30 border-white/5'
+                                    }`}
                                 >
                                   <div className="flex items-center justify-between mb-1.5">
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs font-mono font-bold text-white">{order.billNo}</span>
                                       <span className="text-[10px] text-slate-400">&bull; {order.dateStr}</span>
                                     </div>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                      isCancelled 
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isCancelled
                                         ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                                         : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                    }`}>
+                                      }`}>
                                       {isCancelled ? 'CANCELLED' : (order.paymentMode || 'PAID')}
                                     </span>
                                   </div>
@@ -1955,31 +1949,28 @@ export default function AnalysisPage() {
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           onClick={() => setItemSortBy('quantity')}
-                          className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${
-                            itemSortBy === 'quantity'
+                          className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${itemSortBy === 'quantity'
                               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
                               : 'bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5'
-                          }`}
+                            }`}
                         >
                           Quantity
                         </button>
                         <button
                           onClick={() => setItemSortBy('amount')}
-                          className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${
-                            itemSortBy === 'amount'
+                          className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${itemSortBy === 'amount'
                               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
                               : 'bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5'
-                          }`}
+                            }`}
                         >
                           Total Price
                         </button>
                         <button
                           onClick={() => setItemSortBy('name')}
-                          className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${
-                            itemSortBy === 'name'
+                          className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all ${itemSortBy === 'name'
                               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
                               : 'bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5'
-                          }`}
+                            }`}
                         >
                           Name
                         </button>

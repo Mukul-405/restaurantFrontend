@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, IndianRupee, Bed, Calendar, Users, Edit2, Save, Loader2, CheckCircle2, RotateCcw, AlertCircle } from 'lucide-react';
+import { X, IndianRupee, Bed, Calendar, Users, Edit2, Save, Loader2, CheckCircle2, RotateCcw, AlertCircle, Receipt } from 'lucide-react';
 import { updateRoomDailyPrices } from '../../lib/roomBookApi';
+import { calculateOtaDeductions } from './OtaDeductionsModal';
 
 interface DailyRateBreakdownModalProps {
   isOpen: boolean;
@@ -291,6 +292,56 @@ export default function DailyRateBreakdownModal({
                 </div>
               </div>
             ))}
+
+            {/* OTA Deductions Breakdown if applicable */}
+            {(() => {
+              const ota = calculateOtaDeductions(booking);
+              if (!ota || ota.totalDeductions <= 0) return null;
+              return (
+                <div className="bg-gradient-to-r from-amber-500/[0.07] to-surface border border-amber-500/30 rounded-2xl p-3.5 space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <span className="font-extrabold text-amber-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <Receipt size={13} className="text-amber-400" />
+                      {ota.channel} Final Calculation & Payout
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">Gross: ₹{ota.grossAmount.toFixed(1)}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="flex justify-between text-slate-300">
+                      <span>Commission:</span>
+                      <span className="font-mono text-rose-300 font-semibold">₹{ota.commission.toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>GST on Comm (18%):</span>
+                      <span className="font-mono text-rose-300 font-semibold">₹{ota.gstOnCommission.toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>TCS @ 0.5%:</span>
+                      <span className="font-mono text-amber-300 font-semibold">₹{ota.tcs.toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>TDS @ 0.1%:</span>
+                      <span className="font-mono text-amber-300 font-semibold">₹{ota.tds.toFixed(1)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-white/10 bg-emerald-500/10 -mx-3.5 -mb-3.5 p-3 rounded-b-2xl border-emerald-500/20">
+                    <div>
+                      <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider block">
+                        Payable to Property (A - B - C)
+                      </span>
+                      <span className="text-[9px] text-emerald-300/70">
+                        Net settlement after commission & tax deductions
+                      </span>
+                    </div>
+                    <span className="text-base font-black text-emerald-300 font-mono">
+                      ₹{ota.payableToProperty.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Footer with Calculations and Actions */}
