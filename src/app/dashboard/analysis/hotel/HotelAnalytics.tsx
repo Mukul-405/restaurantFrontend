@@ -1,5 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { HotelDailyBillSummarySection } from './components/HotelDailyBillSummarySection';
+import { HotelRevenueSection } from './components/HotelRevenueSection';
 import { BookingAnalysisSection } from './components/BookingAnalysisSection';
 import { ChannelBreakdownSection } from './components/ChannelBreakdownSection';
 
@@ -13,6 +15,8 @@ export const HotelAnalytics: React.FC = () => {
       transition={{ duration: 0.2 }}
       className="space-y-6 sm:space-y-8"
     >
+      <HotelDailyBillSummarySection />
+      <HotelRevenueSection />
       <BookingAnalysisSection />
       <ChannelBreakdownSection />
     </motion.div>

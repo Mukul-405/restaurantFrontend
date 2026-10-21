@@ -146,3 +146,105 @@ export const getDailyBillSummary = async (startDate: string, endDate: string): P
   return data;
 };
 
+
+export interface HotelPaymentModeBreakdown {
+  count: number;
+  baseAmount: number;
+  taxAmount: number;
+  totalAmount: number;
+  commission: number;
+  roomDiscountAmount: number;
+  tds: number;
+  tcs: number;
+  finalAmount: number;
+}
+
+export interface HotelRevenueAnalysis {
+  totalBookings: number;
+  totalAmount: number;
+  taxAmount: number;
+  baseAmount: number;
+  commission: number;
+  roomDiscountAmount: number;
+  tds: number;
+  tcs: number;
+  finalAmount: number;
+  paymentModes: {
+    CASH: HotelPaymentModeBreakdown;
+    CARD: HotelPaymentModeBreakdown;
+    UPI: HotelPaymentModeBreakdown;
+  };
+}
+
+export const getHotelRevenueAnalysis = async (startDate: string, endDate: string): Promise<HotelRevenueAnalysis> => {
+  const { data } = await api.get('/analysis/hotel-revenue', { params: { startDate, endDate } });
+  return data;
+};
+
+export interface HotelDailyBillItem {
+  id: number;
+  bookingId: string;
+  guestName: string;
+  guestPhone: string;
+  channel: string;
+  source: string;
+  checkIn: string;
+  checkOut: string;
+  dateStr: string;
+  dateHeaderStr: string;
+  dateKey: string;
+  status: string;
+  paymentMode: string | null;
+  paymentStatus: string;
+  totalAmount: number;
+  taxAmount: number;
+  baseAmount: number;
+  roomDiscountAmount: number;
+  commission: number;
+  tcs: number;
+  tds: number;
+  finalAmount: number;
+  roomsCount: number;
+}
+
+export interface HotelDayGroupSummary {
+  dateStr: string;
+  dateHeaderStr: string;
+  dateKey: string;
+  totalBookings: number;
+  checkedOutBookings: number;
+  cancelledBookings: number;
+  totalBaseAmount: number;
+  totalTaxAmount: number;
+  totalAmount: number;
+  totalDiscountAmount: number;
+  totalCommission: number;
+  totalTcs: number;
+  totalTds: number;
+  totalFinalAmount: number;
+  bookings: HotelDailyBillItem[];
+}
+
+export interface HotelDailyBillSummaryResult {
+  startDate: string;
+  endDate: string;
+  monthTitle: string;
+  totalBookings: number;
+  checkedOutBookings: number;
+  cancelledBookings: number;
+  totalBaseAmount: number;
+  totalTaxAmount: number;
+  totalAmount: number;
+  totalDiscountAmount: number;
+  totalCommission: number;
+  totalTcs: number;
+  totalTds: number;
+  grandTotalFinalAmount: number;
+  days: HotelDayGroupSummary[];
+  channels: string[];
+}
+
+export const getHotelDailyBillSummary = async (startDate: string, endDate: string): Promise<HotelDailyBillSummaryResult> => {
+  const { data } = await api.get("/analysis/hotel-daily-bills", { params: { startDate, endDate } });
+  return data;
+};
